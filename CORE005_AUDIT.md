@@ -30,7 +30,7 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja. "Sonda" = 
 | A-13 | C | **Publicar nunca habría funcionado en D1 real.** `publishProfile` exigía `meta.changes===1` en el insert a FTS5, pero D1 devuelve 3 (tablas internas). Cada publicación habría devuelto `PUBLICATION_CONFLICT` *después* de confirmar su lote: datos publicados y error al usuario. El adaptador SQLite devolvía 1, así que el "PASS" anterior era una falsa garantía. | Sonda: `{changes:3,rows_written:1}` |
 | A-01 | C | Las dependencias no instalaban, y los avisos críticos de Astro aplicaban al stack documentado "Astro 6". | §1 |
 | A-02 | A | **Autoverificación de dominio eludible.** `x@foo.co.uk` registrando `https://co.uk` y `x@gmail.com` registrando `gmail.com` quedan `self_declared` y `checkoutEligible=true`. Incumple la Decisión 13. | Sonda |
-| A-03 | A | **Fuga de la condición de fundador.** Con fundadores fijos en 1–100, cualquier posición pública ≤100 delata a un fundador, en tensión con la Decisión 35. El propietario confirmó el rango fijo: ver §4. **Abierto.** | `inventory.ts`, trigger de `0005` |
+| A-03 | A | **Fuga de la condición de fundador.** Con fundadores fijos en 1–100, cualquier posición pública ≤100 delata a un fundador, en tensión con la Decisión 35. El propietario confirmó el rango fijo y mantener público el número (2026-11-03): ver §4. **Aceptado por el propietario.** | `inventory.ts`, trigger de `0005` |
 | A-04 | A | No existía retiro: la única "retirada" era una prueba con SQL directo. Decisiones 17 y 29 sin implementar. | `grep` |
 | A-05 | A | Sin marca irreversible de primera publicación en `slots` (Decisiones 17, 30). Nada en la base impedía volver a `available` un cupo publicado. | 0001–0005 |
 | A-06 | M | `reviewCompany` con sitio web duplicado producía un `D1_ERROR` crudo y un 503 genérico. | Sonda |
@@ -75,7 +75,7 @@ Migraciones sobre el motor real · 1.500 cupos y CHECK de tramos · secuencia po
 
 | # | Contradicción | Tratamiento |
 |---|---|---|
-| 1 | **Decisión 05:** los fundadores ocupan "los primeros 100 de los 600". **Decisiones 31, 32 y 35** (posteriores y más específicas): numeración ascendente por orden de confirmación dentro del tramo, y la condición de fundador no puede revelarse. Un rango fijo 1–100 delata a cada fundador. | **Resuelto por el propietario el 2026-11-03: fundadores fijos en 1–100, pagados en 101–600.** Queda abierta la consecuencia: el número público identifica a los fundadores. |
+| 1 | **Decisión 05:** los fundadores ocupan "los primeros 100 de los 600". **Decisiones 31, 32 y 35** (posteriores y más específicas): numeración ascendente por orden de confirmación dentro del tramo, y la condición de fundador no puede revelarse. Un rango fijo 1–100 delata a cada fundador. | **Resuelto por el propietario el 2026-11-03: fundadores fijos en 1–100, pagados en 101–600.** El propietario acepta además mantener público el número, aunque las posiciones 1–100 identifiquen a los fundadores. |
 | 2 | Decisión 01 nombra a Aurea Investment Capital SAS; la nota estratégica la reabre. | El vendedor es configuración (`legal_seller_configuration`, `unapproved`). Ningún nombre de entidad en el código. |
 | 3 | Decisiones 50–63 (revisión fiscal, ofertas) contra nota estratégica puntos 4–5 (simplificar, suspender microdecisiones). | Sin implementar; el modo real sigue bloqueado. Riesgo de lanzamiento. |
 | 4 | Decisión 38 (secuencia estricta) + Decisión 32 (fundadores solo por invitación): si se venden los 500 pagados y no se completan las invitaciones, el tramo 2 **nunca abre**. | **Confirmado por el propietario el 2026-11-03:** se vende 101–600 mientras se incorporan los fundadores, y 601–1050 solo abre con las 600 definitivamente adjudicadas. Visible como `salesMode:"awaiting_founder_allocation"`. |
@@ -103,4 +103,4 @@ Migraciones sobre el motor real · 1.500 cupos y CHECK de tramos · secuencia po
 
 ## 7. Estado de los hallazgos
 
-Corregidos y cubiertos por pruebas: A-01, A-02, A-04 a A-11, A-13, B-01 a B-11. Abierto: A-03, pendiente de decisión del propietario. Parcial: A-12 (`IMAGES` eliminado; `SESSION` sigue autoprovisionándose, sin uso; bajo riesgo).
+Corregidos y cubiertos por pruebas: A-01, A-02, A-04 a A-11, A-13, B-01 a B-11. A-03: riesgo aceptado por el propietario; no requiere cambio. Parcial: A-12 (`IMAGES` eliminado; `SESSION` sigue autoprovisionándose, sin uso; bajo riesgo).

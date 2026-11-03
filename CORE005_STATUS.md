@@ -59,15 +59,14 @@
 
 Totales: 42 esquema · 73 integración en motor D1 · 27 pasos E2E en workerd.
 
-Confirmado por el propietario el 2026-11-03: fundadores en 1–100, pagados en 101–600, numeración ascendente en cada grupo, ventas de 101–600 mientras se incorporan los fundadores, y 601–1050 solo con las 600 definitivamente adjudicadas.
+Confirmado por el propietario el 2026-11-03: fundadores en 1–100, pagados en 101–600, numeración ascendente en cada grupo, ventas de 101–600 mientras se incorporan los fundadores, y 601–1050 solo con las 600 definitivamente adjudicadas. También confirmó mantener público el número de posición, aunque 1–100 identifique a los fundadores.
 
 ## Decisiones que se necesitan del propietario
 
-1. **Visibilidad de la posición.** Confirmado el rango fijo 1–100 para fundadores (2026-11-03), hoy el directorio, la ficha y el JSON-LD muestran el número, así que cualquier posición ≤100 identifica a un fundador, y la Decisión 35 dice que esa condición no se revela. ¿Se acepta, o se oculta el número público de esas posiciones o de todas?
-3. **Retiro:** el titular solicita y administración ejecuta. Es lo más prudente por ser irreversible, pero no consta en una decisión.
-4. **Reactivación:** tras reactivar no se fija nuevo plazo, porque ninguna decisión lo define.
-5. **Pregunta 64** y **entidad vendedora**.
-6. **Pagos tardíos con tarjeta:** van siempre a conciliación humana. La Decisión 44 fija reglas para transferencias; aquí se aplicaron por analogía, sin autoasignar.
+1. **Retiro:** el titular solicita y administración ejecuta. Es lo más prudente por ser irreversible, pero no consta en una decisión.
+2. **Reactivación:** tras reactivar no se fija nuevo plazo, porque ninguna decisión lo define.
+3. **Pregunta 64** y **entidad vendedora**.
+4. **Pagos tardíos con tarjeta:** van siempre a conciliación humana. La Decisión 44 fija reglas para transferencias; aquí se aplicaron por analogía, sin autoasignar.
 
 ## Para continuar
 
