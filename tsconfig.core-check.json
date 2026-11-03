@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "files": [
+    "tests/types-stubs.d.ts",
+    "src/core/identity.ts",
+    "src/core/companies.ts",
+    "src/core/inventory.ts",
+    "src/core/public.ts",
+    "src/lib/contracts/inventory.ts",
+    "src/pages/api/v1/auth/request-link.ts",
+    "src/pages/api/v1/auth/verify.ts",
+    "src/pages/api/v1/auth/logout.ts",
+    "src/pages/api/v1/auth/me.ts",
+    "src/pages/api/v1/registrations.ts",
+    "src/pages/api/v1/orders/hold.ts",
+    "src/pages/api/v1/public/stats.ts",
+    "src/core/profiles.ts",
+    "src/core/directory.ts",
+    "src/pages/api/v1/me/company/profile.ts",
+    "src/pages/api/v1/me/company/approve.ts",
+    "src/pages/api/v1/me/company/publish.ts",
+    "src/pages/api/v1/public/companies.ts",
+    "src/pages/api/v1/public/companies/[slug].ts",
+    "src/pages/api/v1/public/companies/[slug].json.ts",
+    "src/core/admin.ts",
+    "src/core/search.ts",
+    "src/pages/api/v1/admin/overview.ts",
+    "src/pages/api/v1/admin/review-company.ts",
+    "src/pages/api/v1/admin/founder-invite.ts",
+    "src/pages/api/v1/me/founder-invitations/index.ts",
+    "src/pages/api/v1/me/founder-invitations/accept.ts",
+    "src/pages/api/v1/public/search.ts",
+    "src/pages/api/v1/public/ask.ts",
+    "src/pages/api/v1/admin/companies.ts"
+  ]
+}

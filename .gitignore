@@ -1,0 +1,11 @@
+node_modules/
+.astro/
+dist/
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
+.DS_Store
+coverage/
+.core-js-tests/

@@ -1,0 +1,32 @@
+---
+import Shell from '../layouts/Shell.astro';
+import { env } from 'cloudflare:workers';
+import { getPublicStats } from '../core/public';
+import { listPublishedCompanies, type PublicCompanyCard } from '../core/directory';
+let stats = null;
+let businesses: PublicCompanyCard[] = [];
+try { stats = await getPublicStats(env.DB); businesses = (await listPublishedCompanies(env.DB,{page:1})).items; } catch { /* never fabricate data */ }
+---
+<Shell title="Business directory" lang="en">
+  <main>
+    <div class="eyebrow">A finite business directory for the AI era</div>
+    <h1>Discover the companies of THE1500.</h1>
+    <p>A public directory of authorized, structured business profiles. Built to help people and information systems understand what companies do.</p>
+    {stats ? (
+      <section class="panel stats" aria-label="Directory statistics">
+        <div><strong>{stats.occupied}</strong><span>Allocated positions</span></div>
+        <div><strong>{stats.available}</strong><span>Unallocated positions</span></div>
+        <div><strong>{stats.published}</strong><span>Published profiles</span></div>
+        <div><strong>{stats.sectorsRepresented}</strong><span>Represented industries</span></div>
+      </section>
+    ) : (
+      <p class="notice">Live directory statistics are not available yet. We do not display estimated inventory numbers.</p>
+    )}
+    <p><a class="button" href="/unirse">Explore membership</a></p>
+    {businesses.length ? <section class="panel" aria-label="Published companies"><h2>Published companies</h2>
+      <ul>{businesses.map((business) => <li><a href={`/empresas/${business.slug}`}>{business.name}</a> · {business.industry} · {business.country}</li>)}</ul>
+      <p><a href="/empresas">Explore all companies</a></p></section> :
+      <p class="muted">The first companies are preparing their profiles. Only approved, published companies appear here.</p>}
+    <p class="muted">THE1500 does not guarantee recommendations from external AI platforms.</p>
+  </main>
+</Shell>

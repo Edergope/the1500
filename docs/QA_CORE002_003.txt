@@ -1,0 +1,35 @@
+THE1500 CORE-002 / CORE-003 LOCAL QA | 2026-11-03
+===================================================
+Source: THE1500_sprint0_codigo
+
+PASS: 31/31 SQLite Python tests, covering baseline inventory, phase/price boundaries,
+      100 founder positions reserved, idempotency uniqueness, one-time email-token
+      consumption/replay, revocation, membership uniqueness, published-only visibility,
+      version approval and immutable snapshot checks.
+PASS: isolated TypeScript 5.8 typecheck, including core and API *.ts modules,
+      via `npm run test:types:isolated` and minimal local D1/Astro type shims.
+PASS: all 4 SQL migrations applied in order to fresh local SQLite database;
+      EXACTLY 1500 slot rows.
+
+NOT VERIFIED: npm install, full Astro build, SSR routes, browser workflows.
+NOT VERIFIED: Cloudflare Workers runtime, D1 real concurrency/transactions,
+              Resend email delivery, authentication cookie in browser,
+              Stripe test/live payments, R2, LLM enrichment and grounded assistant.
+NOT VERIFIED: production seller entity and legal documents.
+
+WARNING: The simplified email-domain matching and self-declaration are not
+independent verification of business identity. Mismatch goes to pending_review.
+WARNING: The reserve endpoint does not charge money or assign paid slots.
+WARNING: Publication endpoint requires an already assigned slot; no paid
+assignment/payment verification pipeline exists yet.
+WARNING: Founder invitations/assignment, tax operations and Premium admission
+are NOT implemented. Public directory contains no fake companies.
+WARNING: No main GitHub repository or production deployment created by this QA.
+
+To reproduce:
+  python3 -m unittest discover -s tests -p 'test_*.py' -v
+  npm run test:types:isolated
+
+Next blocking milestone: complete full Astro build and real D1 integration in
+Cloudflare staging, then implement founder admin allocation, payment
+webhooks/Stripe sandbox and published-only grounded retrieval.

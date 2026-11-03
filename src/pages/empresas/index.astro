@@ -1,0 +1,21 @@
+---
+import { env } from 'cloudflare:workers';
+import Shell from '../../layouts/Shell.astro';
+import {listPublishedCompanies} from '../../core/directory';
+const page=Number(Astro.url.searchParams.get('page')||'1');
+const q=Astro.url.searchParams.get('query')||undefined;
+let result;
+try{result=await listPublishedCompanies(env.DB,{page,q});}
+catch{result={items:[],total:0,page:1,pageSize:24};}
+---
+<Shell title="Companies" lang="en"><main>
+<h1>Explore THE1500</h1><p>Discover only published, owner-approved business profiles.</p>
+<form method="GET" action="/empresas"><label for="q">Search companies</label>
+<input id="q" type="search" name="query" value={q||''} maxlength="100"/>
+<button type="submit">Search</button></form>
+{result.items.length ? <ul>{result.items.map(company=><li><a href={`/empresas/${company.slug}`}>{company.name}</a> — {company.industry}, {company.country}</li>)}</ul>
+: <p>No approved published companies match your search.</p>}
+<p>{result.total} published companies match the current filters.</p>
+{page>1 && <a href={`/empresas?page=${page-1}${q?`&query=${encodeURIComponent(q)}`:''}`}>Previous</a>}
+{page*24<result.total && <a href={`/empresas?page=${page+1}${q?`&query=${encodeURIComponent(q)}`:''}`}>Next</a>}
+</main></Shell>

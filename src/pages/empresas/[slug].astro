@@ -1,0 +1,23 @@
+---
+import { env } from 'cloudflare:workers';
+import {findPublicProfile} from '../../core/directory';
+const indexingEnabled = import.meta.env.PUBLIC_INDEXING_ENABLED === 'true';
+const slug=Astro.params.slug||'';
+const profile=await findPublicProfile(env.DB,slug);
+if(!profile) Astro.response.status=404;
+const structured=profile?.public_jsonld||'{}';
+// JSON-LD embedded as script must escape script-breaking HTML characters.
+const safeJson=structured.replace(/</g,'\\u003c').replace(/>/g,'\\u003e')
+  .replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+---
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content={profile && indexingEnabled ? "index, follow" : "noindex, nofollow"}/><title>{profile?`${profile.display_name} — THE1500`:'Company not found — THE1500'}</title>
+{profile && <script type="application/ld+json" set:html={safeJson}/>}</head>
+<body style="font:16px system-ui;max-width:56rem;margin:3rem auto;padding:1.5rem">
+<header><a href="/">THE1500</a></header>
+{profile ? <main><h1>{profile.display_name}</h1><p>{profile.industry} · {profile.country}</p>
+<p>{profile.public_summary}</p>
+<p><a href={`/api/v1/public/companies/${profile.slug}.json`}>View machine-readable JSON-LD</a></p>
+<p><small>Information declared and approved by the business. THE1500 does not certify all claims.</small></p>
+</main> : <main><h1>Company not found</h1></main>}
+</body></html>

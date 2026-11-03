@@ -1,0 +1,29 @@
+{
+  "name": "the1500",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "deploy": "astro build && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "test:db": "python3 -m unittest discover -s tests -p 'test_*.py' -v",
+    "test:types:isolated": "tsc -p tsconfig.core-check.json",
+    "test:core:runtime": "tsc -p tsconfig.core-runtime-test.json && node -e \"require('fs').writeFileSync('.core-js-tests/package.json', JSON.stringify({type:'commonjs'}))\" && node --experimental-sqlite tests/core_runtime_integration.cjs",
+    "test:local": "python3 -m unittest discover -s tests -p test_*.py -q && npm run test:types:isolated && npm run test:core:runtime"
+  },
+  "dependencies": {
+    "astro": "^6.0.0",
+    "@astrojs/cloudflare": "^14.0.0",
+    "@astrojs/react": "^5.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^4.0.0"
+  }
+}

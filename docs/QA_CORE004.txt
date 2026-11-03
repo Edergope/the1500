@@ -1,0 +1,25 @@
+THE1500 CORE-004 v0.3.0 — TEST REPORT
+Date: 2026-11-03
+
+PASS — Python/SQLite migration and contract tests: 42 / 42.
+PASS — Actual transpiled TypeScript core invoked with Node SQLite D1 adapter: 24 / 24.
+PASS — Isolated TypeScript type checking (tsconfig.core-check.json).
+
+INCOMPLETE — Full Astro build: 'astro: not found' because npm dependencies are not installed.
+INCOMPLETE — npm install --offline: ENOTCACHED for @astrojs/cloudflare (no local cached dependency).
+NOT TESTED — Live Cloudflare Worker runtime, D1 remote concurrency, staging deployment, Resend delivery, Stripe, R2, public LLM, final UX and browser E2E.
+
+No live payments enabled. No repository mutated. This package is local source only.
+
+What the 24 runtime checks actually cover:
+- Admin privilege gate and rejection of non-admin.
+- Inventory overview.
+- Founder invitation and acceptance restricted to the invited company's authenticated owner.
+- First founder slot allocation, immutable audit and prevention of reuse.
+- Rejection of paid hold for a founder company already assigned.
+- Draft semantic profile, approval digest, actual publication and FTS5 index.
+- Search before/after publication, one cited result and honest no-match response.
+- Sanitized FTS query, withdrawal cleanup.
+- Evidence-backed admin review, rejection of missing evidence, replay protection and blocked non-admin invitation.
+
+These checks are NOT equivalent to runtime deployment; do not present as production readiness.
