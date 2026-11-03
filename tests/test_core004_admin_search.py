@@ -67,9 +67,10 @@ class AdminAndSearch(unittest.TestCase):
     def test_founder_must_have_real_assigned_reserved_slot(self):
         with self.assertRaisesRegex(sqlite3.IntegrityError,'founder award requires'):
             self.db.execute("INSERT INTO founder_awards(id,slot_number,company_id,approved_by,awarded_at) VALUES('award',1,'one','admin',?)",(STAMP,))
-        self.db.execute("UPDATE slots SET status='assigned',company_id='one',assignment_kind='founder' WHERE number=101")
-        with self.assertRaisesRegex(sqlite3.IntegrityError,'founder award requires'):
-            self.db.execute("INSERT INTO founder_awards(id,slot_number,company_id,approved_by,awarded_at) VALUES('award',101,'one','admin',?)",(STAMP,))
+        # Tier 1 is one ascending pool (Decisions 31, 32, 35), so a founder may hold any number up to 600, never beyond.
+        self.db.execute("UPDATE slots SET status='assigned',company_id='one',assignment_kind='founder' WHERE number=601")
+        with self.assertRaisesRegex(sqlite3.IntegrityError,'founder award'):
+            self.db.execute("INSERT INTO founder_awards(id,slot_number,company_id,approved_by,awarded_at) VALUES('award',601,'one','admin',?)",(STAMP,))
 
     def test_founder_acceptance_changes_inventory_and_audits(self):
         self.db.execute("INSERT INTO founder_invitations(id,company_id,invited_by,created_at,expires_at) VALUES('inv1','one','admin','2026-11-02','2026-11-10')")

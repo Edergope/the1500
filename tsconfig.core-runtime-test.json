@@ -1,23 +1,25 @@
 {
   "compilerOptions": {
-    "target":"ES2022",
-    "module":"CommonJS",
-    "moduleResolution":"Node",
-    "lib":["ES2022","DOM"],
-    "strict":true,
-    "skipLibCheck":true,
-    "noEmit":false,
-    "rootDir":"src",
-    "outDir":".core-js-tests"
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "lib": [
+      "ES2022"
+    ],
+    "types": [
+      "@cloudflare/workers-types"
+    ],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": ".core-js-tests"
   },
-  "files": [
-    "tests/types-stubs.d.ts",
-    "src/core/identity.ts",
-    "src/core/admin.ts",
-    "src/core/companies.ts",
-    "src/core/profiles.ts",
-    "src/core/search.ts",
-    "src/core/inventory.ts",
-    "src/lib/contracts/inventory.ts"
+  "include": [
+    "src/core/**/*.ts",
+    "src/lib/**/*.ts"
+  ],
+  "exclude": [
+    "src/core/http.ts"
   ]
 }

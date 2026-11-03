@@ -10,10 +10,8 @@
 - English primary; complete Spanish second; no claims of guaranteed external AI indexing, recommendation or training.
 - Live inventory counters derive from database, no placeholder masquerading as real.
 
-## Status of this Sprint 0 archive
-- DONE: repository bootstrap; SQL initial schema and exactly 1500 seeded slots; SQL unit tests; English/Spanish routes with truthful empty states; read-only statistics API and server-rendered counters when D1 binding exists.
-- NOT DONE: production auth, atomic holds, checkout, Stripe integration, real registration, owner approvals, profile generation, JSON-LD exports, search, RAG chatbot, admin UI, deployment, legal publication, end-to-end tests.
-- BLOCKED BEFORE LIVE PAYMENTS: selected legal seller (LLC vs SAS), Stripe account, D1 Cloudflare resource IDs, published legal terms, privacy authorizations, callback/webhook proofs, security review.
+## Status
+See `CORE005_STATUS.md`, the single current source. Summary: core verified locally on workerd/D1 with stand-ins for external providers. BLOCKED before live payments: legal seller, Stripe account and real sandbox run, tax rules (Decisions 50-63), remote D1 evidence, published legal terms, security review.
 
 ## Launch policy
 Never interpret passing the SQL tests as proof the product is ready for payments. Launch commercial payments only after end-to-end security, webhook, 1,500-position concurrency, pricing, publication and legal acceptance are verified.

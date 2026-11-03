@@ -1,8 +1,9 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
+import type {APIRoute} from 'astro';
+import {env} from 'cloudflare:workers';
 import {apiError,authenticatedPrincipal,IdentityError,json,readJsonObject,requireOwner,requireSameOrigin} from '../../../../core/identity';
-import {createCheckoutHold,InventoryError} from '../../../../core/inventory';
-export const POST: APIRoute=async({request})=>{
+import {createCheckoutHold} from '../../../../core/inventory';
+import {paymentsGate} from '../../../../core/stripe';
+export const POST:APIRoute=async({request})=>{
   try {
     requireSameOrigin(request);
     const user=await authenticatedPrincipal(env.DB,request);
@@ -11,13 +12,6 @@ export const POST: APIRoute=async({request})=>{
     const idempotencyKey=request.headers.get('Idempotency-Key')||'';
     await requireOwner(env.DB,user.id,data.companyId);
     const hold=await createCheckoutHold(env.DB,data.companyId,user.id,idempotencyKey);
-    return json(201,{hold,paymentStatus:'not_started',checkoutEnabled:false});
-  } catch(e) {
-    if (e instanceof InventoryError) {
-      const status=e.code==='UNAUTHORIZED'?401:e.code==='TOO_MANY_REQUESTS'?429:
-        e.code==='INVALID_COMPANY'||e.code==='INVALID_IDEMPOTENCY_KEY'?400:409;
-      return json(status,{error:{code:e.code}});
-    }
-    return apiError(e);
-  }
+    return json(201,{hold,paymentStatus:'not_started',checkoutEnabled:paymentsGate(env).ok});
+  } catch(e) {return apiError(e);}
 };

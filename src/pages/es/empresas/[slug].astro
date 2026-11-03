@@ -1,6 +1,6 @@
 ---
 import {env} from 'cloudflare:workers';
-import {findPublicProfile} from '../../../core/directory';
+import {findPublicProfile,publicProfileDto} from '../../../core/directory';
 const slug=Astro.params.slug||'';
 const profile=await findPublicProfile(env.DB,slug);
 const indexingEnabled=import.meta.env.PUBLIC_INDEXING_ENABLED==='true';
@@ -8,8 +8,8 @@ if(!profile) Astro.response.status=404;
 const raw=profile?.public_jsonld_es||profile?.public_jsonld||'{}';
 const safe=raw.replace(/</g,'\\u003c').replace(/>/g,'\\u003e')
   .replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
-const parsed=JSON.parse(raw);
-const translated=Boolean(profile?.public_jsonld_es);
+const dto=profile?publicProfileDto(profile,'es'):null;
+const translated=Boolean(dto&&JSON.parse(profile!.canonical_json).descriptionEs);
 ---
 <html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="robots" content={profile && indexingEnabled ? 'index,follow':'noindex,nofollow'}/>
@@ -19,7 +19,9 @@ const translated=Boolean(profile?.public_jsonld_es);
 <header><a href="/es/">THE1500</a></header>
 {profile?<main><h1>{profile.display_name}</h1><p>{profile.industry} · {profile.country}</p>
 {!translated&&<p><small>Descripción disponible únicamente en inglés.</small></p>}
-<p>{parsed.description}</p><p><a href={`/api/v1/public/companies/${profile.slug}.json?lang=es`}>Consultar JSON-LD</a></p>
+<p>{dto?.summary}</p>
+{dto&&dto.services.length>0&&<ul>{dto.services.map(x=><li>{x}</li>)}</ul>}
+{dto&&dto.problemSolutions.length>0&&<ul>{dto.problemSolutions.map(x=><li>{x.problem}: {x.solution}</li>)}</ul>}<p><a href={`/api/v1/public/companies/${profile.slug}.json?lang=es`}>Consultar JSON-LD</a></p>
 <p><small>Información declarada y aprobada por la empresa. THE1500 no certifica todas sus afirmaciones.</small></p>
 </main>:<main><h1>Empresa no encontrada</h1></main>}
 </body></html>

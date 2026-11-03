@@ -27,10 +27,10 @@ class Core002Tests(unittest.TestCase):
 
     def test_inventory_still_1500_and_founder_positions_excluded_from_checkout(self):
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM slots').fetchone()[0],1500)
-        candidate=self.db.execute('''SELECT number FROM slots WHERE status='available'
-          AND number>100 AND phase=(SELECT MIN(phase) FROM slots WHERE status IN('available','held'))
-          ORDER BY number LIMIT 1''').fetchone()
-        self.assertEqual(candidate,(101,))
+        # Founder places are protected by a capacity trigger, not by reserving specific numbers.
+        self.db.execute("UPDATE slots SET status='assigned',assignment_kind='paid' WHERE number BETWEEN 1 AND 500")
+        with self.assertRaisesRegex(sqlite3.IntegrityError,'phase 1 paid capacity exhausted'):
+            self.db.execute("UPDATE slots SET status='held',active_hold_id='h',held_until='x' WHERE number=501")
 
     def test_company_email_and_membership_unique(self):
         self.user();self.company()
@@ -89,10 +89,9 @@ class Core002Tests(unittest.TestCase):
         self.assertEqual(self.db.execute("SELECT COUNT(*) FROM slot_holds WHERE status='active'").fetchone()[0],1)
 
     def test_paid_hold_cannot_take_any_founder_slot(self):
-        self.db.execute("UPDATE slots SET status='assigned' WHERE number BETWEEN 101 AND 600")
-        row=self.db.execute('''SELECT number FROM slots WHERE status='available' AND number>100
-           AND phase=(SELECT MIN(phase) FROM slots WHERE status IN('available','held')) ORDER BY number LIMIT 1''').fetchone()
-        self.assertIsNone(row)
+        self.db.execute("UPDATE slots SET status='assigned',assignment_kind='paid' WHERE number BETWEEN 1 AND 500")
+        with self.assertRaisesRegex(sqlite3.IntegrityError,'phase 1 paid capacity exhausted'):
+            self.db.execute("UPDATE slots SET status='held',active_hold_id='h',held_until='x' WHERE number=600")
         self.assertEqual(self.db.execute("SELECT MIN(phase) FROM slots WHERE status IN('available','held')").fetchone(),(1,))
 
     def test_complete_founders_then_next_tier_opens(self):

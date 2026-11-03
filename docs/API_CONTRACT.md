@@ -1,52 +1,160 @@
-# THE1500 API Contract v0.2 — CORE-001/002/003
+# THE1500 API Contract v1.0 (CORE-005)
 
-**Status:** source implemented, integration and payment flows unfinished. Seller identity pending. The living Google Drive decision register supersedes older archived prompts.
+**Owner:** Claude (core). **Consumer:** Antigravity. **Types to import:** `src/lib/contracts/api.ts`.
+**Verified by:** `tests/integration/*`, `tests/e2e/journey.cjs`. A test fails if a route exists without being listed here, or the reverse.
+Business rules live on the server. The frontend never computes price, position, availability or permission.
 
-## Common rules
-- **Origin:** POST/PUT require an exact same-origin `Origin` header (plus Fetch Metadata check); `GET` is read-only.
-- **Authentication:** `__Host-the1500_session` opaque HttpOnly Secure SameSite=Lax cookie; D1 stores only digest, expiration and revocation.
-- **Authorization:** `owner` membership required for holds and profile mutations. Owner's corporate email domain matching the website + explicit declaration qualifies ordinary onboarding; mismatches require administrative review before holds.
-- **Errors:** `{"error":{"code":"ERROR_CODE"}}`, never raw DB errors or tokens.
-- **Idempotency:** `Idempotency-Key` header required on holds, 16–128 ASCII letters/numbers/_/-; repeated active key returns the original hold, expired key cannot reopen a hold.
-- **Public data:** never query non-published versions or unapproved content.
+> **Breaking changes from v0.2:** `hold.slotNumber` removed (a number is assigned on confirmation, Decision 30). `PUT /me/company/profile` body changed (`description`, `consent` required). Founder accept requires `acceptTerms`, `termsVersion`. JSON-LD is now `@graph`.
 
-## Authentication
-| Endpoint | Method | Input | Response |
+## 1. Conventions
+
+| Topic | Rule |
+|---|---|
+| Base | Same origin. All paths below start with `/api/v1`. |
+| Auth | `__Host-the1500_session` cookie, HttpOnly, Secure, SameSite=Lax. Set by `/auth/verify`. JS cannot read it. |
+| CSRF | Every POST/PUT requires a same-origin `Origin` header (the browser sends it). Exception: `/webhooks/stripe`, authenticated by signature. |
+| Body | `Content-Type: application/json`, except `/auth/verify` (form). 4 KB limit unless noted. |
+| Idempotency | `POST /orders/hold` and `/orders/checkout` require `Idempotency-Key`: 16–128 of `[a-zA-Z0-9_-]`. Generate once per user intent; reuse on retry. |
+| Language | Errors follow `?lang=`, then `X-Locale`, then `Accept-Language`. Default `en` (en-US). Spanish: `es`. |
+| Money | Integer cents. Base prices are before tax (Decision 09); always show `taxStatus`. |
+| Dates | ISO 8601 UTC strings. |
+
+**Permissions.** `public`: no session. `user`: any session. `member`: owner or editor of that company. `owner`: owner only. `admin`: `platform_admins` entry.
+
+**Error shape, on every non-2xx:**
+```json
+{"error":{"code":"HOLD_EXPIRED","message":"This reservation has expired.","locale":"en"}}
+```
+Branch on `code`. Show `message`. Status: 400 invalid · 401 no session · 403 not allowed · 404 not found · 409 state conflict · 413 too large · 415 wrong type · 429 rate limited · 503 unavailable, retry later. Full code list with EN/ES text: `src/lib/i18n/messages.ts`.
+
+## 2. Auth
+
+| Method, path | Perm | Body | Success |
 |---|---|---|---|
-| `/api/v1/auth/request-link` | POST | `{email}` | 202 `{status:"link_requested"}` or 503 if mail provider absent |
-| `/api/v1/auth/verify` | POST form | `token` | 303 `/mi-cuenta` + cookie |
-| `/api/v1/auth/me` | GET | cookie | `{user,companies}` |
-| `/api/v1/auth/logout` | POST | cookie | 200 `{status:"signed_out"}` |
+| POST `/auth/request-link` | public | `RequestLinkBody` | 202 `{status:"link_requested"}`. Same reply whether or not the address exists or was rate limited. 503 `MAIL_NOT_CONFIGURED` / `MAIL_DELIVERY_UNAVAILABLE`. |
+| POST `/auth/verify` | public | form `token` | 303 to `/mi-cuenta` with cookie. 401 `INVALID_OR_EXPIRED_LINK`. Used by the existing `/auth/verify` page. Links last 15 minutes and work once; opening the page does not consume them. |
+| GET `/auth/me` | user | | `MeResponse` |
+| POST `/auth/logout` | user | | `{status:"signed_out"}` |
+| POST `/auth/logout-all` | user | | `{status:"signed_out_everywhere",sessionsRevoked}` |
 
-## Company + inventory
-| Endpoint | Method | Input | Response |
+## 3. Company
+
+| Method, path | Perm | Body / query | Success · key errors |
 |---|---|---|---|
-| `/api/v1/registrations` | POST | `displayName,country,industry,website,declareAuthority:true` | `{id,slug,identityState,checkoutEligible}` |
-| `/api/v1/orders/hold` | POST | `{companyId}` + Idempotency-Key | `{hold:{holdId,slotNumber,phase,priceUsdCents,createdAt,expiresAt,status},paymentStatus:"not_started",checkoutEnabled:false}` |
-| `/api/v1/public/stats` | GET | — | `{capacity:1500,occupied,held,available,published,sectorsRepresented,currentPhase}` |
+| POST `/registrations` | user | `RegistrationBody` | 201 `RegistrationResponse` · `INVALID_REGISTRATION`, `INVALID_WEBSITE`, `COMPANY_CONFLICT`, `REGISTRATION_LIMIT` |
+| GET `/me/company?companyId=` | member | | `CompanyStatusResponse`: drives `/mi-cuenta` |
+| POST `/me/company/members` | owner | `{companyId,email,action:"add"\|"remove"}` | `{companyId,email,role}` · `MEMBER_NOT_REGISTERED` |
+| POST `/me/company/requests` | owner | `{companyId,kind:"withdrawal"\|"cancellation",reason}` | 201 `{requestId,kind,status,requestedAt,structuringStartedAt}` · `REQUEST_ALREADY_OPEN`. Administration executes it. |
+| POST `/me/company/reactivate` | owner | `{companyId}` | `{companyId,status:"reactivated",reactivationRequestedAt}`. Valid until day 45. |
+| GET `/me/founder-invitations` | user | | `{invitations:[{invitationId,companyId,companyName,expiresAt}]}` |
+| POST `/me/founder-invitations/accept` | owner | `{invitationId,acceptTerms:true,termsVersion}` | `{companyId,slotNumber,status:"assigned",assignmentKind:"founder"}` · `TERMS_REQUIRED`, `INVITATION_EXPIRED`, `FOUNDER_INVENTORY_EXHAUSTED` |
 
-## Profile
-| Endpoint | Method | Input | Response |
+`identityState`: `self_declared` (corporate email matched the website, can buy) · `pending_review` (show "under review", cannot buy) · `admin_verified` (can buy) · `rejected`.
+
+## 4. Purchase
+
+```
+POST /orders/hold → POST /orders/checkout → redirect to checkoutUrl → Stripe → webhook assigns the position
+```
+| Method, path | Perm | Body | Success · key errors |
 |---|---|---|---|
-| `/api/v1/me/company/profile` | PUT | `{companyId,descriptionEn,descriptionEs?,services,audiences,problemSolutions,advantages,serviceCountries}` | `{companyId,version,status:"draft",preview,contentDigest,...}` |
-| `/api/v1/me/company/profile?companyId=&version=` | GET | query | `{companyId,version,canonical,preview,previewEs,contentDigest,...}` |
-| `/api/v1/me/company/approve` | POST | `{companyId,version,contentDigest,acceptPublicDisclosure:true}` | `{status:"owner_approved",approvedAt}` |
-| `/api/v1/me/company/publish` | POST | `{companyId,version}` | `{status:"published",slotNumber,...}`; requires assigned slot |
-| `/api/v1/public/companies?page=&country=&query=` | GET | filters | `{items,page,pageSize,total}` (24/page) |
-| `/api/v1/public/companies/:slug` | GET | slug | public company metadata, approved version |
-| `/api/v1/public/companies/:slug.json` | GET | slug, optional `lang=es` | public Schema.org JSON-LD, HTTP 404 if not published |
-| `/empresas/:slug` | GET | slug | HTML profile plus JSON-LD script |
+| POST `/orders/hold` + `Idempotency-Key` | owner | `{companyId}` | 201 `HoldResponse` · `COMPANY_REVIEW_REQUIRED`, `ALREADY_ALLOCATED`, `ACTIVE_HOLD_EXISTS`, `PHASE_PENDING`, `PAID_CAPACITY_PENDING_FOUNDERS`, `PREMIUM_ADMISSION_REQUIRED`, `SALES_CLOSED`, `HOLD_EXPIRED`, `TOO_MANY_REQUESTS` |
+| POST `/orders/checkout` + `Idempotency-Key` | owner | `CheckoutBody` | 201 `CheckoutResponse` · `TERMS_REQUIRED`, `HOLD_NOT_FOUND`, `HOLD_EXPIRED`, 503 `PAYMENTS_DISABLED`, 503 `CHECKOUT_PROVIDER_UNAVAILABLE`, 403 `LIVE_PAYMENTS_NOT_AUTHORIZED` |
+| POST `/webhooks/stripe` | signature | raw Stripe event | server-to-server only. Not for the frontend. |
 
-## Explicit non-features in this version
-- **No Stripe checkout or payment confirmation.** Hold API never allocates a paid slot and cannot charge.
-- **No LLM writer or RAG assistant.** Structured content uses deterministic transformation of owner-declared data; no automatic fact checking.
-- **No admin founder awards, R2 archive or D1 staging evidence.**
-- **No real email delivery until provider secrets are set.**
+Frontend rules:
+1. **Returning from Stripe proves nothing.** On `/mi-cuenta?checkout=returned`, poll `GET /me/company` until `position` is set. If it takes long, say the payment is being confirmed.
+2. Show a countdown to `reservationExpiresAt` (20 minutes). The Stripe page can stay open up to about 31 minutes because Stripe's minimum is 30. A payment after the reservation ends is reconciled by staff and may be refunded, so warn about this.
+3. Show `amount.taxStatus`. While `not_determined`, this is sandbox only.
+4. `hold` carries no number. Show a position only from `GET /me/company`.
+5. `checkoutEnabled:false` or `stats.checkoutOpen:false`: disable buying.
 
-## Integration owners
-Claude owns server code and API contracts. Antigravity owns UX and forms; it must use the endpoints above without bypassing session, membership or consent checks.
+## 5. Semantic profile
 
+| Method, path | Perm | Body / query | Success · key errors |
+|---|---|---|---|
+| PUT `/me/company/profile` (20 KB) | member | `DeclarationBody` | 201 `DraftResponse`, may take up to ~1 min with AI on · `CONSENT_REQUIRED`, `INVALID_DECLARATION`, `NO_CONFIRMED_SLOT`, `ONBOARDING_SUSPENDED`, `CORRECTION_WINDOW_CLOSED`, `PUBLICATION_BLOCKED`, `TOO_MANY_REQUESTS` |
+| GET `/me/company/profile?companyId=&version=` | member | | `{companyId,version,canonical,preview,previewEs,approvedAt,publishedAt,reviewStatus,generation,contentDigest}` |
+| POST `/me/company/approve` | owner | `ApproveBody` | `ApproveResponse` · `EXPLICIT_APPROVAL_REQUIRED`, `STALE_PROFILE_PREVIEW`, `ALREADY_APPROVED` |
+| POST `/me/company/publish` | owner | `{companyId,version}` | `PublishResponse` · `PROFILE_NOT_APPROVED`, `PROFILE_REQUIRES_REVIEW`, `COMPANY_REVIEW_REQUIRED`, `PUBLICATION_BLOCKED`, `NO_CONFIRMED_SLOT` |
+| GET `/me/company/export?companyId=` | owner | | Exportable profile: `{exportedFormat:"the1500.semantic-profile.v2",...}` |
 
-## CORE-004 — Admin/founders and public search (implemented source, no deployment)
+Preview screen must:
+- Show which text is `ai_generated` / `ai_translated`, `owner_declared` or `corroborated`, from `canonical.provenance`.
+- Show `generation.mode`. `deterministic` means no AI text is present (`reason`: `ai_disabled`, `ai_failed:*`, `ai_output_rejected:*`). Never call it AI-generated.
+- List `unsupportedClaims`. If `reviewStatus:"pending"`, say a person must review it before publication.
+- Send the unmodified `contentDigest` with a positive act (`acceptPublicDisclosure:true`). Inactivity is never approval (Decision 12).
+- Corrections before approval: PUT again with `correctionNote`, then review the new version.
 
-See `docs/CORE004_IMPLEMENTATION.md` for new route inventory and auth. Founders are manually invited by admins, accepted by logged-in business owners, and assigned exclusively from slot numbers 1..100. `GET /api/v1/public/search` and `POST /api/v1/public/ask` return only approved/published profiles. `ask.mode="retrieval_only"` means **no generative LLM is enabled yet**; provide honest UI labeling.
+`clients` and `advantages`/`certifications` (unless `publish` opts in) never appear publicly.
+
+## 6. Public
+
+| Method, path | Query / body | Success |
+|---|---|---|
+| GET `/public/stats` | | `InventorySummary` |
+| GET `/public/companies` | `page,query,country,industry,service` | `DirectoryResponse` (ascending position, 24 per page) |
+| GET `/public/companies/:slug` | `lang` | `PublicProfile`; 404 `PROFILE_NOT_FOUND`, also when withdrawn |
+| GET `/public/companies/:slug.json` | `lang` | Schema.org JSON-LD (`application/ld+json`); 404 with empty body |
+| GET `/public/search` | `query` (≤220), `limit` (1–12), `country`, `industry` | `SearchResponse` |
+| POST `/public/ask` (1.2 KB, same origin, 20/hour per client) | `AskBody` | `AskResponse` |
+| GET `/public/retired-positions` | | `RetiredPositionsResponse` |
+
+HTML at `/empresas/:slug` and `/es/empresas/:slug` is rendered by the page; use `PublicProfile` in redesigns and keep the `<script type="application/ld+json">` from `public_jsonld`.
+
+`salesMode` decides what `/unirse` shows:
+| Value | Meaning | UI |
+|---|---|---|
+| `selling` | Automatic checkout open at `currentPriceUsdCents` | Buy |
+| `awaiting_founder_allocation` | Paid places in tier 1 sold out, next tier not open | No buy; say the next tier is not open yet |
+| `premium_admission` | Last 150. Human admission. **Intake channel undecided (Question 64)** | No checkout and no invented form; ask the owner |
+| `closed_archive` | All positions consumed | Sold out; directory stays fully available |
+
+Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or AI search. Ask: label `llm_grounded`, `retrieval_only` and `abstained` differently; always render `citations` with links and `limitations`. Retired positions show **only** the number and the exact label: `labelEs` is Decision 29's text, `label` is an English rendering pending the owner's approval. Never display fictitious numbers, or any founder marker: none exists in public data.
+
+## 7. Administration (all `admin`; mutations need `reasonCode` `[a-zA-Z0-9_-]{3,64}` and `evidenceReference` ≤400 chars unless noted)
+
+| Method, path | Body / query | Purpose |
+|---|---|---|
+| GET `/admin/overview` | | Occupancy, founders, queues, payment totals |
+| GET `/admin/companies` | default: review queue, `limit`. `scope=all`: `query,status,limit,offset` | Queue (flags `duplicateOfVerifiedCompany`) or all companies |
+| POST `/admin/review-company` | `{companyId,decision:"approved"\|"rejected",reasonCode,evidenceReference}` | Identity review |
+| POST `/admin/company-action` | `{companyId,action:"block_publication"\|"clear_block"\|"grant_rectification",reasonCode,evidenceReference}` | Holds and legal rectification |
+| POST `/admin/users/block` | `{userId,blocked,reasonCode,evidenceReference}` | Block and revoke sessions |
+| GET `/admin/inventory` | `limit,offset` | Positions with kind and company, live holds |
+| POST `/admin/founder-invite` | `{companyId}` | 7-day invitation; queues email |
+| POST `/admin/founder-revoke` | `{companyId,reasonCode,evidenceReference}` | Only before first publication |
+| GET `/admin/profiles` | `limit` | Profiles pending review, with claims |
+| POST `/admin/profiles/review` | `{companyId,version,decision:"cleared"\|"rejected",reasonCode,evidenceReference}` | Exceptional profile decision |
+| GET `/admin/requests` | `status,limit` | Withdrawal and cancellation requests |
+| POST `/admin/withdrawals/execute` | `{companyId,requestId?,reasonCode,evidenceReference}` | Definitive and irreversible |
+| GET `/admin/incidents` | `status,limit` | Open incidents |
+| POST `/admin/incidents/resolve` | `{incidentId,reasonCode,evidenceReference}` | Close with reason |
+| GET `/admin/payments` | `status,limit` | Operations |
+| POST `/admin/payments/reconcile` | `{attemptId}` | Compare with Stripe and apply |
+| POST `/admin/payments/resolve-late` | `{attemptId}` | Same tier and price if free; else `refundRequired:true` |
+| POST `/admin/payments/refund` | `{attemptId,reason}` | Position returns only after confirmed refund, and never if published |
+| GET, POST `/admin/premium/requests` | POST `{companyId,channelNote}` or `{requestId,status,reasonCode,evidenceReference}` | Staff record only. **No public intake exists: Question 64 is open.** |
+| POST `/admin/premium/assign` | `{requestId,reasonCode,evidenceReference}` | Accepted request, tier 4 open, funds evidence |
+| GET, POST `/admin/seller` | POST `{sellerEntityId,legalName,country,reasonCode,evidenceReference}` | Seller is configuration. Does not enable live payments. |
+
+Admin bootstrap is by SQL on verified user IDs only: `docs/CORE004_IMPLEMENTATION.md` §3.
+
+## 8. States
+
+```
+Slot:     available → held → assigned ─ first publication (irreversible) → retired on withdrawal
+                 ↑______|        |
+                 └ expiry/fail   └ refund confirmed, founder revoked: back to available, only if never published
+Payment:  creating → pending → paid → refund_pending → refunded
+                        ├→ expired / failed                     paid ⇄ disputed → chargeback_lost
+                        ├→ late_review → paid | refund_pending  (paid after reservation ended)
+                        └→ amount_review → refund_pending       (amount or currency mismatch)
+Company:  draft → generated → owner_approved → published → withdrawn
+Profile:  version created → approved by owner → published. Approved content is immutable.
+Onboarding: active → extended (day 15) → suspended (day 30) → reactivated | admin_review (day 45); completed on form submission
+```
+
+## 9. Not available yet
+
+No real Stripe/LLM/email has been exercised. No tax calculation, invoicing or bank transfers. No Premium public intake. See `CORE005_STATUS.md`.

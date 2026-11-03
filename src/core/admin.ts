@@ -1,4 +1,8 @@
-import { IdentityError } from './identity';
+import { IdentityError, revokeAllSessions } from './identity';
+import { FOUNDER_PLACES, onboardingStart, releaseAssignmentStatements } from './inventory';
+import { notifyOwners, openIncident, ownerContacts } from './ops';
+import { founderInvitationEmail } from '../lib/i18n/comms';
+import { withdrawCompany } from './profiles';
 
 export class AdminError extends IdentityError {
   constructor(code: string, httpStatus = 409) { super(code, httpStatus); }
@@ -13,75 +17,208 @@ export async function requirePlatformAdmin(db:D1Database,userId:string):Promise<
     .bind(userId).first<{ok:number}>();
   if (!found) throw new AdminError('ADMIN_ONLY',403);
 }
+export function adminEvent(db:D1Database,adminId:string,action:string,subjectType:string,subjectId:string,reasonCode:string|null,evidence:string|null,details:Record<string,unknown>,now:Date) {
+  return db.prepare(`INSERT INTO admin_events(id,admin_id,action,subject_type,subject_id,reason_code,evidence_reference,details_json,occurred_at) VALUES(?,?,?,?,?,?,?,?,?)`)
+    .bind(crypto.randomUUID(),adminId,action,subjectType,subjectId,reasonCode,evidence,JSON.stringify(details),now.toISOString());
+}
+function requireEvidence(reasonCode:unknown,evidenceReference:unknown):asserts reasonCode is string {
+  if (typeof reasonCode!=='string'||!/^[a-zA-Z0-9_-]{3,64}$/.test(reasonCode)||typeof evidenceReference!=='string'||!evidenceReference.trim()||evidenceReference.length>400)
+    throw new AdminError('REVIEW_EVIDENCE_REQUIRED',400);
+}
+const clampLimit=(limit:number,max=100)=>{if (!Number.isSafeInteger(limit)||limit<1||limit>max) throw new AdminError('INVALID_LIMIT',400);return limit;};
 
-export async function getAdminOverview(db:D1Database) {
-  const [slots,founders,reviews,invites]=await Promise.all([
+export async function getAdminOverview(db:D1Database,now=new Date()) {
+  const [slots,founders,reviews,invites,incidents,payments,requests]=await Promise.all([
     db.prepare(`SELECT phase,status,COUNT(*) AS count FROM slots GROUP BY phase,status`).all(),
     db.prepare(`SELECT COUNT(*) AS count FROM founder_awards WHERE status='active'`).first<{count:number}>(),
     db.prepare(`SELECT COUNT(*) AS count FROM companies WHERE identity_state='pending_review'`).first<{count:number}>(),
     db.prepare(`SELECT COUNT(*) AS count FROM founder_invitations WHERE status='pending' AND expires_at>?`)
-      .bind(new Date().toISOString()).first<{count:number}>()
+      .bind(now.toISOString()).first<{count:number}>(),
+    db.prepare(`SELECT COUNT(*) AS count FROM incidents WHERE status='open'`).first<{count:number}>(),
+    db.prepare(`SELECT status,COUNT(*) AS count FROM purchase_attempts GROUP BY status`).all(),
+    db.prepare(`SELECT kind,COUNT(*) AS count FROM service_requests WHERE status='requested' GROUP BY kind`).all(),
   ]);
-  return {capacity:1500,byPhaseAndStatus:slots.results,foundersAssigned:founders?.count??0,
-    companiesPendingReview:reviews?.count??0,pendingFounderInvitations:invites?.count??0};
+  return {capacity:1500,byPhaseAndStatus:slots.results,foundersAssigned:founders?.count??0,foundersRemaining:FOUNDER_PLACES-(founders?.count??0),
+    companiesPendingReview:reviews?.count??0,pendingFounderInvitations:invites?.count??0,openIncidents:incidents?.count??0,
+    paymentsByStatus:payments.results,openRequests:requests.results};
 }
-
 export async function reviewCompany(db:D1Database,companyId:string,adminId:string,
   decision:'approved'|'rejected',reasonCode:string,evidenceReference:string,now=new Date()) {
   await requirePlatformAdmin(db,adminId);
-  if (!/^[a-zA-Z0-9_-]{3,64}$/.test(reasonCode)||!evidenceReference.trim()||evidenceReference.length>400)
-    throw new AdminError('REVIEW_EVIDENCE_REQUIRED',400);
+  requireEvidence(reasonCode,evidenceReference);
   const at=now.toISOString();
   const state=decision==='approved'?'admin_verified':'rejected';
-  const results=await db.batch([
-    db.prepare(`UPDATE companies SET identity_state=? WHERE id=? AND identity_state='pending_review'`)
-      .bind(state,companyId),
-    db.prepare(`INSERT INTO admin_review_events(id,company_id,admin_id,decision,reason_code,evidence_reference,decided_at)
-      SELECT ?,?,?,?,?,?,? WHERE changes()=1 AND EXISTS(SELECT 1 FROM companies WHERE id=? AND identity_state=?)`)
-      .bind(crypto.randomUUID(),companyId,adminId,decision,reasonCode,evidenceReference.trim(),at,companyId,state)
-  ]);
+  let results:D1Result[];
+  try {
+    results=await db.batch([
+      db.prepare(`UPDATE companies SET identity_state=? WHERE id=? AND identity_state='pending_review'`)
+        .bind(state,companyId),
+      db.prepare(`INSERT INTO admin_review_events(id,company_id,admin_id,decision,reason_code,evidence_reference,decided_at)
+        SELECT ?,?,?,?,?,?,? WHERE changes()=1 AND EXISTS(SELECT 1 FROM companies WHERE id=? AND identity_state=?)`)
+        .bind(crypto.randomUUID(),companyId,adminId,decision,reasonCode,evidenceReference.trim(),at,companyId,state),
+      adminEvent(db,adminId,'company_review','company',companyId,reasonCode,evidenceReference.trim(),{decision},now),
+    ]);
+  } catch {throw new AdminError('REVIEW_CONFLICT');}
   if (results[0]?.meta?.changes!==1||results[1]?.meta?.changes!==1)
     throw new AdminError('REVIEW_CONFLICT');
   return {companyId,identityState:state,decidedAt:at};
 }
-
 /** Manual review queue, always authenticated at the route and never publicly accessible. */
 export async function getCompanyReviewQueue(db:D1Database,limit=30) {
   if (!Number.isSafeInteger(limit)||limit<1||limit>50) throw new AdminError('INVALID_LIMIT',400);
   const rows=await db.prepare(`SELECT c.id,c.display_name AS displayName,c.country,c.website,
-    c.industry,c.identity_state AS identityState,c.created_at AS createdAt
+    c.industry,c.identity_state AS identityState,c.created_at AS createdAt,
+    (SELECT d.id FROM companies d WHERE d.website=c.website AND d.id<>c.id AND d.identity_state IN('self_declared','admin_verified') LIMIT 1) AS duplicateOfVerifiedCompany
     FROM companies c WHERE c.identity_state='pending_review'
     ORDER BY c.created_at ASC,c.id ASC LIMIT ?`).bind(limit).all();
   return {companies:rows.results};
 }
-
+export async function listCompanies(db:D1Database,filters:{q?:string;status?:string;limit:number;offset:number}) {
+  clampLimit(filters.limit);
+  const like=filters.q?`%${filters.q.toLowerCase().replace(/[\\%_]/g,'\\$&')}%`:null;
+  const rows=await db.prepare(`SELECT c.id,c.display_name AS displayName,c.slug,c.country,c.website,c.industry,c.identity_state AS identityState,
+    c.publication_status AS publicationStatus,c.publication_block AS publicationBlock,c.created_at AS createdAt,c.published_at AS firstPublishedAt,
+    s.number AS position,s.status AS positionStatus,s.assignment_kind AS assignmentKind,o.status AS onboardingStatus
+    FROM companies c LEFT JOIN slots s ON s.company_id=c.id LEFT JOIN onboarding_cases o ON o.company_id=c.id
+    WHERE (? IS NULL OR LOWER(c.display_name) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(c.website,'')) LIKE ? ESCAPE '\\')
+      AND (? IS NULL OR c.publication_status=?)
+    ORDER BY c.created_at DESC LIMIT ? OFFSET ?`).bind(like,like,like,filters.status??null,filters.status??null,filters.limit,filters.offset).all();
+  return {companies:rows.results,limit:filters.limit,offset:filters.offset};
+}
+export async function companyAdminAction(db:D1Database,adminId:string,companyId:string,action:string,reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  const at=now.toISOString();const ref=(evidence as string).trim();
+  const exists=await db.prepare(`SELECT 1 AS ok FROM companies WHERE id=?`).bind(companyId).first();
+  if (!exists) throw new AdminError('COMPANY_NOT_FOUND',404);
+  const statement=
+    action==='block_publication'?db.prepare(`UPDATE companies SET publication_block='admin_hold' WHERE id=?`).bind(companyId):
+    action==='clear_block'?db.prepare(`UPDATE companies SET publication_block=NULL WHERE id=?`).bind(companyId):
+    // Decision 06: outside the window, only legally required rectification reopens a profile.
+    action==='grant_rectification'?db.prepare(`UPDATE companies SET correction_override_until=? WHERE id=?`).bind(new Date(now.getTime()+7*86_400_000).toISOString(),companyId):
+    null;
+  if (!statement) throw new AdminError('INVALID_ACTION',400);
+  await db.batch([statement,adminEvent(db,adminId,action,'company',companyId,reasonCode,ref,{},now)]);
+  return {companyId,action,appliedAt:at};
+}
+export async function setUserBlocked(db:D1Database,adminId:string,userId:string,blocked:boolean,reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  const result=await db.prepare(`UPDATE users SET status=? WHERE id=?`).bind(blocked?'blocked':'active',userId).run();
+  if (result.meta.changes!==1) throw new AdminError('USER_NOT_FOUND',404);
+  const revoked=blocked?await revokeAllSessions(db,userId,now):0;
+  await adminEvent(db,adminId,blocked?'user_blocked':'user_unblocked','user',userId,reasonCode,(evidence as string).trim(),{revoked},now).run();
+  return {userId,status:blocked?'blocked':'active',sessionsRevoked:revoked};
+}
+export async function getInventoryDetail(db:D1Database,limit:number,offset:number) {
+  clampLimit(limit,200);
+  const [phases,rows,holds]=await Promise.all([
+    db.prepare(`SELECT phase,price_usd_cents AS priceUsdCents,status,assignment_kind AS assignmentKind,COUNT(*) AS count FROM slots GROUP BY phase,status,assignment_kind ORDER BY phase`).all(),
+    db.prepare(`SELECT s.number AS position,s.phase,s.status,s.assignment_kind AS assignmentKind,s.assigned_at AS assignedAt,s.first_published_at AS firstPublishedAt,c.id AS companyId,c.display_name AS companyName
+      FROM slots s LEFT JOIN companies c ON c.id=s.company_id WHERE s.status IN('assigned','retired') ORDER BY s.number LIMIT ? OFFSET ?`).bind(limit,offset).all(),
+    db.prepare(`SELECT h.id AS holdId,h.company_id AS companyId,h.expires_at AS expiresAt,s.phase FROM slot_holds h JOIN slots s ON s.number=h.slot_number WHERE h.status='active' ORDER BY h.expires_at`).all(),
+  ]);
+  return {phases:phases.results,assignments:rows.results,activeHolds:holds.results,limit,offset};
+}
+export async function listProfilesForReview(db:D1Database,limit=50) {
+  clampLimit(limit);
+  const rows=await db.prepare(`SELECT v.company_id AS companyId,c.display_name AS companyName,v.version,v.review_status AS reviewStatus,v.created_at AS createdAt,v.generator_json AS generator,v.canonical_json AS canonical
+    FROM profile_versions v JOIN companies c ON c.id=v.company_id WHERE v.review_status='pending' ORDER BY v.created_at LIMIT ?`).bind(limit)
+    .all<{companyId:string;companyName:string;version:number;reviewStatus:string;createdAt:string;generator:string|null;canonical:string}>();
+  return {profiles:rows.results.map(r=>{const c=JSON.parse(r.canonical);return {...r,canonical:c,unsupportedClaims:c.unsupportedClaims,generator:r.generator?JSON.parse(r.generator):null};})};
+}
+export async function reviewProfile(db:D1Database,adminId:string,companyId:string,version:number,decision:'cleared'|'rejected',reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  const result=await db.batch([
+    db.prepare(`UPDATE profile_versions SET review_status=? WHERE company_id=? AND version=? AND review_status='pending'`).bind(decision,companyId,version),
+    adminEvent(db,adminId,'profile_review','profile',`${companyId}:${version}`,reasonCode,(evidence as string).trim(),{decision},now),
+  ]);
+  if (result[0]?.meta?.changes!==1) throw new AdminError('REVIEW_CONFLICT');
+  return {companyId,version,reviewStatus:decision};
+}
+export async function requestService(db:D1Database,companyId:string,userId:string,kind:'withdrawal'|'cancellation',reason:string,now=new Date()) {
+  const started=await db.prepare(`SELECT MIN(processing_started_at) AS at FROM company_declarations WHERE company_id=?`).bind(companyId).first<{at:string|null}>();
+  const id=crypto.randomUUID();
+  try {
+    await db.batch([
+      db.prepare(`INSERT INTO service_requests(id,company_id,kind,requested_by,reason,structuring_started_at,requested_at) VALUES(?,?,?,?,?,?,?)`)
+        .bind(id,companyId,kind,userId,reason,started?.at??null,now.toISOString()),
+      openIncident(db,`${kind}_requested`,'warning',{companyId,dedupeKey:`service:${id}`},{requestId:id},now),
+    ]);
+  } catch {throw new AdminError('REQUEST_ALREADY_OPEN');}
+  // Decision 10: whether structuring had begun decides what refund applies, so it is stored with the request.
+  return {requestId:id,kind,status:'requested',requestedAt:now.toISOString(),structuringStartedAt:started?.at??null};
+}
+export async function listServiceRequests(db:D1Database,status='requested',limit=50) {
+  clampLimit(limit);
+  const rows=await db.prepare(`SELECT r.id,r.company_id AS companyId,c.display_name AS companyName,r.kind,r.status,r.reason,r.structuring_started_at AS structuringStartedAt,r.requested_at AS requestedAt,r.resolved_at AS resolvedAt
+    FROM service_requests r JOIN companies c ON c.id=r.company_id WHERE r.status=? ORDER BY r.requested_at LIMIT ?`).bind(status,limit).all();
+  return {requests:rows.results};
+}
+export async function executeWithdrawal(db:D1Database,adminId:string,companyId:string,requestId:string|null,reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  const result=await withdrawCompany(db,companyId,requestId??`admin:${adminId}`,now);
+  await db.batch([
+    ...(requestId?[db.prepare(`UPDATE service_requests SET status='completed',resolved_at=?,resolved_by=?,resolution_code=? WHERE id=? AND company_id=? AND status='requested'`)
+      .bind(now.toISOString(),adminId,reasonCode,requestId,companyId)]:[]),
+    adminEvent(db,adminId,'withdrawal','company',companyId,reasonCode,(evidence as string).trim(),{requestId},now),
+  ]);
+  return result;
+}
+export async function listIncidents(db:D1Database,status:string,limit=50) {
+  clampLimit(limit);
+  const rows=await db.prepare(`SELECT id,kind,severity,company_id AS companyId,attempt_id AS attemptId,details_json AS details,status,created_at AS createdAt,resolved_at AS resolvedAt,resolution_code AS resolutionCode
+    FROM incidents WHERE status=? ORDER BY created_at DESC LIMIT ?`).bind(status,limit).all<{details:string}>();
+  return {incidents:rows.results.map(r=>({...r,details:JSON.parse(r.details)}))};
+}
+export async function resolveIncident(db:D1Database,adminId:string,id:string,reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  const result=await db.batch([
+    db.prepare(`UPDATE incidents SET status='resolved',resolved_at=?,resolved_by=?,resolution_code=? WHERE id=? AND status='open'`).bind(now.toISOString(),adminId,reasonCode,id),
+    adminEvent(db,adminId,'incident_resolved','incident',id,reasonCode,(evidence as string).trim(),{},now),
+  ]);
+  if (result[0]?.meta?.changes!==1) throw new AdminError('REQUEST_NOT_FOUND',404);
+  return {id,status:'resolved'};
+}
+export async function listPayments(db:D1Database,status:string|null,limit=50) {
+  clampLimit(limit);
+  const rows=await db.prepare(`SELECT a.id,a.company_id AS companyId,c.display_name AS companyName,a.phase,a.assigned_slot_number AS position,a.provider,a.provider_session_id AS providerSessionId,a.provider_payment_intent AS providerPaymentIntent,
+    a.amount_usd_cents AS amountUsdCents,a.total_minor AS totalMinor,a.charged_currency AS currency,a.status,a.hold_expires_at AS holdExpiresAt,a.checkout_expires_at AS checkoutExpiresAt,a.paid_at AS paidAt,a.payer_email AS payerEmail,a.refund_reason AS refundReason,a.refund_requested_at AS refundRequestedAt,a.refund_confirmed_at AS refundConfirmedAt,a.created_at AS createdAt
+    FROM purchase_attempts a JOIN companies c ON c.id=a.company_id WHERE (? IS NULL OR a.status=?) ORDER BY a.created_at DESC LIMIT ?`).bind(status,status,limit).all();
+  return {payments:rows.results};
+}
 /** Company must already exist and have an active owner; invitation is visible in owner's account. */
-export async function inviteFounder(db:D1Database,adminId:string,companyId:string,now=new Date()) {
+export async function inviteFounder(db:D1Database,adminId:string,companyId:string,now=new Date(),baseUrl='') {
   await requirePlatformAdmin(db,adminId);
-  const company=await db.prepare(`SELECT c.identity_state,c.publication_status,
+  const company=await db.prepare(`SELECT c.identity_state,c.publication_status,c.display_name,
     (SELECT COUNT(*) FROM memberships m WHERE m.company_id=c.id AND m.role='owner') AS owners,
     (SELECT COUNT(*) FROM slots s WHERE s.company_id=c.id AND s.status IN('assigned','retired')) AS assigned
     FROM companies c WHERE c.id=?`).bind(companyId)
-    .first<{identity_state:string;publication_status:string;owners:number;assigned:number}>();
+    .first<{identity_state:string;publication_status:string;display_name:string;owners:number;assigned:number}>();
   if (!company||!['self_declared','admin_verified'].includes(company.identity_state)||company.owners<1)
     throw new AdminError('FOUNDER_COMPANY_NOT_ELIGIBLE',403);
   if (company.assigned) throw new AdminError('COMPANY_ALREADY_ASSIGNED');
-  const free=await db.prepare(`SELECT 1 AS ok FROM slots WHERE number BETWEEN 1 AND 100 AND status='available' LIMIT 1`)
-    .first<{ok:number}>();
-  if (!free) throw new AdminError('FOUNDER_INVENTORY_EXHAUSTED');
+  await assertFounderCapacity(db);
   const nowIso=now.toISOString();
   // Expired invitations are closed before applying the pending uniqueness constraint.
   await db.prepare(`UPDATE founder_invitations SET status='expired'
     WHERE status='pending' AND expires_at<=?`).bind(nowIso).run();
   const id=crypto.randomUUID();const expiration=new Date(now.getTime()+founderInviteMs).toISOString();
   try {
-    await db.prepare(`INSERT INTO founder_invitations(id,company_id,invited_by,created_at,expires_at)
-      VALUES(?,?,?,?,?)`).bind(id,companyId,adminId,nowIso,expiration).run();
+    await db.batch([
+      db.prepare(`INSERT INTO founder_invitations(id,company_id,invited_by,created_at,expires_at)
+        VALUES(?,?,?,?,?)`).bind(id,companyId,adminId,nowIso,expiration),
+      adminEvent(db,adminId,'founder_invited','company',companyId,null,null,{invitationId:id},now),
+    ]);
   } catch {throw new AdminError('FOUNDER_INVITATION_EXISTS');}
+  await notifyOwners(db,companyId,'founder_invitation',l=>founderInvitationEmail(l,company.display_name,expiration,baseUrl),`founder_invite:${id}`,now);
+  const owners=await ownerContacts(db,companyId);
   return {invitationId:id,companyId,status:'pending',expiresAt:expiration,
-    delivery:'owner_portal',emailDeliveryEnabled:false};
+    delivery:'owner_portal_and_email_queue',emailQueuedFor:owners.length};
 }
-
+async function assertFounderCapacity(db:D1Database) {
+  const state=await db.prepare(`SELECT (SELECT COUNT(*) FROM founder_awards WHERE status='active') AS awarded,
+    (SELECT COUNT(*) FROM slots WHERE phase=1 AND status='available') AS free`).first<{awarded:number;free:number}>();
+  if (!state||state.awarded>=FOUNDER_PLACES||state.free<1) throw new AdminError('FOUNDER_INVENTORY_EXHAUSTED');
+}
 export async function listOwnerFounderInvitations(db:D1Database,userId:string,now=new Date()) {
   const rows=await db.prepare(`SELECT fi.id AS invitationId,fi.company_id AS companyId,
     c.display_name AS companyName,fi.expires_at AS expiresAt
@@ -91,9 +228,8 @@ export async function listOwnerFounderInvitations(db:D1Database,userId:string,no
     ORDER BY fi.created_at DESC`).bind(userId,now.toISOString()).all();
   return {invitations:rows.results};
 }
-
 /** A founder invitation is accepted by its company owner, NEVER by an unauthenticated token. */
-export async function acceptFounderInvitation(db:D1Database,invitationId:string,userId:string,now=new Date()) {
+export async function acceptFounderInvitation(db:D1Database,invitationId:string,userId:string,now=new Date(),termsVersion='founder-terms-pending') {
   const invite=await db.prepare(`SELECT fi.id,fi.company_id,fi.status,fi.expires_at
     FROM founder_invitations fi JOIN memberships m ON m.company_id=fi.company_id
     WHERE fi.id=? AND m.user_id=? AND m.role='owner'`).bind(invitationId,userId)
@@ -101,35 +237,112 @@ export async function acceptFounderInvitation(db:D1Database,invitationId:string,
   if (!invite) throw new AdminError('INVITATION_NOT_FOUND',404);
   if (invite.status!=='pending'||invite.expires_at<=now.toISOString())
     throw new AdminError('INVITATION_EXPIRED');
-  const slot=await db.prepare(`SELECT number FROM slots WHERE number BETWEEN 1 AND 100
-    AND status='available' ORDER BY number LIMIT 1`).first<{number:number}>();
-  if (!slot) throw new AdminError('FOUNDER_INVENTORY_EXHAUSTED');
+  await assertFounderCapacity(db);
   const at=now.toISOString(), awardId=crypto.randomUUID();
   try {
+    // Decisions 31-32: next ascending number in the tier, shared with paid buyers.
     const result=await db.batch([
-      db.prepare(`UPDATE slots SET status='assigned',company_id=?,assignment_kind='founder'
-        WHERE number=? AND status='available'
+      db.prepare(`UPDATE slots SET status='assigned',company_id=?,assignment_kind='founder',assigned_at=?
+        WHERE number=(SELECT MIN(number) FROM slots WHERE phase=1 AND status='available')
+        AND (SELECT COUNT(*) FROM founder_awards WHERE status='active')<${FOUNDER_PLACES}
         AND NOT EXISTS(SELECT 1 FROM slots s WHERE s.company_id=? AND s.status IN('assigned','retired'))
         AND EXISTS(SELECT 1 FROM founder_invitations fi WHERE fi.id=? AND fi.company_id=?
         AND fi.status='pending' AND fi.expires_at>?)`)
-        .bind(invite.company_id,slot.number,invite.company_id,invite.id,invite.company_id,at),
+        .bind(invite.company_id,at,invite.company_id,invite.id,invite.company_id,at),
       db.prepare(`INSERT INTO founder_awards(id,slot_number,company_id,approved_by,status,awarded_at)
         SELECT ?,s.number,?,fi.invited_by,'active',? FROM slots s
-        JOIN founder_invitations fi ON fi.id=? WHERE s.number=?
-        AND s.company_id=? AND s.status='assigned' AND s.assignment_kind='founder'
+        JOIN founder_invitations fi ON fi.id=? WHERE s.company_id=? AND s.status='assigned' AND s.assignment_kind='founder'
         AND fi.status='pending' AND fi.expires_at>?`)
-        .bind(awardId,invite.company_id,at,invite.id,slot.number,invite.company_id,at),
+        .bind(awardId,invite.company_id,at,invite.id,invite.company_id,at),
       db.prepare(`UPDATE founder_invitations SET status='accepted',accepted_at=?,accepted_by=?
         WHERE id=? AND status='pending' AND expires_at>?
         AND EXISTS(SELECT 1 FROM founder_awards WHERE id=?)`)
         .bind(at,userId,invite.id,at,awardId),
       db.prepare(`INSERT INTO slot_audit(event_id,slot_number,action,company_id,reference_id,occurred_at)
         SELECT ?,s.number,'assign_founder',s.company_id,?,? FROM slots s
-        WHERE s.number=? AND s.status='assigned' AND s.company_id=?
+        WHERE s.company_id=? AND s.status='assigned'
         AND EXISTS(SELECT 1 FROM founder_awards WHERE id=?)`)
-        .bind(crypto.randomUUID(),awardId,at,slot.number,invite.company_id,awardId)
+        .bind(crypto.randomUUID(),awardId,at,invite.company_id,awardId),
+      db.prepare(`INSERT INTO consent_records(id,company_id,user_id,kind,document_version,accepted_at)
+        SELECT ?,?,?,'founder_terms',?,? WHERE EXISTS(SELECT 1 FROM founder_awards WHERE id=?)`)
+        .bind(crypto.randomUUID(),invite.company_id,userId,termsVersion,at,awardId),
+      onboardingStart(db,invite.company_id,'founder',now,`EXISTS(SELECT 1 FROM founder_awards WHERE id=?)`,awardId),
     ]);
-    if (result.some(x=>x?.meta?.changes!==1)) throw new AdminError('FOUNDER_ASSIGNMENT_CONFLICT');
+    if (result.slice(0,4).some(x=>x?.meta?.changes!==1)) throw new AdminError('FOUNDER_ASSIGNMENT_CONFLICT');
   } catch(e) {if (e instanceof AdminError) throw e;throw new AdminError('FOUNDER_ASSIGNMENT_CONFLICT');}
-  return {companyId:invite.company_id,slotNumber:slot.number,status:'assigned',assignmentKind:'founder'};
+  const slot=await db.prepare(`SELECT number FROM slots WHERE company_id=?`).bind(invite.company_id).first<{number:number}>();
+  return {companyId:invite.company_id,slotNumber:slot?.number,status:'assigned',assignmentKind:'founder'};
+}
+/** Decision 34: before first publication only. A published position is never reassigned. */
+export async function revokeFounderAward(db:D1Database,adminId:string,companyId:string,reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  const award=await db.prepare(`SELECT a.id,a.slot_number,s.first_published_at FROM founder_awards a JOIN slots s ON s.number=a.slot_number WHERE a.company_id=? AND a.status='active'`)
+    .bind(companyId).first<{id:string;slot_number:number;first_published_at:string|null}>();
+  if (!award) throw new AdminError('INVITATION_NOT_FOUND',404);
+  if (award.first_published_at) throw new AdminError('POSITION_ALREADY_CONSUMED');
+  await db.batch([
+    db.prepare(`UPDATE founder_awards SET status='revoked',revoked_at=? WHERE id=?`).bind(now.toISOString(),award.id),
+    ...releaseAssignmentStatements(db,award.slot_number,companyId,'revoke_founder',award.id,now),
+    adminEvent(db,adminId,'founder_revoked','company',companyId,reasonCode,(evidence as string).trim(),{position:award.slot_number},now),
+  ]);
+  return {companyId,status:'revoked',positionReleased:award.slot_number};
+}
+/** Question 64 is open. Admins record requests that arrive through any channel; there is no public intake. */
+export async function recordPremiumRequest(db:D1Database,adminId:string,companyId:string,channelNote:string,now=new Date()) {
+  const id=crypto.randomUUID(),at=now.toISOString();
+  try {
+    await db.batch([
+      db.prepare(`INSERT INTO premium_requests(id,company_id,channel_note,recorded_by,created_at,updated_at) VALUES(?,?,?,?,?,?)`).bind(id,companyId,channelNote,adminId,at,at),
+      adminEvent(db,adminId,'premium_recorded','company',companyId,null,null,{requestId:id},now),
+    ]);
+  } catch {throw new AdminError('REQUEST_ALREADY_OPEN');}
+  return {requestId:id,companyId,status:'received'};
+}
+export async function listPremiumRequests(db:D1Database,limit=50) {
+  clampLimit(limit);
+  const rows=await db.prepare(`SELECT p.id,p.company_id AS companyId,c.display_name AS companyName,p.status,p.channel_note AS channelNote,p.created_at AS createdAt,p.updated_at AS updatedAt
+    FROM premium_requests p JOIN companies c ON c.id=p.company_id ORDER BY p.created_at DESC LIMIT ?`).bind(limit).all();
+  return {requests:rows.results};
+}
+export async function updatePremiumRequest(db:D1Database,adminId:string,requestId:string,status:string,reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  if (!['in_review','accepted','rejected'].includes(status)) throw new AdminError('INVALID_ACTION',400);
+  const result=await db.batch([
+    db.prepare(`UPDATE premium_requests SET status=?,updated_at=? WHERE id=? AND status IN('received','in_review','accepted')`).bind(status,now.toISOString(),requestId),
+    adminEvent(db,adminId,'premium_status','premium_request',requestId,reasonCode,(evidence as string).trim(),{status},now),
+  ]);
+  if (result[0]?.meta?.changes!==1) throw new AdminError('REQUEST_NOT_FOUND',404);
+  return {requestId,status};
+}
+/** Only after human acceptance and credited funds, referenced as evidence. Never automatic, never before tier 4 opens. */
+export async function assignPremium(db:D1Database,adminId:string,requestId:string,reasonCode:unknown,fundsEvidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,fundsEvidence);
+  const request=await db.prepare(`SELECT company_id FROM premium_requests WHERE id=? AND status='accepted'`).bind(requestId).first<{company_id:string}>();
+  if (!request) throw new AdminError('REQUEST_NOT_FOUND',404);
+  const at=now.toISOString();
+  const open=`(SELECT MIN(phase) FROM slots WHERE status IN('available','held'))=4`;
+  try {
+    const result=await db.batch([
+      db.prepare(`UPDATE slots SET status='assigned',company_id=?,assignment_kind='premium',assigned_at=?
+        WHERE number=(SELECT MIN(number) FROM slots WHERE phase=4 AND status='available') AND ${open}
+        AND NOT EXISTS(SELECT 1 FROM slots s WHERE s.company_id=? AND s.status IN('assigned','retired'))`).bind(request.company_id,at,request.company_id),
+      db.prepare(`INSERT INTO slot_audit(event_id,slot_number,action,company_id,reference_id,occurred_at)
+        SELECT ?,number,'assign_premium',company_id,?,? FROM slots WHERE company_id=? AND assignment_kind='premium' AND status='assigned'`).bind(crypto.randomUUID(),requestId,at,request.company_id),
+      db.prepare(`UPDATE premium_requests SET status='assigned',updated_at=? WHERE id=? AND EXISTS(SELECT 1 FROM slots WHERE company_id=? AND assignment_kind='premium')`).bind(at,requestId,request.company_id),
+      onboardingStart(db,request.company_id,'premium',now,`EXISTS(SELECT 1 FROM slots WHERE company_id=? AND assignment_kind='premium')`,request.company_id),
+      adminEvent(db,adminId,'premium_assigned','premium_request',requestId,reasonCode,(fundsEvidence as string).trim(),{},now),
+    ]);
+    if (result[0]?.meta?.changes!==1) throw new AdminError('PAYMENT_STATE_CONFLICT');
+  } catch(e) {if (e instanceof AdminError) throw e;throw new AdminError('PAYMENT_STATE_CONFLICT');}
+  const slot=await db.prepare(`SELECT number FROM slots WHERE company_id=?`).bind(request.company_id).first<{number:number}>();
+  return {requestId,companyId:request.company_id,position:slot?.number,status:'assigned'};
+}
+/** Seller identity is data, not code. Approving a seller does not enable live payments: stripe.ts still refuses live keys. */
+export async function updateSeller(db:D1Database,adminId:string,input:{sellerEntityId:string;legalName:string;country:string},reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  await db.batch([
+    db.prepare(`UPDATE legal_seller_configuration SET seller_entity_id=?,seller_legal_name=?,seller_country=?,updated_at=? WHERE id=1`).bind(input.sellerEntityId,input.legalName,input.country,now.toISOString()),
+    adminEvent(db,adminId,'seller_updated','seller','1',reasonCode,(evidence as string).trim(),input,now),
+  ]);
+  return {...input,status:'unapproved'};
 }

@@ -1,11 +1,7 @@
 import type {APIRoute} from 'astro';
 import {env} from 'cloudflare:workers';
-import {apiError,authenticatedPrincipal,json} from '../../../../core/identity';
-import {getCompanyReviewQueue,requirePlatformAdmin} from '../../../../core/admin';
-export const GET:APIRoute=async({request})=>{
-  try {const user=await authenticatedPrincipal(env.DB,request);
-    await requirePlatformAdmin(env.DB,user.id);
-    const limit=Number(new URL(request.url).searchParams.get('limit')||'30');
-    return json(200,await getCompanyReviewQueue(env.DB,limit));
-  } catch(e){return apiError(e);}
-};
+import {adminGet,numberParam} from '../../../../core/http';
+import {getCompanyReviewQueue,listCompanies} from '../../../../core/admin';
+export const GET:APIRoute=adminGet(()=>env.DB,async({db,url})=>url.searchParams.get('scope')==='all'?
+  listCompanies(db,{q:url.searchParams.get('query')||undefined,status:url.searchParams.get('status')||undefined,limit:numberParam(url,'limit',50),offset:numberParam(url,'offset',0)}):
+  getCompanyReviewQueue(db,numberParam(url,'limit',30))) as unknown as APIRoute;

@@ -21,7 +21,7 @@ The product does **not** guarantee any external model will train on, rank, cite,
 
 ## 2. Platform boundary and deployment
 
-**One codebase; modular monolith.** Astro 6 SSR/hybrid on Cloudflare Workers; React islands only for interactive UX; TypeScript and Zod for contracts; Cloudflare D1/SQLite for relational source of truth, full-text search via FTS5; R2 for versioned immutable public JSON/JSON-LD snapshots and approved assets; server-side LLM adapter; Stripe payment adapter disabled outside sandbox until the seller is decided and approved.
+**One codebase; modular monolith.** Astro 7 SSR/hybrid on Cloudflare Workers (updated by CORE-005: Astro 6 has unpatched critical advisories); React islands only for interactive UX; TypeScript contracts in `src/lib/contracts`; Cloudflare D1/SQLite for relational source of truth, full-text search via FTS5; R2 for versioned immutable public JSON/JSON-LD snapshots and approved assets; server-side LLM adapter; Stripe payment adapter disabled outside sandbox until the seller is decided and approved.
 
 - Public root `/` = company directory, never the acquisition landing.
 - `/unirse` = marketing and acquisition, English-first copy routed as canonical `/join` or `/unirse` according to an explicit routing decision; **preserve `/unirse` and add English copy now** instead of breaking existing paths.

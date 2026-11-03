@@ -1,101 +1,106 @@
-# CORE-005A — Technical audit of THE1500 CORE-004 v0.3.0
+# CORE-005A — Auditoría técnica de THE1500 CORE-004 v0.3.0
 
-**Date:** 2026-11-03 · **Auditor:** Claude (Opus 5.5) · **Baseline:** commit `59e1119` on local git, SHA-256 manifest verified (100/100 files OK).
-**Environment:** macOS (Darwin 25.6), Node 22.23.2, npm 10.9.8, Python 3.9.6, Wrangler 4.157, workerd via Wrangler `getPlatformProxy` and `wrangler dev`.
+**Fecha:** 2026-11-03 · **Base auditada:** commit `59e1119` en git local, manifiesto SHA-256 verificado (100/100 archivos).
+**Entorno:** macOS, Node 22.23.2, npm 10.9.8, Python 3.9.6, Wrangler 4.157, workerd vía `getPlatformProxy` y `wrangler dev`.
 
-> Scope of this document: state of the code **as delivered**. What was later fixed is tracked in the last section and in `CORE005_STATUS.md`.
-> No remote Cloudflare, real Stripe, real LLM or real e-mail was exercised: no credentials were provided (see "External blockers").
+> Este documento describe el código **tal como se entregó**. Lo corregido después figura en la sección 7 y en `CORE005_STATUS.md`.
+> No se tocó Cloudflare remoto, Stripe real, un LLM real ni correo real.
 
-## 1. Commands actually run on the delivered code
+## 1. Comandos ejecutados sobre el código entregado
 
-| Command | Result on delivered code | Evidence |
+| Comando | Resultado | Evidencia |
 |---|---|---|
-| `npm install` | **FAIL** — `ERESOLVE`: `astro@^6` vs `@astrojs/cloudflare@^14` (peer `astro@^7.4`); then `workers-types@^4` vs `wrangler` peer `^5` | The package manifest could never have installed. Earlier QA recorded "NOT EXECUTED". |
-| `npm run test:db` | PASS, 42 tests | Schema only, via Python `sqlite3`, not D1. |
-| `npm run test:types:isolated` | Could not run (no `tsc`) until install was fixed; then PASS | Uses hand-written D1 stubs, not real `workers-types`. |
-| `npm run test:core:runtime` | Could not run until install was fixed; then PASS, 24 checks | Node SQLite adapter, not workerd. |
-| `npm run build` | **FAIL** — `wrangler.jsonc` `main` points to a non-existent `dist/_worker.js/index.js` (Astro ≤5 layout). On Astro 6 also `Syntax error "$"` in `src/pages/empresas/index.astro` | Fixed by correcting `main` and moving to Astro 7. |
-| `npm audit` (with Astro 6.4.8) | **1 critical, 1 high, 1 moderate, 1 low** — Astro RCE via AVIF optimisation, XSS, authorisation bypass; only fixed in `astro>=7.3.2` | Moved to `astro@^7.4`, audit: 0 vulnerabilities. |
-| `wrangler d1 migrations apply DB --local` | PASS for 0001–0005 | First evidence on the D1 engine. |
-| `wrangler dev` + curl of `/`, `/unirse`, `/empresas`, `/es/`, `/api/v1/public/{stats,search,companies}` | 200; `stats` real from D1 | `request-link` returns 503 correctly when no mail provider exists. |
+| `npm install` | **FALLA** `ERESOLVE`: `astro@^6` contra `@astrojs/cloudflare@^14` (exige `astro@^7.4`); también `workers-types@^4` contra `wrangler` (`^5`) | El manifiesto nunca pudo instalarse. La QA anterior lo registró como "no ejecutado". |
+| `npm run test:db` | PASA, 42 pruebas | Solo esquema, con `sqlite3` de Python, no D1. |
+| `npm run test:types:isolated` | No corrió hasta arreglar la instalación; luego PASA | Usaba tipos D1 escritos a mano, no los reales. |
+| `npm run test:core:runtime` | No corrió hasta arreglar la instalación; luego PASA, 24 comprobaciones | Adaptador sobre SQLite de Node, no workerd. Ocultó A-13. |
+| `npm run build` | **FALLA** `main` de `wrangler.jsonc` apunta a `dist/_worker.js/index.js`, inexistente (formato de Astro ≤5). En Astro 6, además, `Syntax error "$"` en `src/pages/empresas/index.astro` | Corregido. |
+| `npm audit` con Astro 6.4.8 | **1 crítica, 1 alta, 1 moderada, 1 baja**: RCE por AVIF, XSS, bypass de autorización. Solo se corrigen en `astro>=7.3.2` | Con `astro@^7.4`: 0 vulnerabilidades. |
+| `wrangler d1 migrations apply DB --local` | PASA 0001–0005 | Primera evidencia sobre el motor D1. |
+| `wrangler dev` + curl de páginas y APIs públicas | 200; `stats` real desde D1 | `request-link` devuelve 503 correctamente sin proveedor de correo. |
 
-## 2. Findings
+## 2. Hallazgos
 
-Severity: **C** critical · **H** high · **M** medium · **L** low. Probe = reproduced with a script against the real D1 engine.
+Severidad: **C** crítica · **A** alta · **M** media · **B** baja. "Sonda" = reproducido con un script contra el motor D1 real.
 
-### Security and integrity
+### Seguridad e integridad
 
-| ID | Sev | Finding | Evidence |
+| ID | Sev | Hallazgo | Evidencia |
 |---|---|---|---|
-| A-01 | C | Dependencies did not install; the critical Astro advisories applied to the documented "Astro 6" stack. | §1 |
-| A-02 | H | **Domain self-verification bypass.** `x@foo.co.uk` registering `https://co.uk` and `x@gmail.com` registering `gmail.com` both become `self_declared` and `checkoutEligible=true`. Breaks Decision 13 ("corporate email"). | Probe |
-| A-03 | H | **Founder identity leak.** Founders are hard-reserved to numbers 1–100, so any public position ≤100 reveals founder status, contradicting Decision 35 (no public signal) and Decisions 31–32 (ascending by confirmation inside the 600). See §4. | `inventory.ts`, `0005` trigger |
-| A-04 | H | No withdrawal implementation at all: the only "withdrawal" is a test running raw SQL. Slot is never moved to `retired`; Decisions 17 and 29 not implemented. | `grep`; runtime test line 86 |
-| A-05 | H | No irreversible first-publication marker on `slots` (Decisions 17, 30). Nothing at DB level prevents returning a published slot to `available`. | `0001`–`0005` |
-| A-06 | M | `reviewCompany` on a duplicate website surfaces raw `D1_ERROR` → generic 503 instead of a conflict. | Probe |
-| A-07 | M | Older approved versions can be published after newer ones: public HTML uses `MAX(version)` while FTS gets the older text → index and page disagree. | Code review |
-| A-08 | M | Approved content is not immutable: no trigger stops `canonical_json`/`public_jsonld` changing after approval, so "approved digest" does not bind what is published. `publishProfile` does not re-check it. | Code review |
-| A-09 | M | No correction window (Decision 06): new versions can be published forever. | Code review |
-| A-10 | M | `/public/ask` and login have no shared rate limiter usable for LLM cost control. | Code review |
-| A-11 | M | No security headers beyond JSON routes; no `apiError` logging, so production failures are invisible. | Code review |
-| A-12 | L | Stray auto-provisioned `SESSION` KV and `IMAGES` bindings on deploy, unused by the core. | Build log |
+| A-13 | C | **Publicar nunca habría funcionado en D1 real.** `publishProfile` exigía `meta.changes===1` en el insert a FTS5, pero D1 devuelve 3 (tablas internas). Cada publicación habría devuelto `PUBLICATION_CONFLICT` *después* de confirmar su lote: datos publicados y error al usuario. El adaptador SQLite devolvía 1, así que el "PASS" anterior era una falsa garantía. | Sonda: `{changes:3,rows_written:1}` |
+| A-01 | C | Las dependencias no instalaban, y los avisos críticos de Astro aplicaban al stack documentado "Astro 6". | §1 |
+| A-02 | A | **Autoverificación de dominio eludible.** `x@foo.co.uk` registrando `https://co.uk` y `x@gmail.com` registrando `gmail.com` quedan `self_declared` y `checkoutEligible=true`. Incumple la Decisión 13. | Sonda |
+| A-03 | A | **Fuga de la condición de fundador.** Los fundadores estaban fijos en 1–100: cualquier posición pública ≤100 delataba a un fundador, contra la Decisión 35 y las 31–32. Ver §4. | `inventory.ts`, trigger de `0005` |
+| A-04 | A | No existía retiro: la única "retirada" era una prueba con SQL directo. Decisiones 17 y 29 sin implementar. | `grep` |
+| A-05 | A | Sin marca irreversible de primera publicación en `slots` (Decisiones 17, 30). Nada en la base impedía volver a `available` un cupo publicado. | 0001–0005 |
+| A-06 | M | `reviewCompany` con sitio web duplicado producía un `D1_ERROR` crudo y un 503 genérico. | Sonda |
+| A-07 | M | Se podía publicar una versión aprobada anterior tras una más nueva: la página usaba `MAX(version)` y el índice el texto antiguo. | Revisión |
+| A-08 | M | El contenido aprobado no era inmutable: el digest aprobado no garantizaba lo publicado. | Revisión |
+| A-09 | M | Sin ventana de corrección (Decisión 06): se podían publicar versiones indefinidamente. | Revisión |
+| A-10 | M | Sin limitador utilizable para el coste de LLM en `/public/ask`. | Revisión |
+| A-11 | M | Sin cabeceras de seguridad generales y sin registro en `apiError`: los fallos de producción serían invisibles. | Revisión |
+| A-12 | B | Bindings `SESSION` (KV) e `IMAGES` autoprovisionados que el core no usa. | Log de build |
 
-### Functional correctness
+### Corrección funcional
 
-| ID | Sev | Finding | Evidence |
+| ID | Sev | Hallazgo | Evidencia |
 |---|---|---|---|
-| B-01 | H | **Concurrency:** N=20 simultaneous valid holds → **1 success, 19 `SLOT_CONFLICT`**, because all race for one precomputed number and the loser gets no retry. No oversale, but it fails legitimate buyers under exactly the launch scenario. | Probe |
-| B-02 | H | **Paid path does not exist:** no `assign_paid`, no checkout, no webhook. Holds can never convert. Only founders can ever obtain a slot. | `grep` |
-| B-03 | H | **No AI flow:** "profile" is a deterministic copy of the owner's fields. No declaration record, consent, provenance or processing-start event (Decisions 11, 12). | `profiles.ts` |
-| B-04 | H | JSON-LD uses properties not valid for `Organization` (`inLanguage`, `industry`); `@id` is a URN, not a resolvable URL; omits problems/solutions it claims to publish; no provenance. | `buildJsonLd` |
-| B-05 | M | Search has no `industry`/`service` filters and no `country` filter on FTS; `ask` treats any single-keyword hit as evidence, never abstains on partial matches, and citations carry no verifiable quote or digest. | `search.ts` |
-| B-06 | M | No archive mode: `currentPhase=null` only produces a generic error. No `salesMode` for the frontend. No admin endpoints for payments, incidents, withdrawals, Premium, full company management. | Code review |
-| B-07 | M | Onboarding deadlines (Decisions 19–23, 34) absent. | `grep` |
-| B-08 | M | No i18n of errors or communications; only ad-hoc strings in `ask`. Founder invitations are never e-mailed. | Code review |
-| B-09 | M | No revocation beyond single logout; no admin block; `editor` role exists in schema but no route honours it. | Code review |
-| B-10 | L | `orders`/`payment_events` from Sprint 0 are dead tables next to `purchase_attempts`. `purchase_attempts` status CHECK lacks states needed by Decisions 18/42. | Migrations |
-| B-11 | L | Provider-side constraint unmodelled: Stripe Checkout `expires_at` must be **30 min–24 h** after creation ([docs](https://docs.stripe.com/api/checkout/sessions/create)), so a 20-minute Stripe session is impossible. | Stripe API reference, checked 2026-11-03 |
+| B-01 | A | **Concurrencia:** N=20 reservas válidas simultáneas → **1 éxito, 19 `SLOT_CONFLICT`**. Sin sobreventa, pero rechaza compradores legítimos justo en el escenario de lanzamiento. | Sonda |
+| B-02 | A | **La ruta de pago no existía:** sin `assign_paid`, checkout ni webhook. Solo los fundadores podían obtener cupo. | `grep` |
+| B-03 | A | **Sin flujo de IA:** el "perfil" era una copia determinista. Sin declaración, consentimiento, procedencia ni evento de inicio (Decisiones 11, 12). | `profiles.ts` |
+| B-04 | A | JSON-LD con propiedades no válidas para `Organization` (`inLanguage`, `industry`), `@id` no resoluble, sin problemas/soluciones ni procedencia. | `buildJsonLd` |
+| B-05 | M | Búsqueda sin filtros `industry`/`service`; `ask` aceptaba cualquier palabra como evidencia y sus citas no traían cita textual ni digest. | `search.ts` |
+| B-06 | M | Sin modo archivo ni `salesMode`; sin endpoints admin de pagos, incidencias, retiradas, Premium. | Revisión |
+| B-07 | M | Plazos de incorporación (Decisiones 19–23, 34) ausentes. | `grep` |
+| B-08 | M | Sin i18n de errores ni comunicaciones; invitaciones de fundador nunca enviadas por correo. | Revisión |
+| B-09 | M | Sin revocación global ni bloqueo; el rol `editor` existía en el esquema pero ninguna ruta lo respetaba. | Revisión |
+| B-10 | B | Tablas muertas `orders`/`payment_events`; `purchase_attempts` sin los estados de las Decisiones 18 y 42. | Migraciones |
+| B-11 | B | Restricción de Stripe sin modelar: `expires_at` debe estar entre **30 min y 24 h** ([referencia](https://docs.stripe.com/api/checkout/sessions/create)), así que una sesión de 20 minutos es imposible. | Referencia API, 2026-11-03 |
 
-### Documentation vs code
+### Documentación contra código
 
-| Doc | Claims | Reality |
+| Documento | Afirma | Realidad |
 |---|---|---|
-| README, `CORE_ARCHITECTURE_v1.md` | "Astro 6" | Not installable with that adapter; unsafe per audit. |
-| `API_CONTRACT.md` v0.2 | Says no founder awards and no RAG in one section, describes them in another | Two contradictory sections; no DTOs, no error catalogue. |
-| `README.md` | "Run `npm run build`" | Failed. |
-| `CORE_ARCHITECTURE_v1.md` | Zod contracts, R2 snapshots, Stripe adapter | None present. |
-| `LAUNCH_GATE.md` | Status block still "Sprint 0" | Out of date. |
+| README, `CORE_ARCHITECTURE_v1.md` | "Astro 6" | No instalable con ese adaptador; inseguro según `npm audit`. |
+| `API_CONTRACT.md` v0.2 | Sin fundadores ni RAG en una sección, los describe en otra | Contradictorio; sin DTOs ni catálogo de errores. |
+| `README.md` | "Ejecuta `npm run build`" | Fallaba. |
+| `CORE_ARCHITECTURE_v1.md` | Contratos Zod, snapshots R2, adaptador Stripe | Nada de eso existía. |
+| `LAUNCH_GATE.md` | Estado "Sprint 0" | Desactualizado. |
 
-## 3. What was verified as working in the delivered code
+## 3. Verificado como correcto en lo entregado
 
-D1 migrations 0001–0005 on the real engine · exactly 1,500 slots and tier CHECKs · tier sequencing via `MIN(phase)` (handles Decision 40 reopening) · 20-minute hold TTL and sweep · magic-link one-use consumption and digest-only storage · session revocation on logout · same-origin enforcement · founder invitation/acceptance with audit · explicit approval with content digest · FTS withdrawal trigger.
+Migraciones sobre el motor real · 1.500 cupos y CHECK de tramos · secuencia por `MIN(phase)` (cubre la reapertura de la Decisión 40) · TTL de 20 minutos · magic link de un solo uso con digest · revocación al cerrar sesión · validación de origen · invitación de fundador con auditoría · aprobación expresa con digest · trigger de FTS al retirar.
 
-## 4. Decision conflicts found
+## 4. Contradicciones entre decisiones
 
-| # | Conflict | Treatment |
+| # | Contradicción | Tratamiento |
 |---|---|---|
-| 1 | **Decision 05** says founders occupy "los primeros 100 de los 600". **Decisions 31, 32, 35** (later and more specific) say numbers ascend by order of confirmation/award within the tier, and founder status must never be publicly revealed. A fixed 1–100 range makes every position ≤100 identifiably a founder. | Implemented the later decisions: shared ascending pool in 1–600, capped at 100 founders and 500 paid, with the 100 founder places protected from paid holds. **Requires the owner's confirmation.** One function and one trigger to revert. |
-| 2 | Decision 01 names Aurea Investment Capital SAS; the strategic note reopens it. | Seller is configuration (`legal_seller_configuration`, `unapproved` by default). No entity name in code. Blocks live mode. |
-| 3 | Decisions 50–63 (tax review, revised offers) vs strategic note point 4–5 ("simplify", "suspend expansion of tax micro-decisions"). | Not implemented; live payments stay blocked behind a gate until the owner resolves it. Recorded as a launch risk. |
-| 4 | Decision 38 (strict sequence) + Decision 32 (founders by invitation only): if paid places sell out but founder invitations stay unaccepted, tier 2 can never open. | Implemented as written, surfaced as `salesMode:"awaiting_founder_allocation"`. **Commercial risk for the owner to decide.** |
+| 1 | **Decisión 05:** los fundadores ocupan "los primeros 100 de los 600". **Decisiones 31, 32 y 35** (posteriores y más específicas): numeración ascendente por orden de confirmación dentro del tramo, y la condición de fundador no puede revelarse. Un rango fijo 1–100 delata a cada fundador. | Implementadas las posteriores: un solo grupo ascendente en 1–600, con tope de 100 fundadores y 500 pagados, y los 100 protegidos frente a reservas pagadas. **Requiere confirmación del propietario.** |
+| 2 | Decisión 01 nombra a Aurea Investment Capital SAS; la nota estratégica la reabre. | El vendedor es configuración (`legal_seller_configuration`, `unapproved`). Ningún nombre de entidad en el código. |
+| 3 | Decisiones 50–63 (revisión fiscal, ofertas) contra nota estratégica puntos 4–5 (simplificar, suspender microdecisiones). | Sin implementar; el modo real sigue bloqueado. Riesgo de lanzamiento. |
+| 4 | Decisión 38 (secuencia estricta) + Decisión 32 (fundadores solo por invitación): si se venden los 500 pagados y no se completan las invitaciones, el tramo 2 **nunca abre**. | Implementado tal cual, visible como `salesMode:"awaiting_founder_allocation"`. **Riesgo comercial que debe decidir el propietario.** |
 
-## 5. External blockers
+## 5. Bloqueos externos
 
-| Dependency | Blocks | Needed from |
+| Dependencia | Bloquea | Requiere |
 |---|---|---|
-| Cloudflare login / real D1 and R2 IDs | Remote D1 proof, staging deploy, cron in production | Owner |
-| Stripe test keys (`sk_test_…`, `whsec_…`) | Real sandbox round-trip | Owner, after seller decision |
-| LLM API key | Real AI generation and grounded answers | Owner |
-| Resend key + verified domain | Real e-mail | Owner |
-| Seller entity decision | Live mode, terms, invoices | Owner |
-| Question 64 | Premium intake channel | Owner |
-| Tax rules (Decisions 50–63) | Live checkout totals | Owner / counsel |
+| Autorización de Cloudflare e IDs reales de D1/R2 | Prueba en D1 remoto, staging, cron real | Propietario |
+| Claves de prueba de Stripe (`sk_test_…`, `whsec_…`) | Ida y vuelta real en sandbox | Propietario, tras decidir vendedor |
+| Clave de API de LLM | Generación y respuestas reales | Propietario |
+| Clave de Resend y dominio verificado | Correo real | Propietario |
+| Decisión de entidad vendedora | Modo real, términos, facturas | Propietario |
+| Pregunta 64 | Canal de admisión Premium | Propietario |
+| Reglas fiscales (Decisiones 50–63) | Totales en checkout real | Propietario / asesor |
 
-## 6. Launch risks
+## 6. Riesgos de lanzamiento
 
-1. Cloudflare D1 remote has not been exercised: latency and replication behaviour unproven. Writes are serialised by D1, so the atomic SQL should hold, but this needs staging evidence.
-2. Founder allocation can stall tier opening (conflict 4).
-3. No tax engine: live checkout must remain closed.
-4. LLM claim checks are heuristic guardrails, not proof. Owner approval remains the real control.
-5. FTS5 is lexical, English-stemmed retrieval: Spanish recall is weaker, synonyms are not matched. Must not be sold as semantic search.
-6. D1 cannot export databases with virtual tables without dropping FTS first: backup runbook needed.
+1. D1 remoto sin ejercitar: latencia y replicación sin probar. Las escrituras se serializan, así que el SQL atómico debería mantenerse, pero falta evidencia en staging.
+2. Las invitaciones de fundador pueden frenar la apertura de tramos (contradicción 4).
+3. Sin motor fiscal: el checkout real debe seguir cerrado.
+4. Los controles sobre lo que escribe la IA son heurísticos, no prueba de veracidad. El control real sigue siendo la aprobación del titular sobre el digest exacto. También pueden rechazar textos válidos (por ejemplo, un país mencionado en la traducción), y entonces el perfil queda con las palabras del titular: hay que calibrarlos con un modelo real.
+5. FTS5 es búsqueda léxica con raíces en inglés: peor exhaustividad en español y sin sinónimos. No puede venderse como búsqueda semántica.
+6. `wrangler d1 export` no admite tablas virtuales: hace falta un procedimiento de respaldo que excluya FTS y lo reconstruya.
+
+## 7. Estado de los hallazgos
+
+Corregidos y cubiertos por pruebas: A-01 a A-11, A-13, B-01 a B-11. Parcial: A-12 (`IMAGES` eliminado; `SESSION` sigue autoprovisionándose, sin uso; bajo riesgo).

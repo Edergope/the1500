@@ -1,10 +1,11 @@
 ---
 import { env } from 'cloudflare:workers';
-import {findPublicProfile} from '../../core/directory';
+import {findPublicProfile,publicProfileDto} from '../../core/directory';
 const indexingEnabled = import.meta.env.PUBLIC_INDEXING_ENABLED === 'true';
 const slug=Astro.params.slug||'';
 const profile=await findPublicProfile(env.DB,slug);
 if(!profile) Astro.response.status=404;
+const dto=profile?publicProfileDto(profile,'en'):null;
 const structured=profile?.public_jsonld||'{}';
 // JSON-LD embedded as script must escape script-breaking HTML characters.
 const safeJson=structured.replace(/</g,'\\u003c').replace(/>/g,'\\u003e')
@@ -16,7 +17,9 @@ const safeJson=structured.replace(/</g,'\\u003c').replace(/>/g,'\\u003e')
 <body style="font:16px system-ui;max-width:56rem;margin:3rem auto;padding:1.5rem">
 <header><a href="/">THE1500</a></header>
 {profile ? <main><h1>{profile.display_name}</h1><p>{profile.industry} · {profile.country}</p>
-<p>{profile.public_summary}</p>
+<p>{dto?.summary}</p>
+{dto&&dto.services.length>0&&<ul>{dto.services.map(x=><li>{x}</li>)}</ul>}
+{dto&&dto.problemSolutions.length>0&&<ul>{dto.problemSolutions.map(x=><li>{x.problem}: {x.solution}</li>)}</ul>}
 <p><a href={`/api/v1/public/companies/${profile.slug}.json`}>View machine-readable JSON-LD</a></p>
 <p><small>Information declared and approved by the business. THE1500 does not certify all claims.</small></p>
 </main> : <main><h1>Company not found</h1></main>}

@@ -1,4 +1,7 @@
 /** Passwordless identity. Raw tokens exist only in-memory until the email provider accepts them. */
+import {loginEmail} from '../lib/i18n/comms';
+import {sendMail} from './mail';
+
 const MAGIC_LINK_MS = 15 * 60 * 1000;
 const SESSION_MS = 14 * 24 * 60 * 60 * 1000;
 export const SESSION_COOKIE = '__Host-the1500_session';
@@ -9,6 +12,7 @@ export interface IdentityEnv {
   RESEND_API_KEY?: string;
   MAIL_FROM?: string;
   PUBLIC_BASE_URL?: string;
+  RESEND_API_BASE?: string;
 }
 
 export class IdentityError extends Error {
@@ -59,11 +63,14 @@ export function json(status: number, body: Record<string,unknown>, headers: Reco
 }
 export function apiError(e: unknown): Response {
   if (e instanceof IdentityError) return json(e.httpStatus,{error:{code:e.code}});
+  // Unknown failures are logged for operators; clients never see internal details.
+  console.error('unhandled_api_error',e instanceof Error?e.message:String(e));
   return json(503,{error:{code:'REQUEST_UNAVAILABLE'}});
 }
+export function parseLocale(value:unknown):'en'|'es' {return value==='es'?'es':'en';}
 
 /** Email requests deliberately have a uniform response, irrespective of membership. */
-export async function requestLoginLink(env: IdentityEnv, emailInput: string, ip: string|null, now=new Date()): Promise<void> {
+export async function requestLoginLink(env: IdentityEnv, emailInput: string, ip: string|null, now=new Date(), locale:'en'|'es'='en'): Promise<void> {
   if (!env.RESEND_API_KEY || !env.MAIL_FROM || !env.PUBLIC_BASE_URL) throw new IdentityError('MAIL_NOT_CONFIGURED',503);
   const email=normalizeEmail(emailInput);
   const publicOrigin=new URL(env.PUBLIC_BASE_URL).origin;
@@ -79,15 +86,12 @@ export async function requestLoginLink(env: IdentityEnv, emailInput: string, ip:
   const raw=token(); const digest=await sha256(raw);
   const id=crypto.randomUUID(); const requestedAt=now.toISOString();
   const expiresAt=new Date(now.getTime()+MAGIC_LINK_MS).toISOString();
-  await env.DB.prepare(`INSERT INTO login_challenges(id,email,token_digest,ip_digest,requested_at,expires_at)
-      VALUES (?,?,?,?,?,?)`).bind(id,email,digest,ipDigest,requestedAt,expiresAt).run();
+  await env.DB.prepare(`INSERT INTO login_challenges(id,email,token_digest,ip_digest,requested_at,expires_at,locale)
+      VALUES (?,?,?,?,?,?,?)`).bind(id,email,digest,ipDigest,requestedAt,expiresAt,locale).run();
   const url=new URL('/auth/verify',publicOrigin);url.searchParams.set('token',raw);
-  const response=await fetch('https://api.resend.com/emails',{
-    method:'POST',headers:{'Authorization':`Bearer ${env.RESEND_API_KEY}`,'Content-Type':'application/json'},
-    body:JSON.stringify({from:env.MAIL_FROM,to:[email],subject:'Your THE1500 sign-in link',
-      text:`Sign in to THE1500 (valid for 15 minutes):\n${url.toString()}\n\nIf you didn't request this, ignore this message.`})
-  });
-  if (!response.ok) {
+  const message=loginEmail(locale,url.toString());
+  const sent=await sendMail(env,{to:email,...message});
+  if (!sent) {
     // Do not leave a valid unused token if the mail service failed to accept it.
     await env.DB.prepare(`DELETE FROM login_challenges WHERE id=? AND consumed_at IS NULL`).bind(id).run();
     throw new IdentityError('MAIL_DELIVERY_UNAVAILABLE',503);
@@ -104,7 +108,7 @@ export async function consumeLoginLink(db:D1Database, raw:string, now=new Date()
   const result=await db.batch([
     db.prepare(`UPDATE login_challenges SET consumed_at=?,session_id=?
       WHERE token_digest=? AND consumed_at IS NULL AND expires_at>?`).bind(at,sid,digest,at),
-    db.prepare(`INSERT INTO users(id,email) SELECT ?,email FROM login_challenges
+    db.prepare(`INSERT INTO users(id,email,locale) SELECT ?,email,locale FROM login_challenges
       WHERE session_id=? ON CONFLICT(email) DO NOTHING`).bind(crypto.randomUUID(),sid),
     db.prepare(`INSERT INTO sessions(id,user_id,token_digest,expires_at)
       SELECT ?,u.id,?,? FROM login_challenges c JOIN users u ON u.email=c.email
@@ -144,6 +148,19 @@ export async function requireOwner(db:D1Database,userId:string,companyId:string)
     WHERE m.user_id=? AND m.company_id=? AND m.role='owner' AND c.identity_state<>'rejected'`)
     .bind(userId,companyId).first<{ok:number}>();
   if (!found) throw new IdentityError('NOT_COMPANY_OWNER',403);
+}
+/** Owners approve, publish and withdraw; editors may only work on declarations and drafts. */
+export async function requireMember(db:D1Database,userId:string,companyId:string):Promise<'owner'|'editor'> {
+  const found=await db.prepare(`SELECT m.role FROM memberships m JOIN companies c ON c.id=m.company_id
+    WHERE m.user_id=? AND m.company_id=? AND c.identity_state<>'rejected'`)
+    .bind(userId,companyId).first<{role:'owner'|'editor'}>();
+  if (!found) throw new IdentityError('NOT_COMPANY_MEMBER',403);
+  return found.role;
+}
+export async function revokeAllSessions(db:D1Database,userId:string,now=new Date()):Promise<number> {
+  const result=await db.prepare(`UPDATE sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL`)
+    .bind(now.toISOString(),userId).run();
+  return result.meta.changes;
 }
 export async function logout(db:D1Database,request:Request,now=new Date()):Promise<void> {
   const raw=extractSessionCookie(request);

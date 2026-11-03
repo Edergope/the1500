@@ -1,6 +1,6 @@
 {
   "name": "the1500",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,13 +11,16 @@
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "test:db": "python3 -m unittest discover -s tests -p 'test_*.py' -v",
     "test:types:isolated": "tsc -p tsconfig.core-check.json",
-    "test:core:runtime": "tsc -p tsconfig.core-runtime-test.json && node -e \"require('fs').writeFileSync('.core-js-tests/package.json', JSON.stringify({type:'commonjs'}))\" && node --experimental-sqlite tests/core_runtime_integration.cjs",
-    "test:local": "python3 -m unittest discover -s tests -p test_*.py -q && npm run test:types:isolated && npm run test:core:runtime"
+    "test:core:runtime": "tsc -p tsconfig.core-runtime-test.json && node -e \"require('fs').writeFileSync('.core-js-tests/package.json', JSON.stringify({type:'commonjs'}))\" && node --test --test-concurrency=1 tests/integration/*.test.cjs",
+    "test:local": "npm run test:db && npm run test:types:isolated && npm run test:core:runtime",
+    "test:e2e": "astro build && node tests/e2e/journey.cjs",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote"
   },
   "dependencies": {
-    "astro": "^7.4.0",
+    "@anthropic-ai/sdk": "^1.4.0",
     "@astrojs/cloudflare": "^14.4.0",
     "@astrojs/react": "^7.1.0",
+    "astro": "^7.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
