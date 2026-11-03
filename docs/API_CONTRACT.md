@@ -4,7 +4,7 @@
 **Verified by:** `tests/integration/*`, `tests/e2e/journey.cjs`. A test fails if a route exists without being listed here, or the reverse.
 Business rules live on the server. The frontend never computes price, position, availability or permission.
 
-> **Breaking changes from v0.2:** `hold.slotNumber` removed (a number is assigned on confirmation, Decision 30). `PUT /me/company/profile` body changed (`description`, `consent` required). Founder accept requires `acceptTerms`, `termsVersion`. JSON-LD is now `@graph`.
+> **Breaking changes from v0.2:** `hold.slotNumber` removed (a number is assigned on confirmation, Decision 30). `PUT /me/company/profile` body changed (`description`, `consent` required). Founder accept requires `acceptTerms`, `termsVersion` and no longer assigns a position: an admin awards it. JSON-LD is now `@graph`.
 
 ## 1. Conventions
 
@@ -47,7 +47,7 @@ Branch on `code`. Show `message`. Status: 400 invalid · 401 no session · 403 n
 | POST `/me/company/requests` | owner | `{companyId,kind:"withdrawal"\|"cancellation",reason}` | 201 `{requestId,kind,status,requestedAt,structuringStartedAt}` · `REQUEST_ALREADY_OPEN`. Administration executes it. |
 | POST `/me/company/reactivate` | owner | `{companyId}` | `{companyId,status:"reactivated",reactivationRequestedAt}`. Valid until day 45. |
 | GET `/me/founder-invitations` | user | | `{invitations:[{invitationId,companyId,companyName,expiresAt}]}` |
-| POST `/me/founder-invitations/accept` | owner | `{invitationId,acceptTerms:true,termsVersion}` | `{companyId,slotNumber,status:"assigned",assignmentKind:"founder"}` · `TERMS_REQUIRED`, `INVITATION_EXPIRED`, `FOUNDER_INVENTORY_EXHAUSTED` |
+| POST `/me/founder-invitations/accept` | owner | `{invitationId,acceptTerms:true,termsVersion}` | `{invitationId,companyId,status:"accepted",acceptedAt}`. **No position yet**: show "pending award" until `GET /me/company` returns `position`. · `TERMS_REQUIRED`, `INVITATION_EXPIRED` |
 
 `identityState`: `self_declared` (corporate email matched the website, can buy) · `pending_review` (show "under review", cannot buy) · `admin_verified` (can buy) · `rejected`.
 
@@ -106,11 +106,11 @@ HTML at `/empresas/:slug` and `/es/empresas/:slug` is rendered by the page; use 
 | Value | Meaning | UI |
 |---|---|---|
 | `selling` | Automatic checkout open at `currentPriceUsdCents` | Buy |
-| `awaiting_founder_allocation` | Paid places in tier 1 sold out, next tier not open | No buy; say the next tier is not open yet |
+| `awaiting_founder_allocation` | 101-600 sold out; tier 2 opens only when all 600 are definitively awarded (Decisions 38-39) | No buy; say the next tier is not open yet |
 | `premium_admission` | Last 150. Human admission. **Intake channel undecided (Question 64)** | No checkout and no invented form; ask the owner |
 | `closed_archive` | All positions consumed | Sold out; directory stays fully available |
 
-Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or AI search. Ask: label `llm_grounded`, `retrieval_only` and `abstained` differently; always render `citations` with links and `limitations`. Retired positions show **only** the number and the exact label: `labelEs` is Decision 29's text, `label` is an English rendering pending the owner's approval. Never display fictitious numbers, or any founder marker: none exists in public data.
+Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or AI search. Ask: label `llm_grounded`, `retrieval_only` and `abstained` differently; always render `citations` with links and `limitations`. Retired positions show **only** the number and the exact label: `labelEs` is Decision 29's text, `label` is an English rendering pending the owner's approval. Never display fictitious numbers or a founder badge. Positions 1-100 are founders' and 101-600 paid (Decision 05, confirmed 2026-11-03), and sales of 101-600 run while founders join: do not build any UI that points this out.
 
 ## 7. Administration (all `admin`; mutations need `reasonCode` `[a-zA-Z0-9_-]{3,64}` and `evidenceReference` ≤400 chars unless noted)
 
@@ -123,6 +123,7 @@ Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or A
 | POST `/admin/users/block` | `{userId,blocked,reasonCode,evidenceReference}` | Block and revoke sessions |
 | GET `/admin/inventory` | `limit,offset` | Positions with kind and company, live holds |
 | POST `/admin/founder-invite` | `{companyId}` | 7-day invitation; queues email |
+| GET, POST `/admin/founder-award` | POST `{invitationId,reasonCode,evidenceReference}` | Accepted invitations awaiting award; formal award of the next number in 1-100 · `INVITATION_NOT_ACCEPTED`, `FOUNDER_INVENTORY_EXHAUSTED` |
 | POST `/admin/founder-revoke` | `{companyId,reasonCode,evidenceReference}` | Only before first publication |
 | GET `/admin/profiles` | `limit` | Profiles pending review, with claims |
 | POST `/admin/profiles/review` | `{companyId,version,decision:"cleared"\|"rejected",reasonCode,evidenceReference}` | Exceptional profile decision |

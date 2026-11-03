@@ -1,7 +1,7 @@
 import { IdentityError, revokeAllSessions } from './identity';
 import { FOUNDER_PLACES, onboardingStart, releaseAssignmentStatements } from './inventory';
 import { notifyOwners, openIncident, ownerContacts } from './ops';
-import { founderInvitationEmail } from '../lib/i18n/comms';
+import { founderAwardedEmail, founderInvitationEmail } from '../lib/i18n/comms';
 import { withdrawCompany } from './profiles';
 
 export class AdminError extends IdentityError {
@@ -197,6 +197,8 @@ export async function inviteFounder(db:D1Database,adminId:string,companyId:strin
     throw new AdminError('FOUNDER_COMPANY_NOT_ELIGIBLE',403);
   if (company.assigned) throw new AdminError('COMPANY_ALREADY_ASSIGNED');
   await assertFounderCapacity(db);
+  const open=await db.prepare(`SELECT 1 AS ok FROM founder_invitations WHERE company_id=? AND status='accepted'`).bind(companyId).first();
+  if (open) throw new AdminError('FOUNDER_INVITATION_EXISTS');
   const nowIso=now.toISOString();
   // Expired invitations are closed before applying the pending uniqueness constraint.
   await db.prepare(`UPDATE founder_invitations SET status='expired'
@@ -216,7 +218,7 @@ export async function inviteFounder(db:D1Database,adminId:string,companyId:strin
 }
 async function assertFounderCapacity(db:D1Database) {
   const state=await db.prepare(`SELECT (SELECT COUNT(*) FROM founder_awards WHERE status='active') AS awarded,
-    (SELECT COUNT(*) FROM slots WHERE phase=1 AND status='available') AS free`).first<{awarded:number;free:number}>();
+    (SELECT COUNT(*) FROM slots WHERE number BETWEEN 1 AND 100 AND status='available') AS free`).first<{awarded:number;free:number}>();
   if (!state||state.awarded>=FOUNDER_PLACES||state.free<1) throw new AdminError('FOUNDER_INVENTORY_EXHAUSTED');
 }
 export async function listOwnerFounderInvitations(db:D1Database,userId:string,now=new Date()) {
@@ -228,50 +230,67 @@ export async function listOwnerFounderInvitations(db:D1Database,userId:string,no
     ORDER BY fi.created_at DESC`).bind(userId,now.toISOString()).all();
   return {invitations:rows.results};
 }
-/** A founder invitation is accepted by its company owner, NEVER by an unauthenticated token. */
+/** Step 2 of 3. The owner accepts the conditions, authenticated. This consumes no position (Decisions 32-33). */
 export async function acceptFounderInvitation(db:D1Database,invitationId:string,userId:string,now=new Date(),termsVersion='founder-terms-pending') {
   const invite=await db.prepare(`SELECT fi.id,fi.company_id,fi.status,fi.expires_at
     FROM founder_invitations fi JOIN memberships m ON m.company_id=fi.company_id
     WHERE fi.id=? AND m.user_id=? AND m.role='owner'`).bind(invitationId,userId)
     .first<FounderInviteRow>();
   if (!invite) throw new AdminError('INVITATION_NOT_FOUND',404);
-  if (invite.status!=='pending'||invite.expires_at<=now.toISOString())
-    throw new AdminError('INVITATION_EXPIRED');
+  const at=now.toISOString();
+  if (invite.status!=='pending'||invite.expires_at<=at) throw new AdminError('INVITATION_EXPIRED');
+  const result=await db.batch([
+    db.prepare(`UPDATE founder_invitations SET status='accepted',accepted_at=?,accepted_by=? WHERE id=? AND status='pending' AND expires_at>?`)
+      .bind(at,userId,invite.id,at),
+    db.prepare(`INSERT INTO consent_records(id,company_id,user_id,kind,document_version,accepted_at)
+      SELECT ?,?,?,'founder_terms',?,? WHERE EXISTS(SELECT 1 FROM founder_invitations WHERE id=? AND accepted_at=? AND accepted_by=?)`)
+      .bind(crypto.randomUUID(),invite.company_id,userId,termsVersion,at,invite.id,at,userId),
+  ]);
+  if (result[0]?.meta?.changes!==1) throw new AdminError('INVITATION_EXPIRED');
+  return {invitationId:invite.id,companyId:invite.company_id,status:'accepted',acceptedAt:at};
+}
+export async function listAcceptedFounderInvitations(db:D1Database,limit=50) {
+  clampLimit(limit);
+  const rows=await db.prepare(`SELECT fi.id AS invitationId,fi.company_id AS companyId,c.display_name AS companyName,fi.accepted_at AS acceptedAt
+    FROM founder_invitations fi JOIN companies c ON c.id=fi.company_id
+    WHERE fi.status='accepted' AND NOT EXISTS(SELECT 1 FROM founder_awards a WHERE a.company_id=fi.company_id AND a.status='active')
+    ORDER BY fi.accepted_at LIMIT ?`).bind(limit).all();
+  return {invitations:rows.results};
+}
+/** Step 3 of 3. Formal administrative award: assigns the next number in 1-100 and starts the onboarding clock. */
+export async function awardFounder(db:D1Database,adminId:string,invitationId:string,reasonCode:unknown,evidence:unknown,now=new Date(),baseUrl='') {
+  requireEvidence(reasonCode,evidence);
+  const invite=await db.prepare(`SELECT fi.company_id,fi.status,c.display_name FROM founder_invitations fi JOIN companies c ON c.id=fi.company_id WHERE fi.id=?`)
+    .bind(invitationId).first<{company_id:string;status:string;display_name:string}>();
+  if (!invite) throw new AdminError('INVITATION_NOT_FOUND',404);
+  if (invite.status!=='accepted') throw new AdminError('INVITATION_NOT_ACCEPTED');
+  const companyId=invite.company_id;
   await assertFounderCapacity(db);
-  const at=now.toISOString(), awardId=crypto.randomUUID();
+  const at=now.toISOString(),awardId=crypto.randomUUID();
+  const invited=`EXISTS(SELECT 1 FROM founder_invitations fi WHERE fi.id=? AND fi.company_id=? AND fi.status='accepted')`;
+  const awarded=`EXISTS(SELECT 1 FROM founder_awards WHERE id=?)`;
   try {
-    // Decisions 31-32: next ascending number in the tier, shared with paid buyers.
     const result=await db.batch([
+      // Next ascending number in the founders' reserved range, 1-100.
       db.prepare(`UPDATE slots SET status='assigned',company_id=?,assignment_kind='founder',assigned_at=?
-        WHERE number=(SELECT MIN(number) FROM slots WHERE phase=1 AND status='available')
+        WHERE number=(SELECT MIN(number) FROM slots WHERE number BETWEEN 1 AND 100 AND status='available')
         AND (SELECT COUNT(*) FROM founder_awards WHERE status='active')<${FOUNDER_PLACES}
         AND NOT EXISTS(SELECT 1 FROM slots s WHERE s.company_id=? AND s.status IN('assigned','retired'))
-        AND EXISTS(SELECT 1 FROM founder_invitations fi WHERE fi.id=? AND fi.company_id=?
-        AND fi.status='pending' AND fi.expires_at>?)`)
-        .bind(invite.company_id,at,invite.company_id,invite.id,invite.company_id,at),
+        AND ${invited}`).bind(companyId,at,companyId,invitationId,companyId),
       db.prepare(`INSERT INTO founder_awards(id,slot_number,company_id,approved_by,status,awarded_at)
-        SELECT ?,s.number,?,fi.invited_by,'active',? FROM slots s
-        JOIN founder_invitations fi ON fi.id=? WHERE s.company_id=? AND s.status='assigned' AND s.assignment_kind='founder'
-        AND fi.status='pending' AND fi.expires_at>?`)
-        .bind(awardId,invite.company_id,at,invite.id,invite.company_id,at),
-      db.prepare(`UPDATE founder_invitations SET status='accepted',accepted_at=?,accepted_by=?
-        WHERE id=? AND status='pending' AND expires_at>?
-        AND EXISTS(SELECT 1 FROM founder_awards WHERE id=?)`)
-        .bind(at,userId,invite.id,at,awardId),
+        SELECT ?,number,?,?,'active',? FROM slots WHERE company_id=? AND status='assigned' AND assignment_kind='founder' AND ${invited}`)
+        .bind(awardId,companyId,adminId,at,companyId,invitationId,companyId),
       db.prepare(`INSERT INTO slot_audit(event_id,slot_number,action,company_id,reference_id,occurred_at)
-        SELECT ?,s.number,'assign_founder',s.company_id,?,? FROM slots s
-        WHERE s.company_id=? AND s.status='assigned'
-        AND EXISTS(SELECT 1 FROM founder_awards WHERE id=?)`)
-        .bind(crypto.randomUUID(),awardId,at,invite.company_id,awardId),
-      db.prepare(`INSERT INTO consent_records(id,company_id,user_id,kind,document_version,accepted_at)
-        SELECT ?,?,?,'founder_terms',?,? WHERE EXISTS(SELECT 1 FROM founder_awards WHERE id=?)`)
-        .bind(crypto.randomUUID(),invite.company_id,userId,termsVersion,at,awardId),
-      onboardingStart(db,invite.company_id,'founder',now,`EXISTS(SELECT 1 FROM founder_awards WHERE id=?)`,awardId),
+        SELECT ?,number,'assign_founder',company_id,?,? FROM slots WHERE company_id=? AND status='assigned' AND ${awarded}`)
+        .bind(crypto.randomUUID(),awardId,at,companyId,awardId),
+      onboardingStart(db,companyId,'founder',now,awarded,awardId),
+      adminEvent(db,adminId,'founder_awarded','company',companyId,reasonCode,(evidence as string).trim(),{invitationId,awardId},now),
     ]);
-    if (result.slice(0,4).some(x=>x?.meta?.changes!==1)) throw new AdminError('FOUNDER_ASSIGNMENT_CONFLICT');
+    if (result[0]?.meta?.changes!==1) throw new AdminError('FOUNDER_ASSIGNMENT_CONFLICT');
   } catch(e) {if (e instanceof AdminError) throw e;throw new AdminError('FOUNDER_ASSIGNMENT_CONFLICT');}
-  const slot=await db.prepare(`SELECT number FROM slots WHERE company_id=?`).bind(invite.company_id).first<{number:number}>();
-  return {companyId:invite.company_id,slotNumber:slot?.number,status:'assigned',assignmentKind:'founder'};
+  const slot=await db.prepare(`SELECT number FROM slots WHERE company_id=?`).bind(companyId).first<{number:number}>();
+  await notifyOwners(db,companyId,'founder_awarded',l=>founderAwardedEmail(l,invite.display_name,slot!.number,baseUrl),`founder_award:${awardId}`,now);
+  return {companyId,slotNumber:slot!.number,status:'assigned',assignmentKind:'founder'};
 }
 /** Decision 34: before first publication only. A published position is never reassigned. */
 export async function revokeFounderAward(db:D1Database,adminId:string,companyId:string,reasonCode:unknown,evidence:unknown,now=new Date()) {
@@ -282,6 +301,8 @@ export async function revokeFounderAward(db:D1Database,adminId:string,companyId:
   if (award.first_published_at) throw new AdminError('POSITION_ALREADY_CONSUMED');
   await db.batch([
     db.prepare(`UPDATE founder_awards SET status='revoked',revoked_at=? WHERE id=?`).bind(now.toISOString(),award.id),
+    // Another award needs a new invitation.
+    db.prepare(`UPDATE founder_invitations SET status='revoked' WHERE company_id=? AND status='accepted'`).bind(companyId),
     ...releaseAssignmentStatements(db,award.slot_number,companyId,'revoke_founder',award.id,now),
     adminEvent(db,adminId,'founder_revoked','company',companyId,reasonCode,(evidence as string).trim(),{position:award.slot_number},now),
   ]);

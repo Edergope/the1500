@@ -19,7 +19,9 @@ after(()=>up.close());
 beforeEach(()=>{up.state.llm.mode='ok';up.state.ask.mode='ok';});
 async function allocated(h,opts={},slot=1){
   const s=await seedCompany(h.db,opts);
-  await h.db.prepare(`UPDATE slots SET status='assigned',company_id=?,assignment_kind='paid' WHERE number=?`).bind(s.companyId,slot).run();
+  // slot is an ordinal: founders count from 1, paid buyers from 101.
+  const kind=opts.kind||'paid';
+  await h.db.prepare(`UPDATE slots SET status='assigned',company_id=?,assignment_kind=? WHERE number=?`).bind(s.companyId,kind,kind==='founder'?slot:slot+100).run();
   return s;
 }
 async function published(h,opts={},slot=1,d=decl(),env=aiEnv,now=new Date()){
@@ -106,10 +108,10 @@ describe('T08 approval gates publication',()=>{
     await assert.rejects(pro.approveProfile(h.db,s.companyId,d.version,s.userId,d.contentDigest),e=>e.code==='ALREADY_APPROVED');
     await assert.rejects(h.db.prepare(`UPDATE profile_versions SET public_jsonld='{}' WHERE company_id=?`).bind(s.companyId).run(),/immutable/);
     const out=await pro.publishProfile(h.db,s.companyId,d.version);
-    assert.equal(out.slotNumber,1);
+    assert.equal(out.slotNumber,101);
     assert.equal(new Date(out.correctionWindowEndsAt)-new Date(out.publishedAt),15*86400000);
     assert.ok(new Date(out.guaranteeEndsAt)>new Date(Date.now()+360*86400000));
-    assert.ok((await h.db.prepare(`SELECT first_published_at f FROM slots WHERE number=1`).first()).f);
+    assert.ok((await h.db.prepare(`SELECT first_published_at f FROM slots WHERE number=101`).first()).f);
     await assert.rejects(pro.publishProfile(h.db,s.companyId,d.version),e=>e.code==='PROFILE_NOT_APPROVED');
     const v2=await pro.submitDeclaration(h.db,aiEnv,s.companyId,s.userId,decl({description:'We coordinate ocean freight and bonded warehousing for importers in the Atlantic market.'}));
     assert.equal((await dir.findPublicProfile(h.db,(await h.db.prepare(`SELECT slug FROM companies WHERE id=?`).bind(s.companyId).first()).slug)).version,1,'the draft does not change what is public');
@@ -145,8 +147,7 @@ function assertVocabulary(node){
   Object.values(node).forEach(assertVocabulary);
 }
 describe('T10 JSON-LD',()=>{
-  let h,s;before(async()=>{h=await freshDb();s=await published(h,{email:'private.person@ocean.example',name:'Ocean Line LLC',slug:'ocean-line',website:'ocean.example',industry:'Ocean freight'});
-    await h.db.prepare(`UPDATE slots SET assignment_kind='founder' WHERE company_id=?`).bind(s.companyId).run();});after(()=>h.dispose());
+  let h,s;before(async()=>{h=await freshDb();s=await published(h,{kind:'founder',email:'private.person@ocean.example',name:'Ocean Line LLC',slug:'ocean-line',website:'ocean.example',industry:'Ocean freight'});});after(()=>h.dispose());
   test('valid Schema.org vocabulary, both languages, stable ids',async()=>{
     const row=await dir.findPublicProfile(h.db,'ocean-line');
     for(const raw of [row.public_jsonld,row.public_jsonld_es]){
@@ -269,15 +270,15 @@ describe('T09, T11, T12 discovery',()=>{
     assert.equal((await dir.listPublishedCompanies(h.db,{page:1})).items.some(x=>x.slug==='ocean-line'),false);
     assert.equal((await h.db.prepare(`SELECT COUNT(*) n FROM published_company_fts WHERE company_id=?`).bind(ocean.companyId).first()).n,0);
     const retired=await dir.listRetiredPositions(h.db);
-    assert.deepEqual(retired.items,[{position:1,label:'Position retired — Not available',labelEs:'Cupo retirado — No disponible'}]);
+    assert.deepEqual(retired.items,[{position:101,label:'Position retired — Not available',labelEs:'Cupo retirado — No disponible'}]);
     const stats=await pub.getPublicStats(h.db);assert.equal(stats.retired,1);assert.equal(stats.published,1);
     // Cannot come back through any path, nor be resold.
     await assert.rejects(pro.submitDeclaration(h.db,aiEnv,ocean.companyId,ocean.userId,decl()),e=>e.code==='COMPANY_NOT_ELIGIBLE');
-    await assert.rejects(h.db.prepare(`UPDATE slots SET status='available',company_id=NULL WHERE number=1`).run(),/published position cannot be released/);
-    await assert.rejects(h.db.prepare(`UPDATE slots SET status='assigned' WHERE number=1`).run(),/published position cannot be released/);
+    await assert.rejects(h.db.prepare(`UPDATE slots SET status='available',company_id=NULL WHERE number=101`).run(),/published position cannot be released/);
+    await assert.rejects(h.db.prepare(`UPDATE slots SET status='assigned' WHERE number=101`).run(),/published position cannot be released/);
     const next=await seedCompany(h.db);
     const hold=await core('inventory').createCheckoutHold(h.db,next.companyId,next.userId,'idempotency_key_after_retire');
-    assert.ok((await h.db.prepare(`SELECT slot_number n FROM slot_holds WHERE id=?`).bind(hold.holdId).first()).n>1);
+    assert.ok((await h.db.prepare(`SELECT slot_number n FROM slot_holds WHERE id=?`).bind(hold.holdId).first()).n>101);
   });
 });
 describe('identity and tenancy',()=>{

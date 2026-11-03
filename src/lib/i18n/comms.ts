@@ -13,6 +13,12 @@ export function founderInvitationEmail(l:Locale,company:string,expiresAt:string,
     {subject:`THE1500 invitation for ${company}`,
     text:`${company} has been invited to join THE1500 at no charge.\nThe invitation expires on ${expiresAt}. Accept it from your account: ${baseUrl}/mi-cuenta`};
 }
+export function founderAwardedEmail(l:Locale,company:string,position:number,baseUrl:string):Mail {
+  return l==='es'?{subject:`THE1500: cupo ${position} adjudicado`,
+    text:`Se adjudicó formalmente a ${company} el cupo número ${position}, sin cargo.\nTienes 15 días para completar el formulario: ${baseUrl}/mi-cuenta`}:
+    {subject:`THE1500: position ${position} awarded`,
+    text:`${company} has been formally awarded position ${position}, at no charge.\nYou have 15 days to complete the form: ${baseUrl}/mi-cuenta`};
+}
 const onboardingCopy={
   extended:{en:['Your THE1500 form deadline was extended','We granted a single automatic 15-day extension to complete your company form.'],
     es:['Se amplió el plazo de tu formulario de THE1500','Concedimos una única prórroga automática de 15 días para completar el formulario de tu empresa.']},

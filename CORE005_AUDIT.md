@@ -30,7 +30,7 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja. "Sonda" = 
 | A-13 | C | **Publicar nunca habría funcionado en D1 real.** `publishProfile` exigía `meta.changes===1` en el insert a FTS5, pero D1 devuelve 3 (tablas internas). Cada publicación habría devuelto `PUBLICATION_CONFLICT` *después* de confirmar su lote: datos publicados y error al usuario. El adaptador SQLite devolvía 1, así que el "PASS" anterior era una falsa garantía. | Sonda: `{changes:3,rows_written:1}` |
 | A-01 | C | Las dependencias no instalaban, y los avisos críticos de Astro aplicaban al stack documentado "Astro 6". | §1 |
 | A-02 | A | **Autoverificación de dominio eludible.** `x@foo.co.uk` registrando `https://co.uk` y `x@gmail.com` registrando `gmail.com` quedan `self_declared` y `checkoutEligible=true`. Incumple la Decisión 13. | Sonda |
-| A-03 | A | **Fuga de la condición de fundador.** Los fundadores estaban fijos en 1–100: cualquier posición pública ≤100 delataba a un fundador, contra la Decisión 35 y las 31–32. Ver §4. | `inventory.ts`, trigger de `0005` |
+| A-03 | A | **Fuga de la condición de fundador.** Con fundadores fijos en 1–100, cualquier posición pública ≤100 delata a un fundador, en tensión con la Decisión 35. El propietario confirmó el rango fijo: ver §4. **Abierto.** | `inventory.ts`, trigger de `0005` |
 | A-04 | A | No existía retiro: la única "retirada" era una prueba con SQL directo. Decisiones 17 y 29 sin implementar. | `grep` |
 | A-05 | A | Sin marca irreversible de primera publicación en `slots` (Decisiones 17, 30). Nada en la base impedía volver a `available` un cupo publicado. | 0001–0005 |
 | A-06 | M | `reviewCompany` con sitio web duplicado producía un `D1_ERROR` crudo y un 503 genérico. | Sonda |
@@ -75,10 +75,10 @@ Migraciones sobre el motor real · 1.500 cupos y CHECK de tramos · secuencia po
 
 | # | Contradicción | Tratamiento |
 |---|---|---|
-| 1 | **Decisión 05:** los fundadores ocupan "los primeros 100 de los 600". **Decisiones 31, 32 y 35** (posteriores y más específicas): numeración ascendente por orden de confirmación dentro del tramo, y la condición de fundador no puede revelarse. Un rango fijo 1–100 delata a cada fundador. | Implementadas las posteriores: un solo grupo ascendente en 1–600, con tope de 100 fundadores y 500 pagados, y los 100 protegidos frente a reservas pagadas. **Requiere confirmación del propietario.** |
+| 1 | **Decisión 05:** los fundadores ocupan "los primeros 100 de los 600". **Decisiones 31, 32 y 35** (posteriores y más específicas): numeración ascendente por orden de confirmación dentro del tramo, y la condición de fundador no puede revelarse. Un rango fijo 1–100 delata a cada fundador. | **Resuelto por el propietario el 2026-11-03: fundadores fijos en 1–100, pagados en 101–600.** Queda abierta la consecuencia: el número público identifica a los fundadores. |
 | 2 | Decisión 01 nombra a Aurea Investment Capital SAS; la nota estratégica la reabre. | El vendedor es configuración (`legal_seller_configuration`, `unapproved`). Ningún nombre de entidad en el código. |
 | 3 | Decisiones 50–63 (revisión fiscal, ofertas) contra nota estratégica puntos 4–5 (simplificar, suspender microdecisiones). | Sin implementar; el modo real sigue bloqueado. Riesgo de lanzamiento. |
-| 4 | Decisión 38 (secuencia estricta) + Decisión 32 (fundadores solo por invitación): si se venden los 500 pagados y no se completan las invitaciones, el tramo 2 **nunca abre**. | Implementado tal cual, visible como `salesMode:"awaiting_founder_allocation"`. **Riesgo comercial que debe decidir el propietario.** |
+| 4 | Decisión 38 (secuencia estricta) + Decisión 32 (fundadores solo por invitación): si se venden los 500 pagados y no se completan las invitaciones, el tramo 2 **nunca abre**. | **Confirmado por el propietario el 2026-11-03:** se vende 101–600 mientras se incorporan los fundadores, y 601–1050 solo abre con las 600 definitivamente adjudicadas. Visible como `salesMode:"awaiting_founder_allocation"`. |
 
 ## 5. Bloqueos externos
 
@@ -95,7 +95,7 @@ Migraciones sobre el motor real · 1.500 cupos y CHECK de tramos · secuencia po
 ## 6. Riesgos de lanzamiento
 
 1. D1 remoto sin ejercitar: latencia y replicación sin probar. Las escrituras se serializan, así que el SQL atómico debería mantenerse, pero falta evidencia en staging.
-2. Las invitaciones de fundador pueden frenar la apertura de tramos (contradicción 4).
+2. La apertura del tramo 2 depende de completar las 100 adjudicaciones de fundador (regla confirmada, contradicción 4).
 3. Sin motor fiscal: el checkout real debe seguir cerrado.
 4. Los controles sobre lo que escribe la IA son heurísticos, no prueba de veracidad. El control real sigue siendo la aprobación del titular sobre el digest exacto. También pueden rechazar textos válidos (por ejemplo, un país mencionado en la traducción), y entonces el perfil queda con las palabras del titular: hay que calibrarlos con un modelo real.
 5. FTS5 es búsqueda léxica con raíces en inglés: peor exhaustividad en español y sin sinónimos. No puede venderse como búsqueda semántica.
@@ -103,4 +103,4 @@ Migraciones sobre el motor real · 1.500 cupos y CHECK de tramos · secuencia po
 
 ## 7. Estado de los hallazgos
 
-Corregidos y cubiertos por pruebas: A-01 a A-11, A-13, B-01 a B-11. Parcial: A-12 (`IMAGES` eliminado; `SESSION` sigue autoprovisionándose, sin uso; bajo riesgo).
+Corregidos y cubiertos por pruebas: A-01, A-02, A-04 a A-11, A-13, B-01 a B-11. Abierto: A-03, pendiente de decisión del propietario. Parcial: A-12 (`IMAGES` eliminado; `SESSION` sigue autoprovisionándose, sin uso; bajo riesgo).

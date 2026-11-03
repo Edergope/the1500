@@ -3,7 +3,8 @@ import { IdentityError } from './identity';
 
 const HOLD_MS = 20 * 60 * 1000;
 export const FOUNDER_PLACES = 100;
-export const PHASE1_PAID_PLACES = 500;
+/** Owner decision 2026-11-03: founders hold exactly 1-100. Checkout only ever touches 101 and above. */
+export const FIRST_PAID_NUMBER = 101;
 const CONFLICT_STATUS:Partial<Record<InventoryFailureCode,number>>={UNAUTHORIZED:401,TOO_MANY_REQUESTS:429,
   INVALID_COMPANY:400,INVALID_IDEMPOTENCY_KEY:400,HOLD_NOT_FOUND:404};
 export class InventoryError extends IdentityError {
@@ -17,9 +18,6 @@ interface ActiveHold {
   id: string; slot_number: number; company_id:string; phase: SlotPhase;
   price_usd_cents: number; created_at: string; expires_at: string; status: string;
 }
-/** Paid places consumed in tier 1, counting live holds: 100 founder places stay out of checkout's reach. */
-const PHASE1_PAID_USED=`(SELECT COUNT(*) FROM slots WHERE phase=1 AND (status='held'
-  OR (status IN('assigned','retired') AND assignment_kind='paid')))`;
 const CURRENT_PHASE=`(SELECT MIN(phase) FROM slots WHERE status IN('available','held'))`;
 
 /** Sweeps expired holds atomically, preserving append-only slot history. */
@@ -49,14 +47,14 @@ export interface SalesState {
   mode:SalesMode; currentPhase:SlotPhase|null; priceUsdCents:number|null; checkoutOpen:boolean;
 }
 export async function getSalesState(db:D1Database):Promise<SalesState> {
-  const row=await db.prepare(`SELECT ${CURRENT_PHASE} AS phase,${PHASE1_PAID_USED} AS paid,
+  const row=await db.prepare(`SELECT ${CURRENT_PHASE} AS phase,(SELECT COUNT(*) FROM slots WHERE phase=1 AND status='available' AND number>=${FIRST_PAID_NUMBER}) AS paid_free,
     (SELECT price_usd_cents FROM slots WHERE phase=${CURRENT_PHASE} LIMIT 1) AS price,
-    (SELECT COUNT(*) FROM slots WHERE phase=1 AND status='available') AS free1`)
-    .first<{phase:SlotPhase|null;paid:number;price:number|null;free1:number}>();
+    (SELECT COUNT(*) FROM slots WHERE number<${FIRST_PAID_NUMBER} AND status='available') AS founder_free`)
+    .first<{phase:SlotPhase|null;paid_free:number;price:number|null;founder_free:number}>();
   const phase=row?.phase??null;
   if (phase===null) return {mode:'closed_archive',currentPhase:null,priceUsdCents:null,checkoutOpen:false};
   if (phase===4) return {mode:'premium_admission',currentPhase:4,priceUsdCents:row!.price,checkoutOpen:false};
-  if (phase===1&&row!.paid>=PHASE1_PAID_PLACES&&row!.free1>0)
+  if (phase===1&&row!.paid_free===0&&row!.founder_free>0)
     return {mode:'awaiting_founder_allocation',currentPhase:1,priceUsdCents:row!.price,checkoutOpen:false};
   return {mode:'selling',currentPhase:phase,priceUsdCents:row!.price,checkoutOpen:true};
 }
@@ -103,8 +101,8 @@ export async function createCheckoutHold(
     // different positions instead of failing against a number read a moment earlier.
     results=await db.batch([
       db.prepare(`UPDATE slots SET status='held',active_hold_id=?,held_until=?
-        WHERE number=(SELECT MIN(s.number) FROM slots s WHERE s.status='available' AND s.phase=${CURRENT_PHASE})
-        AND phase<4 AND (phase<>1 OR ${PHASE1_PAID_USED}<${PHASE1_PAID_PLACES})
+        WHERE number=(SELECT MIN(s.number) FROM slots s WHERE s.status='available' AND s.number>=${FIRST_PAID_NUMBER} AND s.phase=${CURRENT_PHASE})
+        AND phase<4
         AND NOT EXISTS(SELECT 1 FROM slots s2 WHERE s2.company_id=? AND s2.status IN ('assigned','retired'))`)
         .bind(id,expiresAt,companyId),
       db.prepare(`INSERT INTO slot_holds(id,slot_number,company_id,user_id,idempotency_key,status,created_at,expires_at)
@@ -180,7 +178,7 @@ export function onboardingStart(db:D1Database,companyId:string,origin:'paid'|'fo
 export interface ConfirmResult {outcome:'assigned'|'hold_not_active'|'already_processed';slotNumber?:number;}
 /**
  * Converts a live hold into a definitive assignment. Decisions 30-31: the number goes to whoever
- * confirms first, so this takes the lowest number still free or reserved in the tier. The slot this
+ * confirms first, so this takes the lowest paid number still free or reserved in the tier. The slot this
  * hold was pinned to goes back to the pool, or to the hold that was sitting on that lower number.
  * All of it runs as one D1 transaction, so concurrent confirmations queue instead of conflicting.
  */
@@ -198,7 +196,7 @@ export async function convertHold(db:D1Database,attemptId:string,now=new Date(),
   const results=await db.batch([
     db.prepare(`UPDATE purchase_attempts SET status='paid',settlement_id=?,paid_at=?,updated_at=?,
         provisional_slot_number=(SELECT slot_number FROM slot_holds WHERE id=?),
-        assigned_slot_number=(SELECT MIN(number) FROM slots WHERE phase=? AND status IN('available','held')),
+        assigned_slot_number=(SELECT MIN(number) FROM slots WHERE phase=? AND number>=${FIRST_PAID_NUMBER} AND status IN('available','held')),
         provider_payment_intent=COALESCE(?,provider_payment_intent),payer_email=COALESCE(?,payer_email)
       WHERE id=? AND status IN('creating','pending')
       AND EXISTS(SELECT 1 FROM slot_holds h JOIN slots s ON s.active_hold_id=h.id AND s.number=h.slot_number
@@ -229,13 +227,12 @@ export async function convertHold(db:D1Database,attemptId:string,now=new Date(),
 /** Used for reconciled late payments: the original tier and price, or nothing. Decisions 42, 44. */
 export async function assignFreeSlotInPhase(db:D1Database,attemptId:string,companyId:string,phase:number,now=new Date()):Promise<number|null> {
   const at=now.toISOString();
-  const pick=`(SELECT MIN(number) FROM slots WHERE phase=? AND status='available')`;
+  const pick=`(SELECT MIN(number) FROM slots WHERE phase=? AND number>=${FIRST_PAID_NUMBER} AND status='available')`;
   const results=await db.batch([
     db.prepare(`UPDATE purchase_attempts SET status='paid',assigned_slot_number=${pick},updated_at=?
       WHERE id=? AND status='late_review' AND ${pick} IS NOT NULL
-      AND (?<>1 OR (SELECT COUNT(*) FROM slots WHERE phase=1 AND (status='held' OR (status IN('assigned','retired') AND assignment_kind='paid')))<${PHASE1_PAID_PLACES})
       AND NOT EXISTS(SELECT 1 FROM slots WHERE company_id=? AND status IN('assigned','retired'))`)
-      .bind(phase,at,attemptId,phase,phase,companyId),
+      .bind(phase,at,attemptId,phase,companyId),
     db.prepare(`UPDATE slots SET status='assigned',company_id=?,assignment_kind='paid',assigned_at=?
       WHERE number=(SELECT assigned_slot_number FROM purchase_attempts WHERE id=? AND status='paid') AND status='available'`)
       .bind(companyId,at,attemptId),

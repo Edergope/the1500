@@ -1,5 +1,5 @@
 const {test,describe,before,after}=require('node:test');const assert=require('node:assert/strict');
-const {freshDb,seedCompany,fillPaid,fillFounder}=require('../support/d1.cjs');
+const {freshDb,seedCompany,fillPaid,fillFounder,fillUpTo}=require('../support/d1.cjs');
 const core=p=>require(`../../.core-js-tests/core/${p}.js`);
 const inv=core('inventory'),adm=core('admin'),pub=core('public');
 const key=n=>`idempotency_key_${String(n).padStart(6,'0')}`;
@@ -19,7 +19,7 @@ describe('T01/T02 concurrency on the D1 engine',()=>{
     const slots=await h.db.prepare(`SELECT number,active_hold_id FROM slots WHERE status='held' ORDER BY number`).all();
     assert.equal(slots.results.length,40);
     assert.equal(new Set(slots.results.map(s=>s.number)).size,40);
-    assert.equal(slots.results[0].number,1);assert.equal(slots.results[39].number,40);
+    assert.equal(slots.results[0].number,101);assert.equal(slots.results[39].number,140);
   });
   test('same key replayed concurrently yields one hold',async()=>{
     const s=await seedCompany(h.db);
@@ -38,7 +38,7 @@ describe('T01/T02 concurrency on the D1 engine',()=>{
 describe('T01 hard limit at the end of an automatic tier',()=>{
   let h;before(async()=>{h=await freshDb();});after(()=>h.dispose());
   test('5 free places and 30 buyers: exactly 5 reservations, the rest refused, capacity stays 1500',async()=>{
-    await fillPaid(h.db,1,1345);
+    await fillUpTo(h.db,1345);
     const sellers=await Promise.all(Array.from({length:30},()=>seedCompany(h.db)));
     const results=await Promise.allSettled(sellers.map((s,i)=>inv.createCheckoutHold(h.db,s.companyId,s.userId,key(i),NOW)));
     assert.equal(results.filter(r=>r.status==='fulfilled').length,5);
@@ -59,7 +59,7 @@ describe('T02 two confirmations cannot take one position',()=>{
     const results=await Promise.all([...ids,...ids].map(id=>inv.convertHold(h.db,id,NOW)));
     assert.equal(results.filter(r=>r.outcome==='assigned').length,12);
     const assigned=results.filter(r=>r.outcome==='assigned').map(r=>r.slotNumber).sort((a,b)=>a-b);
-    assert.deepEqual(assigned,Array.from({length:12},(_,i)=>i+1));
+    assert.deepEqual(assigned,Array.from({length:12},(_,i)=>i+101));
     const rows=await h.db.prepare(`SELECT COUNT(*) n,COUNT(DISTINCT company_id) c FROM slots WHERE status='assigned'`).first();
     assert.equal(rows.n,12);assert.equal(rows.c,12);
     assert.equal((await h.db.prepare(`SELECT COUNT(*) n FROM slots WHERE status='held'`).first()).n,0);
@@ -77,14 +77,23 @@ describe('T02 two confirmations cannot take one position',()=>{
 describe('T03 founders consume real inventory inside tier 1',()=>{
   let h,admin;before(async()=>{h=await freshDb();admin=await seedCompany(h.db);
     await h.db.prepare(`INSERT INTO platform_admins(user_id,granted_at,granted_by) VALUES(?,?,?)`).bind(admin.userId,NOW.toISOString(),'test').run();});after(()=>h.dispose());
-  test('a founder takes the next ascending number; paid and founder numbers mix, so a number reveals nothing',async()=>{
+  test('founders take 1-100 in ascending order, paid buyers start at 101',async()=>{
     const paid=await seedCompany(h.db);const hold=await inv.createCheckoutHold(h.db,paid.companyId,paid.userId,key(1),NOW);
-    assert.equal((await inv.convertHold(h.db,await attemptFor(h.db,hold,paid),NOW)).slotNumber,1);
+    assert.equal((await inv.convertHold(h.db,await attemptFor(h.db,hold,paid),NOW)).slotNumber,101);
     const f=await seedCompany(h.db);
     const invite=await adm.inviteFounder(h.db,admin.userId,f.companyId,NOW);
     await assert.rejects(adm.acceptFounderInvitation(h.db,invite.invitationId,paid.userId,NOW),e=>e.code==='INVITATION_NOT_FOUND');
-    const award=await adm.acceptFounderInvitation(h.db,invite.invitationId,f.userId,NOW,'terms-1');
-    assert.equal(award.slotNumber,2);
+    await assert.rejects(adm.awardFounder(h.db,admin.userId,invite.invitationId,'selected','case-1',NOW),e=>e.code==='INVITATION_NOT_ACCEPTED');
+    const accepted=await adm.acceptFounderInvitation(h.db,invite.invitationId,f.userId,NOW,'terms-1');
+    assert.equal(accepted.status,'accepted');
+    assert.equal((await pub.getPublicStats(h.db)).occupied,1,'acceptance alone consumes nothing');
+    assert.equal(await h.db.prepare(`SELECT 1 FROM onboarding_cases WHERE company_id=?`).bind(f.companyId).first(),null);
+    await assert.rejects(adm.awardFounder(h.db,admin.userId,invite.invitationId,'selected','',NOW),e=>e.code==='REVIEW_EVIDENCE_REQUIRED');
+    const award=await adm.awardFounder(h.db,admin.userId,invite.invitationId,'selected','case-1',NOW);
+    assert.equal(award.slotNumber,1);
+    assert.ok(await h.db.prepare(`SELECT 1 FROM onboarding_cases WHERE company_id=? AND origin='founder'`).bind(f.companyId).first(),'clock starts at the award');
+    assert.ok(await h.db.prepare(`SELECT 1 FROM admin_events WHERE action='founder_awarded'`).first());
+    await assert.rejects(adm.awardFounder(h.db,admin.userId,invite.invitationId,'selected','case-1',NOW),e=>e.code==='FOUNDER_ASSIGNMENT_CONFLICT');
     const stats=await pub.getPublicStats(h.db);assert.equal(stats.occupied,2);assert.equal(stats.available,1498);
     assert.equal(JSON.stringify(stats).includes('founder'),false,'public stats never mention founders');
     await assert.rejects(adm.acceptFounderInvitation(h.db,invite.invitationId,f.userId,NOW),e=>e.code==='INVITATION_EXPIRED');
@@ -98,8 +107,10 @@ describe('T03 founders consume real inventory inside tier 1',()=>{
   });
   test('Decision 34: a revoked founder place returns to inventory before publication',async()=>{
     const f=await seedCompany(h.db);const invite=await adm.inviteFounder(h.db,admin.userId,f.companyId,NOW);
-    const award=await adm.acceptFounderInvitation(h.db,invite.invitationId,f.userId,NOW);
+    await adm.acceptFounderInvitation(h.db,invite.invitationId,f.userId,NOW);
+    const award=await adm.awardFounder(h.db,admin.userId,invite.invitationId,'selected','case-1',NOW);
     const r=await adm.revokeFounderAward(h.db,admin.userId,f.companyId,'inactive','case-1',NOW);
+    await assert.rejects(adm.awardFounder(h.db,admin.userId,invite.invitationId,'selected','case-1',NOW),e=>e.code==='INVITATION_NOT_ACCEPTED');
     assert.equal(r.positionReleased,award.slotNumber);
     const slot=await h.db.prepare(`SELECT status,company_id FROM slots WHERE number=?`).bind(award.slotNumber).first();
     assert.equal(slot.status,'available');assert.equal(slot.company_id,null);
@@ -109,26 +120,31 @@ describe('T03 caps: 100 founders and 500 paid in tier 1',()=>{
   let h,admin;before(async()=>{h=await freshDb();admin=await seedCompany(h.db);
     await h.db.prepare(`INSERT INTO platform_admins(user_id,granted_at,granted_by) VALUES(?,?,?)`).bind(admin.userId,NOW.toISOString(),'test').run();});after(()=>h.dispose());
   test('after 500 paid, checkout stops though 100 places remain, and tier 2 does not open',async()=>{
-    await fillPaid(h.db,1,500);
+    await fillPaid(h.db,101,600);
     const s=await seedCompany(h.db);
     await assert.rejects(inv.createCheckoutHold(h.db,s.companyId,s.userId,key(1),NOW),e=>e.code==='PAID_CAPACITY_PENDING_FOUNDERS');
     const stats=await pub.getPublicStats(h.db);
     assert.equal(stats.salesMode,'awaiting_founder_allocation');assert.equal(stats.currentPhase,1);assert.equal(stats.checkoutOpen,false);
     assert.equal(stats.available,1000);
-    await assert.rejects(h.db.prepare(`UPDATE slots SET status='held' WHERE number=501`).run(),/phase 1 paid capacity/);
+    await assert.rejects(h.db.prepare(`UPDATE slots SET status='held' WHERE number=50`).run(),/positions 1-100 are founder positions/);
+    await assert.rejects(h.db.prepare(`UPDATE slots SET status='assigned',assignment_kind='founder' WHERE number=601`).run(),/positions 1-100 are founder positions/);
   });
   test('founders can still take those places, and the 101st is refused',async()=>{
     // 99 awards seeded directly, then the real path for the rest.
-    for(let n=501;n<=599;n++){
+    for(let n=1;n<=99;n++){
       const f=await seedCompany(h.db);
       await h.db.batch([h.db.prepare(`UPDATE slots SET status='assigned',assignment_kind='founder',company_id=? WHERE number=?`).bind(f.companyId,n),
         h.db.prepare(`INSERT INTO founder_awards(id,slot_number,company_id,approved_by,awarded_at) VALUES(?,?,?,?,?)`).bind(`f${n}`,n,f.companyId,admin.userId,NOW.toISOString())]);
     }
     const f100=await seedCompany(h.db);const inv100=await adm.inviteFounder(h.db,admin.userId,f100.companyId,NOW);
     const f101=await seedCompany(h.db);const inv101=await adm.inviteFounder(h.db,admin.userId,f101.companyId,NOW);
-    const award=await adm.acceptFounderInvitation(h.db,inv100.invitationId,f100.userId,NOW);
-    assert.equal(award.slotNumber,600);
-    await assert.rejects(adm.acceptFounderInvitation(h.db,inv101.invitationId,f101.userId,NOW),e=>e.code==='FOUNDER_INVENTORY_EXHAUSTED');
+    await adm.acceptFounderInvitation(h.db,inv100.invitationId,f100.userId,NOW);
+    await adm.acceptFounderInvitation(h.db,inv101.invitationId,f101.userId,NOW);
+    const pendingAward=await adm.listAcceptedFounderInvitations(h.db);
+    assert.equal(pendingAward.invitations.length,2);
+    const award=await adm.awardFounder(h.db,admin.userId,inv100.invitationId,'selected','case-100',NOW);
+    assert.equal(award.slotNumber,100);
+    await assert.rejects(adm.awardFounder(h.db,admin.userId,inv101.invitationId,'selected','case-101',NOW),e=>e.code==='FOUNDER_INVENTORY_EXHAUSTED');
     assert.equal((await h.db.prepare(`SELECT COUNT(*) n FROM founder_awards WHERE status='active'`).first()).n,100);
     const stats=await pub.getPublicStats(h.db);
     assert.equal(stats.currentPhase,2);assert.equal(stats.currentPriceUsdCents,40000);assert.equal(stats.salesMode,'selling');
@@ -161,7 +177,7 @@ describe('T04 tier changes respect prices',()=>{
   });
   test('position 1351 onward: Premium has no checkout',async()=>{
     const h=await freshDb();try{
-      await fillPaid(h.db,1,1350);
+      await fillUpTo(h.db,1350);
       const s=await seedCompany(h.db);
       await assert.rejects(inv.createCheckoutHold(h.db,s.companyId,s.userId,key(1),NOW),e=>e.code==='PREMIUM_ADMISSION_REQUIRED');
       const stats=await pub.getPublicStats(h.db);
@@ -192,7 +208,7 @@ describe('T05 and T14: expiry and archive',()=>{
       const later=new Date(NOW.getTime()+20*60000+1);
       assert.deepEqual(await inv.convertHold(h.db,id,later),{outcome:'hold_not_active'});
       const other=await inv.createCheckoutHold(h.db,t.companyId,t.userId,key(2),later);
-      assert.equal((await h.db.prepare(`SELECT slot_number n FROM slot_holds WHERE id=?`).bind(other.holdId).first()).n,1);
+      assert.equal((await h.db.prepare(`SELECT slot_number n FROM slot_holds WHERE id=?`).bind(other.holdId).first()).n,101);
       assert.equal((await h.db.prepare(`SELECT COUNT(*) n FROM slots WHERE status='assigned'`).first()).n,0);
       await assert.rejects(inv.createCheckoutHold(h.db,s.companyId,s.userId,key(1),later),e=>e.code==='HOLD_EXPIRED');
     }finally{await h.dispose();}
@@ -206,7 +222,7 @@ describe('T05 and T14: expiry and archive',()=>{
   });
   test('T14 archive mode: nothing can be bought once every position is consumed; reading still works',async()=>{
     const h=await freshDb();try{
-      await fillPaid(h.db,1,1500);
+      await fillUpTo(h.db,1500);
       const s=await seedCompany(h.db);
       await assert.rejects(inv.createCheckoutHold(h.db,s.companyId,s.userId,key(1),NOW),e=>e.code==='SALES_CLOSED');
       const stats=await pub.getPublicStats(h.db);

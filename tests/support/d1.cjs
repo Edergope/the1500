@@ -28,4 +28,6 @@ async function seedCompany(db,opts={}){
 }
 const fillPaid=(db,from,to)=>db.prepare(`UPDATE slots SET status='assigned',assignment_kind='paid' WHERE number BETWEEN ? AND ?`).bind(from,to).run();
 const fillFounder=(db,from,to)=>db.prepare(`UPDATE slots SET status='assigned',assignment_kind='founder' WHERE number BETWEEN ? AND ?`).bind(from,to).run();
-module.exports={freshDb,seedCompany,fillPaid,fillFounder,ROOT};
+/** Every position up to n consumed, founders in their reserved range. */
+const fillUpTo=async(db,n)=>{await fillFounder(db,1,Math.min(n,100));if(n>100)await fillPaid(db,101,n);};
+module.exports={freshDb,seedCompany,fillPaid,fillFounder,fillUpTo,ROOT};

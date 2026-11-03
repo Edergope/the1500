@@ -95,7 +95,7 @@ async function buy(owner,companyId){
   const dup=await fetch(`${BASE}/api/v1/webhooks/stripe`,{method:'POST',headers:{'content-type':'application/json','stripe-signature':paid.ev.signature},body:paid.ev.body});
   assert.equal((await dup.json()).duplicate,true);
   const status=await api('GET',`/api/v1/me/company?companyId=${companyId}`,{cookie:owner.cookie});
-  assert.equal(status.data.position.position,1);assert.equal(status.data.onboarding.status,'active');
+  assert.equal(status.data.position.position,101);assert.equal(status.data.onboarding.status,'active');
   step('2. Paid via signed webhook, duplicate ignored, position assigned',`position=${status.data.position.position}, form due ${status.data.onboarding.formDueAt.slice(0,10)}`);
   // ---- 3-4 Form and AI profile
   assert.equal((await api('PUT','/api/v1/me/company/profile',{cookie:owner.cookie,body:{companyId,...form(),consent:undefined}})).data.error.code,'CONSENT_REQUIRED');
@@ -117,7 +117,7 @@ async function buy(owner,companyId){
   const html=await fetch(`${BASE}/empresas/${slug}`);const page=await html.text();assert.equal(html.status,200);
   assert.ok(page.includes('Ocean Line LLC'));assert.ok(page.includes('application/ld+json'));assert.ok(page.includes('Shipment visibility'));
   const ld=await fetch(`${BASE}/api/v1/public/companies/${slug}.json`);assert.match(ld.headers.get('content-type'),/application\/ld\+json/);
-  const doc=await ld.json();assert.equal(doc['@graph'][0]['@type'],'Organization');assert.equal(doc['@graph'][0].identifier.value,1);
+  const doc=await ld.json();assert.equal(doc['@graph'][0]['@type'],'Organization');assert.equal(doc['@graph'][0].identifier.value,101);
   const ldEs=await (await fetch(`${BASE}/api/v1/public/companies/${slug}.json?lang=es`)).json();assert.equal(ldEs['@graph'][1].inLanguage,'es');
   assert.ok((await fetch(`${BASE}/es/empresas/${slug}`)).status===200);
   const pubText=JSON.stringify(doc);for(const s of ['ana@oceanline',companyId,'stripe','founder'])assert.equal(pubText.includes(s),false,s);
@@ -150,8 +150,12 @@ async function buy(owner,companyId){
   const inv=await api('GET','/api/v1/me/founder-invitations',{cookie:fOwner.cookie});assert.equal(inv.data.invitations.length,1);
   assert.equal((await api('POST','/api/v1/me/founder-invitations/accept',{cookie:fOwner.cookie,body:{invitationId:invite.data.invitationId}})).data.error.code,'TERMS_REQUIRED');
   const acc=await api('POST','/api/v1/me/founder-invitations/accept',{cookie:fOwner.cookie,body:{invitationId:invite.data.invitationId,acceptTerms:true,termsVersion:'founder-2026-11'}});
-  assert.equal(acc.data.slotNumber,2);
-  step('Founder path: admin invited, owner accepted with terms, next ascending number awarded free',`position=${acc.data.slotNumber}`);
+  assert.equal(acc.data.status,'accepted');
+  assert.equal((await api('POST','/api/v1/admin/founder-award',{cookie:fOwner.cookie,body:{invitationId:invite.data.invitationId,reasonCode:'selected',evidenceReference:'x'}})).status,403);
+  assert.equal((await api('GET','/api/v1/admin/founder-award',{cookie:adminUser.cookie})).data.invitations.length,1);
+  const awd=await api('POST','/api/v1/admin/founder-award',{cookie:adminUser.cookie,body:{invitationId:invite.data.invitationId,reasonCode:'selected',evidenceReference:'selection-case-1'}});
+  assert.equal(awd.data.slotNumber,1);
+  step('Founder path: invited, accepted with terms, then awarded by an admin in 1-100',`position=${awd.data.slotNumber}`);
   const fDraft=await api('PUT','/api/v1/me/company/profile',{cookie:fOwner.cookie,body:{companyId:fReg.data.id,...form({language:'es',description:'Coordinamos transporte terrestre de carga y despacho aduanero para exportadores de la región andina.',descriptionEs:undefined,services:['Transporte terrestre'],audiences:['Exportadores'],problemSolutions:[{problem:'Demoras en aduana',solution:'Despacho aduanero coordinado'}],serviceCountries:['CO']})}});
   await api('POST','/api/v1/me/company/approve',{cookie:fOwner.cookie,body:{companyId:fReg.data.id,version:fDraft.data.version,contentDigest:fDraft.data.contentDigest,acceptPublicDisclosure:true}});
   const fp=await api('POST','/api/v1/me/company/publish',{cookie:fOwner.cookie,body:{companyId:fReg.data.id,version:fDraft.data.version}});assert.equal(fp.data.status,'published');
@@ -185,9 +189,9 @@ async function buy(owner,companyId){
   assert.equal(exec.status,200,JSON.stringify(exec.data));
   assert.equal((await fetch(`${BASE}/empresas/${slug}`)).status,404);assert.equal((await fetch(`${BASE}/api/v1/public/companies/${slug}.json`)).status,404);
   assert.equal((await api('GET','/api/v1/public/search?query=ocean+freight')).data.items.some(x=>x.slug===slug),false);
-  const ret=await api('GET','/api/v1/public/retired-positions');assert.deepEqual(ret.data.items,[{position:1,label:'Position retired — Not available',labelEs:'Cupo retirado — No disponible'}]);
+  const ret=await api('GET','/api/v1/public/retired-positions');assert.deepEqual(ret.data.items,[{position:101,label:'Position retired — Not available',labelEs:'Cupo retirado — No disponible'}]);
   const after=await api('GET','/api/v1/public/stats');assert.equal(after.data.retired,1);assert.equal(after.data.published,1);
-  step('T09 withdrawn company gone from page, JSON-LD and search; position 1 consumed and shown only as retired');
+  step('T09 withdrawn company gone from page, JSON-LD and search; position 101 consumed and shown only as retired');
   // ---- Persistence across a restart
   await stopWorker();await startWorker();
   const persisted=await api('GET',`/api/v1/public/companies/${fReg.data.slug}`);assert.equal(persisted.data.name,'Andes Cargo SAS');

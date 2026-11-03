@@ -1,5 +1,5 @@
 const {test,describe,before,after,beforeEach}=require('node:test');const assert=require('node:assert/strict');
-const {freshDb,seedCompany,fillPaid,fillFounder}=require('../support/d1.cjs');
+const {freshDb,seedCompany,fillPaid,fillFounder,fillUpTo}=require('../support/d1.cjs');
 const {createUpstreams,signedEvent,WEBHOOK_SECRET}=require('../support/upstreams.cjs');
 const core=p=>require(`../../.core-js-tests/core/${p}.js`);
 const inv=core('inventory'),pay=core('payments'),adm=core('admin'),stripe=core('stripe');
@@ -114,7 +114,7 @@ describe('T05 late payments (Decision 42)',()=>{
       assert.equal(await h.db.prepare(`SELECT 1 FROM slots WHERE company_id=?`).bind(b.companyId).first(),null);
       assert.ok(await h.db.prepare(`SELECT 1 FROM incidents WHERE kind='payment_after_hold_expiry'`).first());
       const r=await pay.resolveLatePayment(h.db,b.checkout.attemptId,later);
-      assert.equal(r.status,'paid');assert.equal(r.position,1);
+      assert.equal(r.status,'paid');assert.equal(r.position,101);
       assert.equal((await h.db.prepare(`SELECT phase,price_usd_cents p,assignment_kind k FROM slots WHERE company_id=?`).bind(b.companyId).first()).k,'paid');
       await assert.rejects(pay.resolveLatePayment(h.db,b.checkout.attemptId,later),e=>e.code==='PAYMENT_STATE_CONFLICT');
     }finally{await h.dispose();}
@@ -162,8 +162,8 @@ describe('refunds and disputes (Decisions 17, 18, 27)',()=>{
       await deliver(h,signedEvent('charge.refunded',{id:'ch_1',payment_intent:session.payment_intent,refunded:true}));
       assert.equal(await h.db.prepare(`SELECT 1 FROM slots WHERE company_id=?`).bind(b.companyId).first(),null);
       assert.equal((await h.db.prepare(`SELECT status FROM purchase_attempts WHERE id=?`).bind(b.checkout.attemptId).first()).status,'refunded');
-      assert.equal((await h.db.prepare(`SELECT status FROM slots WHERE number=1`).first()).status,'available');
-      assert.ok(await h.db.prepare(`SELECT 1 FROM slot_audit WHERE action='refund_release' AND slot_number=1`).first());
+      assert.equal((await h.db.prepare(`SELECT status FROM slots WHERE number=101`).first()).status,'available');
+      assert.ok(await h.db.prepare(`SELECT 1 FROM slot_audit WHERE action='refund_release' AND slot_number=101`).first());
     }finally{await h.dispose();}
   });
   test('a published position is never released, even by a full refund; the database itself refuses',async()=>{
@@ -221,7 +221,7 @@ describe('Premium stays human (Question 64 open)',()=>{
       await adm.updatePremiumRequest(h.db,admin.userId,r.requestId,'accepted','reviewed','case-1');
       await assert.rejects(adm.assignPremium(h.db,admin.userId,r.requestId,'funds_ok',''),e=>e.code==='REVIEW_EVIDENCE_REQUIRED');
       await assert.rejects(adm.assignPremium(h.db,admin.userId,r.requestId,'funds_ok','bank-ref'),e=>e.code==='PAYMENT_STATE_CONFLICT');
-      await fillPaid(h.db,1,1350);
+      await fillUpTo(h.db,1350);
       const done=await adm.assignPremium(h.db,admin.userId,r.requestId,'funds_ok','bank-ref');
       assert.equal(done.position,1351);
       assert.ok(await h.db.prepare(`SELECT 1 FROM admin_events WHERE action='premium_assigned'`).first());

@@ -46,6 +46,7 @@ export const ERROR_MESSAGES:Record<string,{en:string;es:string}>={
   INVALID_WEBHOOK_SIGNATURE:{en:'Webhook signature verification failed.',es:'Falló la verificación de la firma del webhook.'},
   INVALID_WEBSITE:{en:'The website address is not valid.',es:'La dirección del sitio web no es válida.'},
   INVITATION_EXPIRED:{en:'This invitation has expired or was already used.',es:'Esta invitación caducó o ya se utilizó.'},
+  INVITATION_NOT_ACCEPTED:{en:'This invitation has not been accepted, or was already awarded.',es:'Esta invitación no ha sido aceptada o ya fue adjudicada.'},
   INVITATION_NOT_FOUND:{en:'Invitation not found.',es:'Invitación no encontrada.'},
   LIVE_PAYMENTS_NOT_AUTHORIZED:{en:'Live payments are not authorized.',es:'Los pagos reales no están autorizados.'},
   MAIL_DELIVERY_UNAVAILABLE:{en:'Email could not be sent. Please try again later.',es:'No se pudo enviar el correo. Inténtalo más tarde.'},

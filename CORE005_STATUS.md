@@ -12,7 +12,7 @@
 | Instalación, build, tipos reales, `npm audit` = 0 | DONE | Astro 7.4 por avisos críticos de la 6 |
 | Migraciones sobre motor D1 | DONE | Local. Remoto: BLOCKED |
 | Inventario: 1.500, tramos, secuencia, 20 min, ascendente, sin sobreventa | DONE | Probado con concurrencia en D1 y por HTTP |
-| Fundadores: 100, invitación 7 días, revocación, correo en cola | DONE | Numeración pendiente de confirmar (ver abajo) |
+| Fundadores: posiciones 1–100, invitación 7 días, aceptación, adjudicación administrativa, revocación, correo en cola | DONE | Confirmado por el propietario el 2026-11-03; rango protegido por trigger |
 | Cupo publicado irrevocable, retiro, `Cupo retirado — No disponible` | DONE | Protegido también por triggers. Etiqueta en inglés pendiente de aprobación |
 | Modo archivo (`closed_archive`) | DONE | |
 | Identidad: enlace mágico, sesiones revocables, roles, aislamiento, duplicados, auditoría | DONE | Lista de dominios y sufijos compartidos es heurística, no PSL completa |
@@ -59,10 +59,11 @@
 
 Totales: 42 esquema · 73 integración en motor D1 · 27 pasos E2E en workerd.
 
+Confirmado por el propietario el 2026-11-03: fundadores en 1–100, pagados en 101–600, numeración ascendente en cada grupo, ventas de 101–600 mientras se incorporan los fundadores, y 601–1050 solo con las 600 definitivamente adjudicadas.
+
 ## Decisiones que se necesitan del propietario
 
-1. **Numeración de fundadores.** ¿Confirma un grupo ascendente mezclado en 1–600 (implementado, Decisiones 31, 32 y 35), o rango fijo 1–100 (Decisión 05, delata a los fundadores)?
-2. **Tramo 2 bloqueado por fundadores.** Si se venden los 500 pagados y faltan invitaciones aceptadas, el tramo 2 no abre. ¿Se mantiene?
+1. **Visibilidad de la posición.** Confirmado el rango fijo 1–100 para fundadores (2026-11-03), hoy el directorio, la ficha y el JSON-LD muestran el número, así que cualquier posición ≤100 identifica a un fundador, y la Decisión 35 dice que esa condición no se revela. ¿Se acepta, o se oculta el número público de esas posiciones o de todas?
 3. **Retiro:** el titular solicita y administración ejecuta. Es lo más prudente por ser irreversible, pero no consta en una decisión.
 4. **Reactivación:** tras reactivar no se fija nuevo plazo, porque ninguna decisión lo define.
 5. **Pregunta 64** y **entidad vendedora**.

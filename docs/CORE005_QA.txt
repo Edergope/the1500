@@ -1,29 +1,17 @@
-THE1500 CORE-005 — verificación desde instalación limpia. 2026-11-03T22:19:30Z
+THE1500 CORE-005 — verificación tras confirmar fundadores 1–100 y adjudicación administrativa. 2026-11-03T22:27:24Z
 node v22.23.2 · npm 10.9.8 · Python 3.9.6
-
-$ npm ci
-  run `npm fund` for details
-
-found 0 vulnerabilities
-
-+-- @anthropic-ai/sdk@1.4.0
-+-- @astrojs/cloudflare@14.4.4
-+-- @astrojs/react@7.1.0
-+-- @cloudflare/workers-types@5.20261103.1
-+-- astro@7.4.1
-+-- react@19.3.1
-+-- typescript@5.9.3
-`-- wrangler@4.157.0
 
 $ npm audit
 found 0 vulnerabilities
 
 $ npm run test:db
-Ran 42 tests in 0.366s
+Ran 42 tests in 0.382s
 
 OK
 
 $ npm run test:types:isolated
+> the1500@0.5.0 test:types:isolated
+> tsc -p tsconfig.core-check.json
 
 
 $ npm run test:core:runtime
@@ -54,7 +42,7 @@ ok 20 - T13 internationalization
 # cancelled 0
 
 $ npm run build
-17:19:59 [build] Complete!
+17:27:48 [build] Complete!
 
 $ node tests/e2e/journey.cjs   (ver docs/CORE005_E2E_EVIDENCE.txt)
 27 pasos de aceptación PASS

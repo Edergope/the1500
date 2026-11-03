@@ -20,22 +20,14 @@ BEGIN SELECT RAISE(ABORT,'published position cannot be released'); END;
 CREATE TRIGGER IF NOT EXISTS trg_slot_no_delete BEFORE DELETE ON slots
 BEGIN SELECT RAISE(ABORT,'slots cannot be deleted'); END;
 
--- Decisions 05/31/32/37: tier 1 holds 100 founders and 500 paid places, in one ascending pool.
--- Paid holds count against the 500 so that founder places can never be consumed by checkout.
-CREATE TRIGGER IF NOT EXISTS trg_phase1_paid_cap BEFORE UPDATE OF status ON slots
-WHEN NEW.phase=1 AND OLD.status='available' AND NEW.status='held' AND (
-  SELECT COUNT(*) FROM slots WHERE phase=1 AND (status='held'
-    OR (status IN ('assigned','retired') AND assignment_kind='paid'))) >= 500
-BEGIN SELECT RAISE(ABORT,'phase 1 paid capacity exhausted'); END;
+-- Owner decision 2026-11-03 (Decision 05): founders hold exactly 1-100, paid tier 1 buyers 101-600.
+CREATE TRIGGER IF NOT EXISTS trg_founder_range_reserved BEFORE UPDATE ON slots
+WHEN (NEW.number<=100 AND (NEW.status='held' OR NEW.assignment_kind IN ('paid','premium')))
+  OR (NEW.number>100 AND NEW.assignment_kind='founder')
+BEGIN SELECT RAISE(ABORT,'positions 1-100 are founder positions, and only those'); END;
 CREATE TRIGGER IF NOT EXISTS trg_phase4_no_checkout BEFORE UPDATE OF status ON slots
 WHEN NEW.phase=4 AND NEW.status='held'
 BEGIN SELECT RAISE(ABORT,'premium positions have no checkout'); END;
-
-DROP TRIGGER IF EXISTS trg_founder_award_requires_slot;
-CREATE TRIGGER IF NOT EXISTS trg_founder_award_requires_slot BEFORE INSERT ON founder_awards
-WHEN NOT EXISTS(SELECT 1 FROM slots s WHERE s.number=NEW.slot_number AND s.phase=1
-  AND s.company_id=NEW.company_id AND s.status='assigned' AND s.assignment_kind='founder')
-BEGIN SELECT RAISE(ABORT,'founder award requires assigned founder slot in phase 1'); END;
 
 DROP TRIGGER IF EXISTS trg_slot_audit_no_update;
 DROP TRIGGER IF EXISTS trg_slot_audit_no_delete;
