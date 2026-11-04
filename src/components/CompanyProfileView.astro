@@ -11,6 +11,7 @@ interface Props {
 
 const { lang, dto, translated = true, rawJsonLd = '{}' } = Astro.props;
 const es = lang === 'es';
+const isDemo = dto ? dto.name.toLowerCase().startsWith('demo ') : false;
 
 let prettyJsonLd = rawJsonLd;
 try {
@@ -53,6 +54,11 @@ try {
               <span class="badge badge-gold mono" style="font-size:0.86rem;padding:0.3rem 0.75rem">
                 {es ? 'Posición' : 'Position'} {formatPosition(dto.position)} / 1500
               </span>
+              {isDemo && (
+                <span class="badge badge-amber mono" title={es ? 'Empresa de demostración' : 'Demonstration company'}>
+                  DEMO
+                </span>
+              )}
               {dto.industry && <span class="badge badge-slate">{dto.industry}</span>}
               <span class="badge badge-blue mono">{dto.country}</span>
               {dto.foundedYear && (

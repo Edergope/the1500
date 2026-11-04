@@ -311,99 +311,70 @@ const invState = computeInventoryVisualState(stats);
         </div>
       </div>
 
-      <!-- Right Side: 4 Phase Cards (Component #9) -->
+      <!-- Right Side: 4 Phase Cards driven by backend stats.phases -->
       <div class="pricing-phases-grid">
-        <!-- Phase 1 -->
-        <div class={`pricing-phase-card ${currentPhaseNum === 1 ? 'active-phase' : ''}`}>
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-              <span class="mono" style="font-weight:700;font-size:0.95rem">
-                {es ? 'Fase 1' : 'Phase 1'}
-              </span>
-              <span class={`badge ${currentPhaseNum === 1 ? 'badge-gold' : 'badge-slate'}`}>
-                {currentPhaseNum === 1 ? (es ? 'Fase actual' : 'Current phase') : es ? 'Fase 1' : 'Phase 1'}
-              </span>
-            </div>
-            <div class="mono muted" style="font-size:0.82rem;margin-bottom:0.65rem">
-              {es ? 'Posiciones 1–600' : 'Positions 1–600'}
-            </div>
-            <div class="mono" style="font-size:2rem;font-weight:800;color:var(--gold-primary);margin-bottom:0.5rem">
-              $100 <span style="font-size:0.85rem;font-weight:500;color:var(--text-secondary)">USD</span>
-            </div>
-          </div>
-          <div class="muted" style="font-size:0.8rem;padding-top:0.65rem;border-top:1px solid var(--border-subtle)">
-            {es ? '100 posiciones de fundador dentro de esta fase' : '100 founder positions inside this phase'}
-          </div>
-        </div>
+        {(stats?.phases || []).map((phase) => {
+          const isCurrent = phase.status === 'current';
+          const isSoldOut = phase.status === 'sold_out';
+          const isPremium = phase.phase === 4;
+          const badgeLabel = isPremium
+            ? es
+              ? 'Solicitud requerida'
+              : 'Application required'
+            : isCurrent
+              ? es
+                ? 'Fase actual'
+                : 'Current phase'
+              : isSoldOut
+                ? es
+                  ? 'Agotada'
+                  : 'Sold out'
+                : es
+                  ? 'Próxima'
+                  : 'Upcoming';
+          const badgeClass = isPremium || isCurrent ? 'badge-gold' : 'badge-slate';
+          const footerNote =
+            phase.phase === 1
+              ? es
+                ? `100 invitaciones del programa dentro de esta fase · ${phase.remaining} disponibles`
+                : `100 program invitations inside this phase · ${phase.remaining} remaining`
+              : isPremium
+                ? es
+                  ? `Últimas 150 posiciones · Admisión humana (${phase.remaining} disponibles)`
+                  : `Final 150 positions · Human admission (${phase.remaining} remaining)`
+                : es
+                  ? `${phase.remaining} posiciones disponibles en esta fase`
+                  : `${phase.remaining} positions remaining in this phase`;
 
-        <!-- Phase 2 -->
-        <div class={`pricing-phase-card ${currentPhaseNum === 2 ? 'active-phase' : ''}`}>
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-              <span class="mono" style="font-weight:700;font-size:0.95rem">
-                {es ? 'Fase 2' : 'Phase 2'}
-              </span>
-              <span class="badge badge-slate">
-                {currentPhaseNum === 2 ? (es ? 'Fase actual' : 'Current phase') : es ? 'Próxima' : 'Upcoming'}
-              </span>
+          return (
+            <div class={`pricing-phase-card ${isCurrent ? 'active-phase' : ''}`}>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                  <span class="mono" style="font-weight:700;font-size:0.95rem">
+                    {es ? `Fase ${phase.phase}` : `Phase ${phase.phase}`}
+                  </span>
+                  <span class={`badge ${badgeClass}`}>{badgeLabel}</span>
+                </div>
+                <div class="mono muted" style="font-size:0.82rem;margin-bottom:0.65rem">
+                  {es
+                    ? `Posiciones ${phase.firstPosition}–${phase.lastPosition}`
+                    : `Positions ${phase.firstPosition}–${phase.lastPosition}`}
+                </div>
+                <div
+                  class="mono"
+                  style={`font-size:1.85rem;font-weight:800;color:${
+                    isCurrent ? 'var(--gold-primary)' : 'var(--text-primary)'
+                  };margin-bottom:0.5rem`}
+                >
+                  {formatUsdCents(phase.priceUsdCents, lang)}
+                </div>
+              </div>
+              <div class="muted" style="font-size:0.8rem;padding-top:0.65rem;border-top:1px solid var(--border-subtle)">
+                {footerNote}
+              </div>
             </div>
-            <div class="mono muted" style="font-size:0.82rem;margin-bottom:0.65rem">
-              {es ? 'Posiciones 601–1050' : 'Positions 601–1050'}
-            </div>
-            <div class="mono" style="font-size:2rem;font-weight:800;color:var(--text-primary);margin-bottom:0.5rem">
-              $400 <span style="font-size:0.85rem;font-weight:500;color:var(--text-secondary)">USD</span>
-            </div>
-          </div>
-          <div class="muted" style="font-size:0.8rem;padding-top:0.65rem;border-top:1px solid var(--border-subtle)">
-            {es ? '450 posiciones estructuradas' : '450 structured positions'}
-          </div>
-        </div>
-
-        <!-- Phase 3 -->
-        <div class={`pricing-phase-card ${currentPhaseNum === 3 ? 'active-phase' : ''}`}>
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-              <span class="mono" style="font-weight:700;font-size:0.95rem">
-                {es ? 'Fase 3' : 'Phase 3'}
-              </span>
-              <span class="badge badge-slate">
-                {currentPhaseNum === 3 ? (es ? 'Fase actual' : 'Current phase') : es ? 'Próxima' : 'Upcoming'}
-              </span>
-            </div>
-            <div class="mono muted" style="font-size:0.82rem;margin-bottom:0.65rem">
-              {es ? 'Posiciones 1051–1350' : 'Positions 1051–1350'}
-            </div>
-            <div class="mono" style="font-size:2rem;font-weight:800;color:var(--text-primary);margin-bottom:0.5rem">
-              $1,000 <span style="font-size:0.85rem;font-weight:500;color:var(--text-secondary)">USD</span>
-            </div>
-          </div>
-          <div class="muted" style="font-size:0.8rem;padding-top:0.65rem;border-top:1px solid var(--border-subtle)">
-            {es ? '300 posiciones estructuradas' : '300 structured positions'}
-          </div>
-        </div>
-
-        <!-- Phase 4 -->
-        <div class={`pricing-phase-card ${currentPhaseNum === 4 ? 'active-phase' : ''}`}>
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-              <span class="mono" style="font-weight:700;font-size:0.95rem">
-                {es ? 'Fase 4' : 'Phase 4'}
-              </span>
-              <span class="badge badge-gold">
-                {es ? 'Solicitud requerida' : 'Application required'}
-              </span>
-            </div>
-            <div class="mono muted" style="font-size:0.82rem;margin-bottom:0.65rem">
-              {es ? 'Posiciones 1351–1500' : 'Positions 1351–1500'}
-            </div>
-            <div class="mono" style="font-size:2rem;font-weight:800;color:var(--text-primary);margin-bottom:0.5rem">
-              $5,066 <span style="font-size:0.85rem;font-weight:500;color:var(--text-secondary)">USD</span>
-            </div>
-          </div>
-          <div class="muted" style="font-size:0.8rem;padding-top:0.65rem;border-top:1px solid var(--border-subtle)">
-            {es ? 'Últimas 150 posiciones · Admisión humana' : 'Final 150 positions · Human admission'}
-          </div>
-        </div>
+          );
+        })}
       </div>
     </div>
   </section>
@@ -502,8 +473,8 @@ const invState = computeInventoryVisualState(stats);
           </h4>
           <p class="muted" style="margin:0;font-size:0.86rem">
             {es
-              ? 'El número de posición se adjudica únicamente tras confirmarse el pago (o la adjudicación formal de fundador). Una reserva temporal de 20 minutos bloquea capacidad pero no asigna número.'
-              : 'Your position number is allocated strictly upon payment confirmation (or formal founder award). A 20-minute reservation holds capacity without exposing a number.'}
+              ? 'El número de posición se adjudica únicamente tras confirmarse la asignación definitiva. Una reserva temporal de 20 minutos bloquea capacidad pero no asigna número.'
+              : 'Your position number is allocated strictly upon confirmed assignment. A 20-minute reservation holds capacity without exposing a number.'}
           </p>
         </div>
         <div class="stat-tile">

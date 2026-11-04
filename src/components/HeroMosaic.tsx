@@ -20,7 +20,7 @@ interface MosaicTile {
   name: string;
   country: string;
   vertical: string;
-  status: 'Published' | 'Reserved' | 'Available' | 'Founder' | 'Premium' | 'Retired';
+  status: 'Published' | 'Reserved' | 'Available' | 'Premium' | 'Retired';
   slug?: string;
   isDemo?: boolean;
   summary?: string | null;
@@ -100,55 +100,65 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
       });
     }
 
-    // 3. Representative slot tiles across the 1,500 registry
+    // 3. Representative slot tiles across the 1,500 registry derived from backend phases
+    const p1 = stats?.phases?.find((p) => p.phase === 1);
+    const p2 = stats?.phases?.find((p) => p.phase === 2);
+    const p3 = stats?.phases?.find((p) => p.phase === 3);
+    const p4 = stats?.phases?.find((p) => p.phase === 4);
+
+    const p1Price = p1 ? formatUsdCents(p1.priceUsdCents, lang) : '—';
+    const p2Price = p2 ? formatUsdCents(p2.priceUsdCents, lang) : '—';
+    const p3Price = p3 ? formatUsdCents(p3.priceUsdCents, lang) : '—';
+    const p4Price = p4 ? formatUsdCents(p4.priceUsdCents, lang) : '—';
+
     const sampleSlots: MosaicTile[] = [
-      {
-        position: 12,
-        name: es ? 'Invitación Fundador' : 'Founder Slot',
-        country: 'GLOBAL',
-        vertical: es ? 'Tramo 1 · Invitación' : 'Phase 1 · Invitation',
-        status: 'Founder',
-      },
       {
         position: 108,
         name: stats?.held && stats.held > 0 ? (es ? 'Reserva activa (20m)' : 'Active Hold (20m)') : es ? 'Posición disponible' : 'Available Position',
         country: '—',
-        vertical: es ? 'Tramo 1 ($100)' : 'Phase 1 ($100)',
+        vertical: es ? `Tramo 1 (${p1Price})` : `Phase 1 (${p1Price})`,
         status: stats?.held && stats.held > 0 ? 'Reserved' : 'Available',
       },
       {
         position: 240,
         name: es ? 'Posición disponible' : 'Available Position',
         country: '—',
-        vertical: es ? 'Tramo 1 ($100)' : 'Phase 1 ($100)',
+        vertical: es ? `Tramo 1 (${p1Price})` : `Phase 1 (${p1Price})`,
+        status: 'Available',
+      },
+      {
+        position: 420,
+        name: es ? 'Posición disponible' : 'Available Position',
+        country: '—',
+        vertical: es ? `Tramo 1 (${p1Price})` : `Phase 1 (${p1Price})`,
         status: 'Available',
       },
       {
         position: 601,
         name: es ? 'Posición Tramo 2' : 'Phase 2 Position',
         country: '—',
-        vertical: es ? 'Tramo 2 ($400)' : 'Phase 2 ($400)',
+        vertical: es ? `Tramo 2 (${p2Price})` : `Phase 2 (${p2Price})`,
         status: 'Available',
       },
       {
         position: 1051,
         name: es ? 'Posición Tramo 3' : 'Phase 3 Position',
         country: '—',
-        vertical: es ? 'Tramo 3 ($1,000)' : 'Phase 3 ($1,000)',
+        vertical: es ? `Tramo 3 (${p3Price})` : `Phase 3 (${p3Price})`,
         status: 'Available',
       },
       {
         position: 1351,
         name: es ? 'Admisión Premium' : 'Premium Admission',
         country: 'GLOBAL',
-        vertical: es ? 'Tramo 4 ($5,066)' : 'Phase 4 ($5,066)',
+        vertical: es ? `Tramo 4 (${p4Price})` : `Phase 4 (${p4Price})`,
         status: 'Premium',
       },
       {
         position: 1500,
         name: es ? 'Posición Final #1500' : 'Final Position #1500',
         country: 'GLOBAL',
-        vertical: es ? 'Tramo 4 ($5,066)' : 'Phase 4 ($5,066)',
+        vertical: es ? `Tramo 4 (${p4Price})` : `Phase 4 (${p4Price})`,
         status: 'Premium',
       },
     ];
@@ -160,7 +170,7 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
     }
 
     return list.slice(0, 12);
-  }, [businesses, retiredItems, stats, es]);
+  }, [businesses, retiredItems, stats, es, lang]);
 
   function statusBadgeStyle(status: MosaicTile['status']) {
     switch (status) {
@@ -168,8 +178,6 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
         return { bg: 'rgba(52, 211, 153, 0.14)', border: 'rgba(52, 211, 153, 0.38)', color: '#34d399', label: es ? 'Publicado' : 'Published' };
       case 'Reserved':
         return { bg: 'rgba(251, 191, 36, 0.14)', border: 'rgba(251, 191, 36, 0.38)', color: '#fbbf24', label: es ? 'Reservado' : 'Reserved' };
-      case 'Founder':
-        return { bg: 'rgba(238, 198, 121, 0.14)', border: 'rgba(238, 198, 121, 0.38)', color: '#eec679', label: es ? 'Fundador' : 'Founder' };
       case 'Premium':
         return { bg: 'rgba(192, 132, 252, 0.14)', border: 'rgba(192, 132, 252, 0.38)', color: '#c084fc', label: 'Premium' };
       case 'Retired':
@@ -307,7 +315,26 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
                   tabIndex={0}
                 >
                   <div className="slot-tile-top">
-                    <span className="mono slot-tile-number">{formatPosition(tile.position)}</span>
+                    <span className="mono slot-tile-number">
+                      {formatPosition(tile.position)}
+                      {tile.isDemo && (
+                        <span
+                          className="mono"
+                          style={{
+                            marginLeft: '0.35rem',
+                            fontSize: '0.58rem',
+                            padding: '0.06rem 0.3rem',
+                            borderRadius: '3px',
+                            background: 'rgba(251, 191, 36, 0.14)',
+                            border: '1px solid rgba(251, 191, 36, 0.34)',
+                            color: '#fbbf24',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          DEMO
+                        </span>
+                      )}
+                    </span>
                     <span
                       className="slot-tile-badge"
                       style={{

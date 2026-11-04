@@ -9,6 +9,7 @@ interface Props {
 
 const { company, lang = 'en' } = Astro.props;
 const es = lang === 'es';
+const isDemo = company.name.toLowerCase().startsWith('demo ');
 const profileHref = `${es ? '/es' : ''}/empresas/${company.slug}`;
 const jsonLdHref = `/api/v1/public/companies/${company.slug}.json${es ? '?lang=es' : ''}`;
 ---
@@ -21,7 +22,12 @@ const jsonLdHref = `/api/v1/public/companies/${company.slug}.json${es ? '?lang=e
       <span class="badge badge-gold mono" title={es ? 'Posición asignada en THE1500' : 'Allocated position in THE1500'}>
         {formatPosition(company.position)}
       </span>
-      <div style="display:flex;align-items:center;gap:0.4rem">
+      <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">
+        {isDemo && (
+          <span class="badge badge-amber mono" title={es ? 'Empresa de demostración' : 'Demonstration company'}>
+            DEMO
+          </span>
+        )}
         {company.industry && <span class="badge badge-slate">{company.industry}</span>}
         <span class="badge badge-blue mono">{company.country}</span>
       </div>

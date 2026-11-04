@@ -364,7 +364,10 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                         <span className="badge badge-gold mono">{formatPosition(item.position)}</span>
-                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {item.name.toLowerCase().startsWith('demo ') && (
+                            <span className="badge badge-amber mono">DEMO</span>
+                          )}
                           {item.industry && <span className="badge badge-slate">{item.industry}</span>}
                           <span className="badge badge-blue mono">{item.country}</span>
                           <span className="badge badge-emerald mono">
