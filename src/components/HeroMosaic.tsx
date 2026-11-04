@@ -16,13 +16,16 @@ interface Props {
 }
 
 interface MosaicTile {
-  position: number;
+  id: string;
+  headerCode: string;
   name: string;
   country: string;
   vertical: string;
-  status: 'Published' | 'Reserved' | 'Available' | 'Premium' | 'Retired';
+  status: 'Published' | 'Retired' | 'OpenPhase' | 'FuturePhase' | 'SoldOutPhase' | 'PremiumApplication' | 'Illustrative';
   slug?: string;
   isDemo?: boolean;
+  isIllustrative?: boolean;
+  canCheckout?: boolean;
   summary?: string | null;
 }
 
@@ -71,14 +74,15 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
     return () => clearInterval(timer);
   }, [isPaused, reducedMotion, messages.length]);
 
-  // Build authentic mosaic tiles from real published companies + real inventory phases
+  // Build authentic mosaic tiles from real published/retired positions + aggregate phase blocks
   const tiles: MosaicTile[] = React.useMemo(() => {
     const list: MosaicTile[] = [];
 
-    // 1. Real published companies from DB
+    // 1. Real published companies from backend DB
     for (const b of businesses.slice(0, 7)) {
       list.push({
-        position: b.position,
+        id: `pos-${b.position}`,
+        headerCode: formatPosition(b.position),
         name: b.name,
         country: b.country,
         vertical: b.industry || (es ? 'Servicios B2B' : 'B2B Services'),
@@ -89,84 +93,149 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
       });
     }
 
-    // 2. Real retired positions from DB (Decision 29: only number & exact label)
-    for (const r of retiredItems.slice(0, 1)) {
-      list.push({
-        position: r.position,
-        name: es ? r.labelEs : r.label,
-        country: '—',
-        vertical: es ? 'Consumido' : 'Consumed',
-        status: 'Retired',
-      });
+    // 2. Real retired positions from backend DB (Decision 29: only number & exact label)
+    for (const r of retiredItems.slice(0, 2)) {
+      if (list.length < 8) {
+        list.push({
+          id: `ret-${r.position}`,
+          headerCode: formatPosition(r.position),
+          name: es ? r.labelEs : r.label,
+          country: '—',
+          vertical: es ? 'Consumido' : 'Consumed',
+          status: 'Retired',
+          summary: es
+            ? 'Posición retirada permanentemente del directorio. Nunca vuelve a la venta.'
+            : 'Position permanently withdrawn from the directory. Never returns to sale.',
+        });
+      }
     }
 
-    // 3. Representative slot tiles across the 1,500 registry derived from backend phases
-    const p1 = stats?.phases?.find((p) => p.phase === 1);
-    const p2 = stats?.phases?.find((p) => p.phase === 2);
-    const p3 = stats?.phases?.find((p) => p.phase === 3);
-    const p4 = stats?.phases?.find((p) => p.phase === 4);
+    // 3. Aggregate phase blocks from backend stats.phases (never atribuing status to an unverified individual slot number)
+    if (stats?.phases && stats.phases.length > 0) {
+      for (const phase of stats.phases) {
+        if (list.length >= 12) break;
+        const rangeLabel = `${phase.firstPosition}–${phase.lastPosition}`;
+        const priceLabel = formatUsdCents(phase.priceUsdCents, lang);
+        const isPremiumPhase = phase.phase === 4;
+        const isCurrent = phase.status === 'current';
+        const isSoldOut = phase.status === 'sold_out';
 
-    const p1Price = p1 ? formatUsdCents(p1.priceUsdCents, lang) : '—';
-    const p2Price = p2 ? formatUsdCents(p2.priceUsdCents, lang) : '—';
-    const p3Price = p3 ? formatUsdCents(p3.priceUsdCents, lang) : '—';
-    const p4Price = p4 ? formatUsdCents(p4.priceUsdCents, lang) : '—';
+        let tileStatus: MosaicTile['status'] = 'FuturePhase';
+        if (isPremiumPhase) {
+          tileStatus = 'PremiumApplication';
+        } else if (isCurrent && stats.checkoutOpen) {
+          tileStatus = 'OpenPhase';
+        } else if (isSoldOut) {
+          tileStatus = 'SoldOutPhase';
+        } else {
+          tileStatus = 'FuturePhase';
+        }
 
-    const sampleSlots: MosaicTile[] = [
+        const verticalText = isPremiumPhase
+          ? isCurrent
+            ? es
+              ? 'Abierta · Evaluación humana (sin checkout)'
+              : 'Open · Human review (no auto-checkout)'
+            : es
+              ? 'Fase futura · Sin checkout automático'
+              : 'Future phase · No auto-checkout'
+          : isCurrent
+            ? es
+              ? `${phase.remaining} disponibles en tramo activo`
+              : `${phase.remaining} remaining in open phase`
+            : isSoldOut
+              ? es
+                ? 'Fase completada (0 disponibles)'
+                : 'Phase completed (0 remaining)'
+              : es
+                ? `Abre al completar Fase ${phase.phase - 1}`
+                : `Opens after Phase ${phase.phase - 1} fills`;
+
+        const summaryText = isPremiumPhase
+          ? es
+            ? `Fase 4 (${rangeLabel}) · ${priceLabel}. Admisión mediante solicitud y evaluación humana; no existe adjudicación ni checkout automático.`
+            : `Phase 4 (${rangeLabel}) · ${priceLabel}. Admission via application and human evaluation; never allocated via automatic checkout.`
+          : isCurrent
+            ? es
+              ? `Fase ${phase.phase} (${rangeLabel}) abierta actualmente a ${priceLabel} (${phase.remaining} posiciones disponibles en este tramo).`
+              : `Phase ${phase.phase} (${rangeLabel}) currently open at ${priceLabel} (${phase.remaining} positions remaining in this phase).`
+            : isSoldOut
+              ? es
+                ? `Fase ${phase.phase} (${rangeLabel}) completada.`
+                : `Phase ${phase.phase} (${rangeLabel}) is sold out.`
+              : es
+                ? `Fase futura ${phase.phase} (${rangeLabel}) a ${priceLabel}. Aún cerrada; se habilitará cuando se adjudique por completo la fase anterior.`
+                : `Future Phase ${phase.phase} (${rangeLabel}) at ${priceLabel}. Not open yet; unlocks only once the previous phase is fully allocated.`;
+
+        list.push({
+          id: `phase-${phase.phase}`,
+          headerCode: rangeLabel,
+          name: es ? `Fase ${phase.phase} · ${priceLabel}` : `Phase ${phase.phase} · ${priceLabel}`,
+          country: '—',
+          vertical: verticalText,
+          status: tileStatus,
+          isIllustrative: true,
+          canCheckout: Boolean(!isPremiumPhase && isCurrent && stats.checkoutOpen),
+          summary: summaryText,
+        });
+      }
+    }
+
+    // 4. If fewer than 12 items exist (e.g., empty DB before demo seed), complete grid with explicit illustrative architecture cards
+    const illustrativeCards: MosaicTile[] = [
       {
-        position: 108,
-        name: stats?.held && stats.held > 0 ? (es ? 'Reserva activa (20m)' : 'Active Hold (20m)') : es ? 'Posición disponible' : 'Available Position',
+        id: 'illust-jsonld',
+        headerCode: 'JSON-LD',
+        name: es ? 'Esquema @graph exportable' : 'Exportable @graph Schema',
         country: '—',
-        vertical: es ? `Tramo 1 (${p1Price})` : `Phase 1 (${p1Price})`,
-        status: stats?.held && stats.held > 0 ? 'Reserved' : 'Available',
+        vertical: es ? 'Elemento ilustrativo de arquitectura' : 'Illustrative architecture block',
+        status: 'Illustrative',
+        isIllustrative: true,
+        summary: es
+          ? 'Bloque ilustrativo: cada empresa publicada recibe un documento Schema.org JSON-LD verificable.'
+          : 'Illustrative block: every published company receives a verifiable Schema.org JSON-LD document.',
       },
       {
-        position: 240,
-        name: es ? 'Posición disponible' : 'Available Position',
+        id: 'illust-fts5',
+        headerCode: 'FTS5',
+        name: es ? 'Índice léxico verificable' : 'Verifiable Lexical Index',
         country: '—',
-        vertical: es ? `Tramo 1 (${p1Price})` : `Phase 1 (${p1Price})`,
-        status: 'Available',
+        vertical: es ? 'Elemento ilustrativo de arquitectura' : 'Illustrative architecture block',
+        status: 'Illustrative',
+        isIllustrative: true,
+        summary: es
+          ? 'Bloque ilustrativo: búsqueda léxica FTS5 y asistente con citas sobre perfiles aprobados.'
+          : 'Illustrative block: FTS5 lexical search and cited assistant over owner-approved profiles.',
       },
       {
-        position: 420,
-        name: es ? 'Posición disponible' : 'Available Position',
+        id: 'illust-approval',
+        headerCode: 'SHA-256',
+        name: es ? 'Aprobación explícita del titular' : 'Explicit Owner Approval',
         country: '—',
-        vertical: es ? `Tramo 1 (${p1Price})` : `Phase 1 (${p1Price})`,
-        status: 'Available',
+        vertical: es ? 'Elemento ilustrativo de arquitectura' : 'Illustrative architecture block',
+        status: 'Illustrative',
+        isIllustrative: true,
+        summary: es
+          ? 'Bloque ilustrativo: ningún perfil se publica sin aprobación expresa del contentDigest.'
+          : 'Illustrative block: no profile is ever published without explicit contentDigest approval.',
       },
       {
-        position: 601,
-        name: es ? 'Posición Tramo 2' : 'Phase 2 Position',
+        id: 'illust-cap',
+        headerCode: '1–1500',
+        name: es ? 'Capacidad finita de 1.500 cupos' : 'Finite 1,500-Position Cap',
         country: '—',
-        vertical: es ? `Tramo 2 (${p2Price})` : `Phase 2 (${p2Price})`,
-        status: 'Available',
-      },
-      {
-        position: 1051,
-        name: es ? 'Posición Tramo 3' : 'Phase 3 Position',
-        country: '—',
-        vertical: es ? `Tramo 3 (${p3Price})` : `Phase 3 (${p3Price})`,
-        status: 'Available',
-      },
-      {
-        position: 1351,
-        name: es ? 'Admisión Premium' : 'Premium Admission',
-        country: 'GLOBAL',
-        vertical: es ? `Tramo 4 (${p4Price})` : `Phase 4 (${p4Price})`,
-        status: 'Premium',
-      },
-      {
-        position: 1500,
-        name: es ? 'Posición Final #1500' : 'Final Position #1500',
-        country: 'GLOBAL',
-        vertical: es ? `Tramo 4 (${p4Price})` : `Phase 4 (${p4Price})`,
-        status: 'Premium',
+        vertical: es ? 'Elemento ilustrativo de arquitectura' : 'Illustrative architecture block',
+        status: 'Illustrative',
+        isIllustrative: true,
+        summary: es
+          ? 'Bloque ilustrativo: capacidad total fija de 1.500 posiciones numeradas.'
+          : 'Illustrative block: fixed total capacity of 1,500 numbered positions.',
       },
     ];
 
-    for (const s of sampleSlots) {
-      if (list.length < 12 && !list.some((x) => x.position === s.position)) {
-        list.push(s);
-      }
+    for (const card of illustrativeCards) {
+      if (list.length >= 12) break;
+      list.push(card);
     }
 
     return list.slice(0, 12);
@@ -176,14 +245,18 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
     switch (status) {
       case 'Published':
         return { bg: 'rgba(52, 211, 153, 0.14)', border: 'rgba(52, 211, 153, 0.38)', color: '#34d399', label: es ? 'Publicado' : 'Published' };
-      case 'Reserved':
-        return { bg: 'rgba(251, 191, 36, 0.14)', border: 'rgba(251, 191, 36, 0.38)', color: '#fbbf24', label: es ? 'Reservado' : 'Reserved' };
-      case 'Premium':
-        return { bg: 'rgba(192, 132, 252, 0.14)', border: 'rgba(192, 132, 252, 0.38)', color: '#c084fc', label: 'Premium' };
       case 'Retired':
         return { bg: 'rgba(248, 113, 113, 0.12)', border: 'rgba(248, 113, 113, 0.32)', color: '#f87171', label: es ? 'Retirado' : 'Retired' };
+      case 'OpenPhase':
+        return { bg: 'rgba(238, 198, 121, 0.14)', border: 'rgba(238, 198, 121, 0.38)', color: '#eec679', label: es ? 'Fase abierta' : 'Open phase' };
+      case 'FuturePhase':
+        return { bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.28)', color: '#94a3b8', label: es ? 'Fase futura' : 'Future phase' };
+      case 'SoldOutPhase':
+        return { bg: 'rgba(148, 163, 184, 0.1)', border: 'rgba(148, 163, 184, 0.24)', color: '#64748b', label: es ? 'Agotada' : 'Sold out' };
+      case 'PremiumApplication':
+        return { bg: 'rgba(192, 132, 252, 0.14)', border: 'rgba(192, 132, 252, 0.38)', color: '#c084fc', label: es ? 'Por solicitud' : 'By application' };
       default:
-        return { bg: 'rgba(96, 165, 250, 0.1)', border: 'rgba(96, 165, 250, 0.28)', color: '#60a5fa', label: es ? 'Disponible' : 'Available' };
+        return { bg: 'rgba(96, 165, 250, 0.1)', border: 'rgba(96, 165, 250, 0.28)', color: '#60a5fa', label: es ? 'Ilustrativo' : 'Illustrative' };
     }
   }
 
@@ -305,10 +378,10 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
           <div className="mosaic-grid">
             {tiles.map((tile, i) => {
               const badge = statusBadgeStyle(tile.status);
-              const isSelected = hoveredTile?.position === tile.position;
+              const isSelected = hoveredTile?.id === tile.id;
               return (
                 <div
-                  key={tile.position}
+                  key={tile.id}
                   className={`slot-tile ${isSelected ? 'slot-tile-active' : ''} slot-float-${(i % 3) + 1}`}
                   onMouseEnter={() => setHoveredTile(tile)}
                   onFocus={() => setHoveredTile(tile)}
@@ -316,7 +389,7 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
                 >
                   <div className="slot-tile-top">
                     <span className="mono slot-tile-number">
-                      {formatPosition(tile.position)}
+                      {tile.headerCode}
                       {tile.isDemo && (
                         <span
                           className="mono"
@@ -332,6 +405,23 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
                           }}
                         >
                           DEMO
+                        </span>
+                      )}
+                      {tile.isIllustrative && (
+                        <span
+                          className="mono"
+                          style={{
+                            marginLeft: '0.35rem',
+                            fontSize: '0.56rem',
+                            padding: '0.06rem 0.28rem',
+                            borderRadius: '3px',
+                            background: 'rgba(148, 163, 184, 0.14)',
+                            border: '1px solid rgba(148, 163, 184, 0.3)',
+                            color: '#94a3b8',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          {es ? 'TRAMO' : 'TIER'}
                         </span>
                       )}
                     </span>
@@ -365,12 +455,17 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                     <span className="mono" style={{ color: 'var(--gold-primary)', fontWeight: 700 }}>
-                      {formatPosition(hoveredTile.position)}
+                      {hoveredTile.headerCode}
                     </span>
                     <strong style={{ fontSize: '0.88rem' }}>{hoveredTile.name}</strong>
                     {hoveredTile.isDemo && (
                       <span className="badge badge-slate mono" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>
                         DEMO
+                      </span>
+                    )}
+                    {hoveredTile.isIllustrative && (
+                      <span className="badge badge-slate mono" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>
+                        {es ? 'RESUMEN DE FASE' : 'PHASE SUMMARY'}
                       </span>
                     )}
                   </div>
@@ -386,13 +481,13 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
                   >
                     {es ? 'Ver perfil →' : 'View profile →'}
                   </a>
-                ) : hoveredTile.status === 'Available' ? (
+                ) : hoveredTile.canCheckout ? (
                   <a
                     href={es ? '/es/unirse' : '/unirse'}
                     className="btn-primary btn-sm"
                     style={{ padding: '0.3rem 0.65rem', fontSize: '0.76rem' }}
                   >
-                    {es ? 'Unirse →' : 'Claim slot →'}
+                    {es ? 'Unirse en fase activa →' : 'Join open phase →'}
                   </a>
                 ) : null}
               </div>
