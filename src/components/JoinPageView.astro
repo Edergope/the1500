@@ -48,8 +48,8 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
           {stats.salesMode === 'selling' && (
             <p class="muted" style="margin:0.65rem 0 0 0;font-size:0.84rem">
               {es
-                ? 'Precio base antes de impuestos (taxStatus se determina al facturar). La posición numerada se adjudica al confirmarse el pago.'
-                : 'Base price before tax (taxStatus shown at checkout). Your position number is assigned upon payment confirmation.'}
+                ? 'Precio base antes de impuestos (los impuestos se determinan al facturar). La posición numerada se adjudica al confirmarse el pago.'
+                : 'Base price before tax (tax shown at checkout). Your position number is assigned upon payment confirmation.'}
             </p>
           )}
 
@@ -189,7 +189,7 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
       </ul>
     </section>
 
-    <section class="surface-card" style="margin:0">
+    <section id="terms" class="surface-card" style="margin:0">
       <div class="eyebrow">{es ? 'CONDICIONES DE PUBLICACIÓN' : 'PUBLICATION & ARCHIVE TERMS'}</div>
       <h2 style="font-size:1.4rem">
         {es ? 'Garantías contractuales y límites claros' : 'Contractual commitments & transparent limits'}

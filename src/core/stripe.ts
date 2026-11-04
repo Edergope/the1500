@@ -37,7 +37,7 @@ export function createCheckoutSession(env:StripeEnv,params:{attemptId:string;com
   return call<StripeSession>(env,'POST','/v1/checkout/sessions',{
     mode:'payment',payment_method_types:['card'],client_reference_id:params.attemptId,customer_email:params.customerEmail,locale:params.locale,
     expires_at:params.expiresAt,
-    success_url:`${params.baseUrl}/mi-cuenta?checkout=returned`,cancel_url:`${params.baseUrl}/mi-cuenta?checkout=cancelled`,
+    success_url:`${params.baseUrl}${params.locale==='es'?'/es':''}/mi-cuenta?checkout=returned`,cancel_url:`${params.baseUrl}${params.locale==='es'?'/es':''}/mi-cuenta?checkout=cancelled`,
     line_items:[{quantity:1,price_data:{currency:'usd',unit_amount:params.amountMinor,product_data:{name:params.description}}}],
     metadata:{attempt_id:params.attemptId,company_id:params.companyId},
     payment_intent_data:{metadata:{attempt_id:params.attemptId,company_id:params.companyId}},

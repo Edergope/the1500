@@ -1,6 +1,6 @@
 // Demo data and sign-in links for building the interface, locally or on staging. Never for production.
 //   node scripts/demo.cjs seed --target local|staging        Creates demo companies in every state, and prints sign-in links.
-//   node scripts/demo.cjs link <email> --target local|staging  Prints one sign-in link, for use while no mail provider exists.
+//   node scripts/demo.cjs link <email> --target local|staging [--lang es]  Prints one sign-in link, for use while no mail provider exists.
 // Links reach stdout only. Whoever runs this already holds Cloudflare access to that database.
 const {execFileSync}=require('node:child_process');const crypto=require('node:crypto');const path=require('node:path');
 const ROOT=path.join(__dirname,'..');const WR=path.join(ROOT,'node_modules/.bin/wrangler');
@@ -21,7 +21,7 @@ function challenge(email){
   sql(`INSERT INTO login_challenges(id,email,token_digest,requested_at,expires_at,locale) VALUES(${q(crypto.randomUUID())},${q(email)},${q(sha(token))},${q(iso(NOW))},${q(iso(NOW+linkLife))},'en')`);
   return token;
 }
-const linkOf=token=>`${BASE}/auth/verify?token=${token}`;
+const linkOf=token=>`${BASE}/auth/verify?token=${token}${args.includes('--lang')&&args[args.indexOf('--lang')+1]==='es'?'&lang=es':''}`;
 async function signIn(email){
   const r=await fetch(`${BASE}/api/v1/auth/verify`,{method:'POST',redirect:'manual',headers:{Origin:BASE,'content-type':'application/x-www-form-urlencoded'},body:`token=${challenge(email)}`});
   if(r.status!==303)throw new Error(`sign-in ${email}: ${r.status}`);

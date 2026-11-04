@@ -87,7 +87,7 @@ export async function getOwnerCompanyStatus(db:D1Database,companyId:string) {
       reactivation_due_at AS reactivationDueAt,submitted_at AS submittedAt,reactivation_requested_at AS reactivationRequestedAt,reactivation_approved_at AS reactivationApprovedAt,reactivation_notified_at AS reactivationNotifiedAt,reactivation_form_due_at AS reactivationFormDueAt,final_notice_sent_at AS finalNoticeSentAt,final_notice_due_at AS finalNoticeDueAt,final_notice_response_at AS finalNoticeResponseAt FROM onboarding_cases WHERE company_id=?`).bind(companyId).first(),
     db.prepare(`SELECT id AS holdId,expires_at AS expiresAt FROM slot_holds WHERE company_id=? AND status='active'`).bind(companyId).first(),
     db.prepare(`SELECT version,approved_at AS approvedAt,published_at AS publishedAt,review_status AS reviewStatus FROM profile_versions WHERE company_id=? ORDER BY version DESC LIMIT 20`).bind(companyId).all(),
-    db.prepare(`SELECT id AS invitationId,expires_at AS expiresAt FROM founder_invitations WHERE company_id=? AND status='pending'`).bind(companyId).first(),
+    db.prepare(`SELECT id AS invitationId,status,expires_at AS expiresAt FROM founder_invitations WHERE company_id=? AND status IN('pending','accepted') ORDER BY created_at DESC LIMIT 1`).bind(companyId).first(),
     db.prepare(`SELECT id,kind,status,legal_basis AS legalBasis,requested_at AS requestedAt,resolved_at AS resolvedAt FROM service_requests WHERE company_id=? AND origin='owner' ORDER BY requested_at DESC LIMIT 10`).bind(companyId).all(),
     db.prepare(`SELECT id,status,contact_preference AS contactPreference,created_at AS createdAt,updated_at AS updatedAt FROM premium_requests WHERE company_id=? ORDER BY created_at DESC LIMIT 1`).bind(companyId).first(),
   ]);

@@ -168,7 +168,7 @@ export default function LiveDirectoryPreview({
       <div className="mini-inventory-strip" aria-label={es ? 'Resumen rápido de inventario' : 'Mini inventory summary'}>
         <div className="mini-inv-item">
           <span className="mini-inv-label">{es ? 'Posiciones ocupadas' : 'Positions occupied'}</span>
-          <strong className="mono">{stats ? `${stats.occupied} / 1,500` : '—'}</strong>
+          <strong className="mono">{stats ? `${stats.occupied} / ${es ? '1.500' : '1,500'}` : '—'}</strong>
         </div>
         <div className="mini-inv-item">
           <span className="mini-inv-label">{es ? 'Fase actual' : 'Current phase'}</span>

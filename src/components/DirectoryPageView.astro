@@ -135,8 +135,8 @@ const hasActiveFilters = Boolean(filters.q || filters.country || filters.industr
     >
       <p style="margin:0;font-weight:600;color:var(--text-primary)">
         {es
-          ? `${result.total} empresas publicadas coinciden con la búsqueda.`
-          : `${result.total} published companies match the current filters.`}
+          ? `${result.total} ${result.total === 1 ? 'empresa publicada coincide' : 'empresas publicadas coinciden'} con la búsqueda.`
+          : `${result.total} published ${result.total === 1 ? 'company matches' : 'companies match'} the current filters.`}
       </p>
       <span class="badge badge-slate mono">
         {es ? `Página ${result.page} · 24 por página` : `Page ${result.page} · 24 per page`}

@@ -30,7 +30,11 @@ export function publicProfileDto(row:PublicCompanyRow,language:'en'|'es'='en') {
     version:row.version,publishedAt:row.published_at,firstPublishedAt:row.first_published_at,
     html:`${es?'/es':''}/empresas/${row.slug}`,jsonld:`/api/v1/public/companies/${row.slug}.json${es?'?lang=es':''}`};
 }
-export async function listPublishedCompanies(db:D1Database,filters:{page:number;country?:string;q?:string;industry?:string;service?:string}) {
+/** SQL for a company's summary in the visitor's language, read from its latest published version. */
+export const localizedSummary=(language:'en'|'es'='en')=>language==='es'
+  ?`COALESCE((SELECT json_extract(v.canonical_json,'$.descriptionEs') FROM profile_versions v WHERE v.company_id=c.id AND v.published_at IS NOT NULL ORDER BY v.version DESC LIMIT 1),c.public_summary)`
+  :'c.public_summary';
+export async function listPublishedCompanies(db:D1Database,filters:{page:number;country?:string;q?:string;industry?:string;service?:string;language?:'en'|'es'}) {
   if (!Number.isSafeInteger(filters.page)||filters.page<1||filters.page>500) throw new IdentityError('INVALID_PAGE');
   if (filters.country&&!/^[A-Z]{2}$/.test(filters.country)) throw new IdentityError('INVALID_COUNTRY');
   for (const text of [filters.q,filters.industry,filters.service]) if (text&&text.length>100) throw new IdentityError('INVALID_QUERY');
@@ -46,7 +50,7 @@ export async function listPublishedCompanies(db:D1Database,filters:{page:number;
   const args=[filters.country||null,filters.country||null,industry,industry,service,service,q,q,q,q];
   const count=await db.prepare(`SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE ${where}`)
     .bind(...args).first<{total:number}>();
-  const res=await db.prepare(`SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position
+  const res=await db.prepare(`SELECT c.slug,c.display_name AS name,c.country,c.industry,${localizedSummary(filters.language)} AS summary,s.number AS position
     FROM companies c JOIN slots s ON s.company_id=c.id WHERE ${where} ORDER BY s.number ASC LIMIT 24 OFFSET ?`)
     .bind(...args,(filters.page-1)*24).all<PublicCompanyCard>();
   return {items:res.results,page:filters.page,pageSize:24,total:count?.total??0};

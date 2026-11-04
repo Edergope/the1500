@@ -139,7 +139,7 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
         setStats((await statsRes.json()) as InventorySummary);
       }
       if (invRes.ok) {
-        const invJson = await invRes.json();
+        const invJson = (await invRes.json()) as { invitations?: typeof founderInvites };
         setFounderInvites(invJson.invitations || []);
       }
     } catch {
@@ -272,7 +272,7 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
           declareAuthority: true,
         }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as { displayName: string; id: string } & ApiError;
       if (!res.ok) {
         const err = data as ApiError;
         setGlobalBanner({ kind: 'error', text: err?.error?.message || 'Registration failed' });
@@ -536,7 +536,7 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
           version: activeProfile.version,
         }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as { slotNumber: number } & ApiError;
       if (!res.ok) {
         setGlobalBanner({ kind: 'error', text: (data as ApiError)?.error?.message || 'Publication failed.' });
       } else {
@@ -1055,7 +1055,13 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                   </>
                 ) : companyStatus.founderInvitation ? (
                   <div style={{ fontSize: '0.9rem', color: 'var(--amber)', fontWeight: 600, marginTop: '0.25rem' }}>
-                    {es ? 'Invitación pendiente de adjudicación' : 'Pending administrative award'}
+                    {companyStatus.founderInvitation.status === 'accepted'
+                      ? es
+                        ? 'Invitación aceptada · Pendiente de adjudicación'
+                        : 'Invitation accepted · Pending administrative award'
+                      : es
+                        ? 'Invitación pendiente de aceptación'
+                        : 'Invitation awaiting acceptance'}
                   </div>
                 ) : (
                   <div style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '0.25rem' }}>
@@ -1192,7 +1198,7 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
           </section>
 
           {/* 2. Reservation & Purchase Section (when no position is allocated) */}
-          {!companyStatus.position && companyStatus.role === 'owner' && (
+          {!companyStatus.position && !companyStatus.founderInvitation && companyStatus.role === 'owner' && (
             <section className="surface-card surface-card-gold">
               <div className="eyebrow">{es ? 'RESERVA Y ADJUDICACIÓN DE POSICIÓN' : 'POSITION RESERVATION & ALLOCATION'}</div>
               <h3 style={{ marginTop: 0 }}>
@@ -1200,8 +1206,8 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
               </h3>
               <p className="muted">
                 {es
-                  ? 'El número de posición se asigna únicamente al confirmarse el pago (Decisión 30). Una reserva temporal bloquea capacidad durante 20 minutos sin exponer número.'
-                  : 'Your position number is assigned strictly upon payment confirmation (Decision 30). A temporary hold reserves capacity for 20 minutes without exposing a number.'}
+                  ? 'El número de posición se asigna únicamente al confirmarse el pago. Una reserva temporal bloquea capacidad durante 20 minutos sin exponer número.'
+                  : 'Your position number is assigned strictly upon payment confirmation. A temporary hold reserves capacity for 20 minutes without exposing a number.'}
               </p>
 
               {stats && stats.salesMode === 'premium_admission' ? (
@@ -1320,8 +1326,8 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                       {holdData && holdData.checkoutEnabled === false ? (
                         <div className="notice">
                           {es
-                            ? 'Los cobros están deshabilitados en este entorno (checkoutEnabled: false). Tu reserva fue creada correctamente, pero no se redirigirá a pasarela de pago.'
-                            : 'Payments are disabled in this environment (checkoutEnabled: false). Your hold is active, so we will not send you to an external payment page.'}
+                            ? 'Los cobros están deshabilitados en este entorno. Tu reserva fue creada correctamente, pero no se redirigirá a pasarela de pago.'
+                            : 'Payments are disabled in this environment. Your hold is active, so we will not send you to an external payment page.'}
                         </div>
                       ) : !checkoutData ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1357,7 +1363,7 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                               <strong>{formatUsdCents(checkoutData.amount.baseUsdCents, lang)}</strong>
                             </div>
                             <div className="stat-tile">
-                              <span className="muted">taxStatus</span>
+                              <span className="muted">{es ? 'Impuestos' : 'Tax'}</span>
                               <strong style={{ fontSize: '1.1rem' }}>{checkoutData.amount.taxStatus}</strong>
                               <span className="muted" style={{ fontSize: '0.75rem' }}>
                                 {es ? 'Modo de prueba (sandbox)' : 'Sandbox / test mode'}
@@ -1406,24 +1412,25 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                       <span className="badge badge-gold mono">v{activeProfile.version}</span>
                       {(() => {
                         const genMode = activeProfile.generation?.mode || activeProfile.generation?.kind || 'deterministic';
-                        const genReason = activeProfile.generation?.reason;
                         const isLlm = genMode === 'llm';
                         return (
                           <span className={`badge ${isLlm ? 'badge-blue' : 'badge-slate'} mono`}>
                             {!isLlm
                               ? es
-                                ? `Modo determinista — Sin texto de IA${genReason ? ` (${genReason})` : ''}`
-                                : `Deterministic mode — No AI text present${genReason ? ` (${genReason})` : ''}`
+                                ? 'Modo determinista — Sin texto de IA'
+                                : 'Deterministic mode — No AI text present'
                               : es
                                 ? `Estructurado con IA (${activeProfile.generation?.provider || 'LLM'})`
                                 : `AI-structured (${activeProfile.generation?.provider || 'LLM'})`}
                           </span>
                         );
                       })()}
-                      <span className="badge badge-slate mono">review: {activeProfile.reviewStatus}</span>
+                      {activeProfile.reviewStatus !== 'not_required' && (
+                        <span className="badge badge-slate mono">{es ? 'Revisión' : 'Review'}: {activeProfile.reviewStatus}</span>
+                      )}
                     </div>
                     <div className="mono muted" style={{ fontSize: '0.75rem' }}>
-                      contentDigest: {activeProfile.contentDigest.slice(0, 20)}…
+                      {es ? 'Huella del contenido' : 'Content fingerprint'}: {activeProfile.contentDigest.slice(0, 20)}…
                     </div>
                   </div>
 
@@ -1478,6 +1485,43 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                     </div>
                   </div>
 
+                  {/* Everything else the approval makes public */}
+                  <div className="stat-tile" style={{ marginBottom: '1rem', display: 'grid', gap: '0.6rem', fontSize: '0.88rem' }}>
+                    <div>
+                      <span className="muted">{es ? 'Servicios: ' : 'Services: '}</span>
+                      {(es && activeProfile.canonical.servicesEs ? activeProfile.canonical.servicesEs : activeProfile.canonical.services)?.join(', ') || '—'}
+                    </div>
+                    <div>
+                      <span className="muted">{es ? 'Audiencias: ' : 'Audiences: '}</span>
+                      {(es && activeProfile.canonical.audiencesEs ? activeProfile.canonical.audiencesEs : activeProfile.canonical.audiences)?.join(', ') || '—'}
+                    </div>
+                    {(es && activeProfile.canonical.problemSolutionsEs ? activeProfile.canonical.problemSolutionsEs : activeProfile.canonical.problemSolutions)?.map((ps, i) => (
+                      <div key={i}>
+                        <span className="muted">{es ? 'Problema: ' : 'Problem: '}</span>
+                        {ps.problem}
+                        <br />
+                        <span className="muted">{es ? 'Solución: ' : 'Solution: '}</span>
+                        {ps.solution}
+                      </div>
+                    ))}
+                    <div>
+                      <span className="muted">{es ? 'Países de servicio: ' : 'Service countries: '}</span>
+                      {activeProfile.canonical.serviceCountries?.join(', ') || '—'}
+                    </div>
+                    {activeProfile.canonical.publish?.advantages && activeProfile.canonical.advantages?.length > 0 && (
+                      <div>
+                        <span className="muted">{es ? 'Ventajas: ' : 'Advantages: '}</span>
+                        {activeProfile.canonical.advantages.join(', ')}
+                      </div>
+                    )}
+                    {activeProfile.canonical.publish?.certifications && activeProfile.canonical.certifications?.length > 0 && (
+                      <div>
+                        <span className="muted">{es ? 'Certificaciones: ' : 'Certifications: '}</span>
+                        {activeProfile.canonical.certifications.join(', ')}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Provenance Summary */}
                   <div style={{ marginBottom: '1rem' }}>
                     <div className="muted" style={{ fontSize: '0.78rem', marginBottom: '0.4rem' }}>
@@ -1518,8 +1562,8 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                             />
                             <span>
                               {es
-                                ? 'Apruebo expresamente esta vista previa y autorizo su divulgación pública (la inactividad nunca constituye aprobación, Decisión 12).'
-                                : 'I explicitly approve this preview and authorize its public disclosure (inactivity never counts as approval, Decision 12).'}
+                                ? 'Apruebo expresamente esta vista previa y autorizo su divulgación pública (la inactividad nunca constituye aprobación).'
+                                : 'I explicitly approve this preview and authorize its public disclosure (inactivity never counts as approval).'}
                             </span>
                           </label>
                           <div>
@@ -1570,6 +1614,14 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {isFormLockedByOnboarding && !activeProfile && (
+                <div className="notice" style={{ margin: 0 }}>
+                  {es
+                    ? 'El formulario está cerrado mientras se resuelve el estado de incorporación indicado arriba.'
+                    : 'The form is closed while the onboarding status shown above is resolved.'}
                 </div>
               )}
 
@@ -1785,6 +1837,7 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
           {/* 4. Team Members & Service Requests (Owner only) */}
           {companyStatus.role === 'owner' && (
             <div className="grid-2">
+              {companyStatus.position?.status === 'assigned' && (
               <section className="surface-card" style={{ margin: 0 }}>
                 <div className="eyebrow">{es ? 'SOLICITUDES DEL TITULAR' : 'HOLDER REQUESTS'}</div>
                 <h3 style={{ marginTop: 0 }}>
@@ -1860,6 +1913,7 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                   </div>
                 </form>
               </section>
+              )}
 
               <section className="surface-card" style={{ margin: 0 }}>
                 <div className="eyebrow">{es ? 'EQUIPO AUTORIZADO' : 'AUTHORIZED TEAM EDITORS'}</div>

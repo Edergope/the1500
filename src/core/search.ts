@@ -1,6 +1,7 @@
 import {IdentityError} from './identity';
 import {checkGeneratedText} from './claims';
 import {getLlmProvider,type LlmEnv} from './llm';
+import {localizedSummary} from './directory';
 
 /** Only owner-approved published profiles are indexed. No crawling of private drafts. */
 export interface SearchResult {
@@ -35,7 +36,7 @@ interface SearchRow {
   companyId:string;slug:string;name:string;industry:string|null;country:string;summary:string;version:number;position:number;
   f_summary:string;f_services:string;f_problems:string;f_solutions:string;
 }
-export interface SearchFilters {country?:string;industry?:string;}
+export interface SearchFilters {country?:string;industry?:string;language?:'en'|'es';}
 export async function searchPublishedProfiles(db:D1Database,text:string,limit=6,filters:SearchFilters={}):Promise<SearchResponse> {
   if (!Number.isSafeInteger(limit)||limit<1||limit>12) throw new IdentityError('INVALID_LIMIT');
   if (filters.country&&!/^[A-Z]{2}$/.test(filters.country)) throw new IdentityError('INVALID_COUNTRY');
@@ -43,7 +44,7 @@ export async function searchPublishedProfiles(db:D1Database,text:string,limit=6,
   const clean=text.trim();
   const fts=asFtsQuery(clean);const terms=queryTerms(clean);
   const found=await db.prepare(`SELECT c.id AS companyId,c.slug,c.display_name AS name,
-    c.industry,c.country,c.public_summary AS summary,s.number AS position,
+    c.industry,c.country,${localizedSummary(filters.language)} AS summary,s.number AS position,
     f.summary AS f_summary,f.services AS f_services,f.problems AS f_problems,f.solutions AS f_solutions,
     (SELECT MAX(v.version) FROM profile_versions v JOIN published_profile_snapshots p
       ON p.company_id=v.company_id AND p.version=v.version
@@ -95,7 +96,7 @@ interface AskOutput {answer:string;citedSlugs:string[];insufficientEvidence:bool
 export interface AskCitation {companyId:string;slug:string;title:string;url:string;jsonldUrl:string;profileVersion:number;jsonldDigest:string|null;quote:string;quoteField:string;}
 export async function answerFromPublishedProfiles(db:D1Database,question:string,language:'en'|'es'='en',env:LlmEnv={}) {
   const copy=COPY[language];
-  const result=await searchPublishedProfiles(db,question,5);
+  const result=await searchPublishedProfiles(db,question,5,{language});
   const backed=result.items.filter(x=>x.evidence&&x.coverage>=MIN_COVERAGE);
   const base={language,retrieval:RETRIEVAL,limitations:copy.limits};
   if (!backed.length) return {...base,mode:'abstained' as const,answer:copy.none,citations:[] as AskCitation[],insufficientEvidence:true};

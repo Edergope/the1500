@@ -335,7 +335,9 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
                 <div>
                   <strong>
                     {searchResult.count}{' '}
-                    {es ? 'perfiles publicados coinciden con la consulta léxica' : 'published profiles matched lexical query'}
+                    {es
+                      ? searchResult.count === 1 ? 'perfil publicado coincide con la consulta léxica' : 'perfiles publicados coinciden con la consulta léxica'
+                      : searchResult.count === 1 ? 'published profile matched lexical query' : 'published profiles matched lexical query'}
                   </strong>{' '}
                   <span className="mono muted">("{searchResult.query}")</span>
                 </div>

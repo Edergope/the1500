@@ -30,7 +30,7 @@ export interface CompanyStatusResponse {
   onboarding:{status:OnboardingStatus;startedAt:string;formDueAt:string;extensionDueAt:string;reactivationDueAt:string;submittedAt:string|null;reactivationRequestedAt:string|null;reactivationApprovedAt:string|null;reactivationNotifiedAt:string|null;reactivationFormDueAt:string|null;finalNoticeSentAt:string|null;finalNoticeDueAt:string|null;finalNoticeResponseAt:string|null}|null;
   activeHold:{holdId:string;expiresAt:string}|null;
   profileVersions:Array<{version:number;approvedAt:string|null;publishedAt:string|null;reviewStatus:'not_required'|'pending'|'cleared'|'rejected'}>;
-  founderInvitation:{invitationId:string;expiresAt:string}|null;
+  founderInvitation:{invitationId:string;status:'pending'|'accepted';expiresAt:string}|null;
   requests:Array<{id:string;kind:'withdrawal'|'cancellation';status:'requested'|'completed'|'rejected';legalBasis:LegalBasis|null;requestedAt:string;resolvedAt:string|null}>;
   premiumRequest:{id:string;status:PremiumRequestStatus;contactPreference:PremiumContactPreference;createdAt:string;updatedAt:string}|null;
 }

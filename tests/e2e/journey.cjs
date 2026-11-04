@@ -67,6 +67,20 @@ async function buy(owner,companyId){
   const owner=await login('ana@oceanline.example');
   const again=await fetch(`${BASE}/api/v1/auth/verify`,{method:'POST',redirect:'manual',headers:{Origin:BASE,'content-type':'application/x-www-form-urlencoded'},body:`token=${owner.token}`});
   assert.equal(again.status,401);step('Magic link works once; raw token not reusable');
+  // Found in the browser: the Spanish journey ended in English, and a stale link showed a JSON body.
+  const nEs=up.state.emails.length;
+  assert.equal((await api('POST','/api/v1/auth/request-link',{body:{email:'lucia@oceanline.example',locale:'es'}})).status,202);
+  const esLink=up.state.emails.slice(nEs)[0].text.match(/\/auth\/verify\?[^\s]+/)[0];assert.match(esLink,/lang=es/);
+  const esPage=await (await fetch(BASE+esLink)).text();assert.match(esPage,/Confirmar acceso/);assert.match(esPage,/name="lang" value="es"/);
+  const esToken=esLink.match(/token=([a-f0-9]{64})/)[1];const form2=`token=${esToken}&lang=es`;const browser={Origin:BASE,'content-type':'application/x-www-form-urlencoded',accept:'text/html'};
+  const esV=await fetch(`${BASE}/api/v1/auth/verify`,{method:'POST',redirect:'manual',headers:browser,body:form2});
+  assert.equal(esV.status,303);assert.equal(esV.headers.get('location'),'/es/mi-cuenta');
+  const esStale=await fetch(`${BASE}/api/v1/auth/verify`,{method:'POST',redirect:'manual',headers:browser,body:form2});
+  assert.equal(esStale.status,303);assert.equal(esStale.headers.get('location'),'/es/login?expired=1');
+  const esCookie=esV.headers.get('set-cookie').split(';')[0];
+  const signedIn=await fetch(`${BASE}/es/login`,{redirect:'manual',headers:{cookie:esCookie}});assert.equal(signedIn.status,302);assert.match(signedIn.headers.get('location'),/\/es\/mi-cuenta$/);
+  assert.match(await (await fetch(`${BASE}/es/`,{headers:{cookie:esCookie}})).text(),/Mi cuenta/);
+  step('Spanish sign-in stays in Spanish; stale link returns to sign-in; signed-in visitor skips the form');
   const reg=await api('POST','/api/v1/registrations',{cookie:owner.cookie,body:{displayName:'Ocean Line LLC',country:'US',industry:'Ocean freight',website:'https://oceanline.example',declareAuthority:true}});
   assert.equal(reg.status,201);assert.equal(reg.data.identityState,'self_declared');const companyId=reg.data.id,slug=reg.data.slug;
   step('1. Company registered by verified corporate email',slug);
@@ -122,6 +136,12 @@ async function buy(owner,companyId){
   assert.ok((await fetch(`${BASE}/es/empresas/${slug}`)).status===200);
   const pubText=JSON.stringify(doc);for(const s of ['ana@oceanline',companyId,'stripe','founder'])assert.equal(pubText.includes(s),false,s);
   step('HTML and JSON-LD served publicly in EN and ES; no private data in the document');
+  const localized=/Coordinamos fletes/;
+  assert.match((await api('GET','/api/v1/public/companies?lang=es')).data.items[0].summary,localized);
+  assert.match((await api('GET','/api/v1/public/search?query=ocean+freight&lang=es')).data.items[0].summary,localized);
+  assert.doesNotMatch((await api('GET','/api/v1/public/companies')).data.items[0].summary,localized);
+  assert.match(await (await fetch(`${BASE}/es/empresas`)).text(),localized);
+  step('Directory and search summaries follow the visitor language');
   const exp=await api('GET',`/api/v1/me/company/export?companyId=${companyId}`,{cookie:owner.cookie});assert.equal(exp.data.exportedFormat,'the1500.semantic-profile.v2');
   step('Exportable semantic profile available to the owner');
   // ---- 7 Someone else searches a business problem
@@ -151,6 +171,8 @@ async function buy(owner,companyId){
   assert.equal((await api('POST','/api/v1/me/founder-invitations/accept',{cookie:fOwner.cookie,body:{invitationId:invite.data.invitationId}})).data.error.code,'TERMS_REQUIRED');
   const acc=await api('POST','/api/v1/me/founder-invitations/accept',{cookie:fOwner.cookie,body:{invitationId:invite.data.invitationId,acceptTerms:true,termsVersion:'founder-2026-11'}});
   assert.equal(acc.data.status,'accepted');
+  // Found in the browser: an accepted invitation vanished from the status, and the account offered to buy a position.
+  assert.equal((await api('GET',`/api/v1/me/company?companyId=${fReg.data.id}`,{cookie:fOwner.cookie})).data.founderInvitation.status,'accepted');
   assert.equal((await api('POST','/api/v1/admin/founder-award',{cookie:fOwner.cookie,body:{invitationId:invite.data.invitationId,reasonCode:'selected',evidenceReference:'x'}})).status,403);
   assert.equal((await api('GET','/api/v1/admin/founder-award',{cookie:adminUser.cookie})).data.invitations.length,1);
   const awd=await api('POST','/api/v1/admin/founder-award',{cookie:adminUser.cookie,body:{invitationId:invite.data.invitationId,reasonCode:'selected',evidenceReference:'selection-case-1'}});

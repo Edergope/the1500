@@ -172,7 +172,7 @@ const invState = computeInventoryVisualState(stats);
     <div class="steps-timeline">
       <!-- Step 1 -->
       <article class="step-card">
-        <span class="step-number-pill">STEP 01</span>
+        <span class="step-number-pill">{es ? 'PASO 01' : 'STEP 01'}</span>
         <h3>{es ? 'Únete o recibe una invitación' : 'Join or get invited'}</h3>
         <p class="muted" style="margin:0;font-size:0.88rem">
           {es
@@ -183,7 +183,7 @@ const invState = computeInventoryVisualState(stats);
 
       <!-- Step 2 -->
       <article class="step-card">
-        <span class="step-number-pill">STEP 02</span>
+        <span class="step-number-pill">{es ? 'PASO 02' : 'STEP 02'}</span>
         <h3>{es ? 'Completa el perfil de tu empresa' : 'Complete your company profile'}</h3>
         <p class="muted" style="margin:0;font-size:0.88rem">
           {es
@@ -194,7 +194,7 @@ const invState = computeInventoryVisualState(stats);
 
       <!-- Step 3 -->
       <article class="step-card">
-        <span class="step-number-pill">STEP 03</span>
+        <span class="step-number-pill">{es ? 'PASO 03' : 'STEP 03'}</span>
         <h3>{es ? 'Revisa tu perfil estructurado' : 'Review your structured profile'}</h3>
         <p class="muted" style="margin:0;font-size:0.88rem">
           {es
@@ -205,7 +205,7 @@ const invState = computeInventoryVisualState(stats);
 
       <!-- Step 4 -->
       <article class="step-card">
-        <span class="step-number-pill">STEP 04</span>
+        <span class="step-number-pill">{es ? 'PASO 04' : 'STEP 04'}</span>
         <h3>{es ? 'Publica tu presencia pública' : 'Publish your public presence'}</h3>
         <p class="muted" style="margin:0;font-size:0.88rem">
           {es
@@ -216,7 +216,7 @@ const invState = computeInventoryVisualState(stats);
 
       <!-- Step 5 -->
       <article class="step-card">
-        <span class="step-number-pill">STEP 05</span>
+        <span class="step-number-pill">{es ? 'PASO 05' : 'STEP 05'}</span>
         <h3>{es ? 'Hazte descubrible dentro de THE1500' : 'Become discoverable inside THE1500'}</h3>
         <p class="muted" style="margin:0;font-size:0.88rem">
           {es
@@ -257,7 +257,7 @@ const invState = computeInventoryVisualState(stats);
               {es ? 'PROGRESO DE CAPACIDAD DEL ÍNDICE' : 'INDEX CAPACITY PROGRESS'}
             </span>
             <span class="mono" style="font-size:1.35rem;font-weight:800;color:var(--gold-primary)">
-              {filledPositions} / 1,500
+              {filledPositions} / {es ? '1.500' : '1,500'}
             </span>
           </div>
 
@@ -275,7 +275,7 @@ const invState = computeInventoryVisualState(stats);
 
           <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);gap:0.85rem">
             <div class="stat-tile">
-              <strong>1,500</strong>
+              <strong>{es ? '1.500' : '1,500'}</strong>
               <span>{es ? 'Posiciones totales' : 'Total positions'}</span>
             </div>
             <div class="stat-tile">
@@ -432,7 +432,7 @@ const invState = computeInventoryVisualState(stats);
     <div class="grid-4">
       <!-- Proof Card 1 -->
       <article class="surface-card" style="margin:0;padding:1.35rem">
-        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">PROOF 01</span>
+        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">{es ? 'PRUEBA 01' : 'PROOF 01'}</span>
         <h3>{es ? 'Perfil público de empresa' : 'Public company profile'}</h3>
         <p class="muted" style="margin:0;font-size:0.88rem">
           {es
@@ -443,7 +443,7 @@ const invState = computeInventoryVisualState(stats);
 
       <!-- Proof Card 2 -->
       <article class="surface-card" style="margin:0;padding:1.35rem">
-        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">PROOF 02</span>
+        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">{es ? 'PRUEBA 02' : 'PROOF 02'}</span>
         <h3>{es ? 'Salida estructurada' : 'Structured output'}</h3>
         <p class="muted" style="margin:0;font-size:0.88rem">
           {es
@@ -454,7 +454,7 @@ const invState = computeInventoryVisualState(stats);
 
       <!-- Proof Card 3 -->
       <article class="surface-card" style="margin:0;padding:1.35rem">
-        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">PROOF 03</span>
+        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">{es ? 'PRUEBA 03' : 'PROOF 03'}</span>
         <h3>{es ? 'Revisión antes de publicar' : 'Review before publication'}</h3>
         <p class="muted" style="margin:0;font-size:0.88rem">
           {es
@@ -465,7 +465,7 @@ const invState = computeInventoryVisualState(stats);
 
       <!-- Proof Card 4 -->
       <article class="surface-card" style="margin:0;padding:1.35rem">
-        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">PROOF 04</span>
+        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">{es ? 'PRUEBA 04' : 'PROOF 04'}</span>
         <h3>{es ? 'Publicación garantizada' : 'Guaranteed publication'}</h3>
         <p class="muted" style="margin:0;font-size:0.88rem">
           {es
@@ -530,8 +530,8 @@ const invState = computeInventoryVisualState(stats);
           </h4>
           <p class="muted" style="margin:0;font-size:0.86rem">
             {es
-              ? 'Jamás. La inactividad nunca equivale a aprobación. El representante debe aprobar explícitamente el contentDigest antes de publicar.'
-              : 'Never. Inactivity never counts as approval. An authorized representative must explicitly approve the exact contentDigest before publication.'}
+              ? 'Jamás. La inactividad nunca equivale a aprobación. El representante debe aprobar explícitamente el contenido exacto antes de publicar.'
+              : 'Never. Inactivity never counts as approval. An authorized representative must explicitly approve the exact content before publication.'}
           </p>
         </div>
       </div>

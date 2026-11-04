@@ -4,35 +4,42 @@ import Shell from '../../layouts/Shell.astro';
 // GET is intentionally side-effect-free. Email-link scanners cannot consume login tokens.
 const token = Astro.url.searchParams.get('token') || '';
 const valid = /^[a-f0-9]{64}$/.test(token);
+const es = Astro.url.searchParams.get('lang') === 'es';
+const altQuery = new URLSearchParams({ token });
+if (!es) altQuery.set('lang', 'es');
+const altPath = `/auth/verify?${altQuery}`;
 Astro.response.headers.set('Cache-Control', 'no-store');
 // Not no-referrer: browsers then send "Origin: null" on this form's POST, and the origin check refuses it.
 // same-origin still keeps the token in this URL away from any other site.
 Astro.response.headers.set('Referrer-Policy', 'same-origin');
 Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 ---
-<Shell title="Confirm sign-in — THE1500" lang="en" forceNoIndex={true}>
+<Shell title={es ? 'Confirmar acceso — THE1500' : 'Confirm sign-in — THE1500'} lang={es ? 'es' : 'en'} forceNoIndex={true} altPath={altPath}>
   <main>
     <div style="max-width:500px;margin:2rem auto">
       <div class="surface-card surface-card-gold">
-        <div class="eyebrow">ONE-TIME VERIFICATION</div>
-        <h1 style="font-size:1.95rem;margin-bottom:0.5rem">Sign in to THE1500</h1>
+        <div class="eyebrow">{es ? 'VERIFICACIÓN DE UN SOLO USO' : 'ONE-TIME VERIFICATION'}</div>
+        <h1 style="font-size:1.95rem;margin-bottom:0.5rem">{es ? 'Iniciar sesión en THE1500' : 'Sign in to THE1500'}</h1>
         {valid ? (
           <>
             <p style="margin-bottom:1.5rem">
-              Confirm your sign-in request. This link works once and expires after 15 minutes.
+              {es
+                ? 'Confirma tu solicitud de acceso. Este enlace funciona una vez y vence a los 15 minutos.'
+                : 'Confirm your sign-in request. This link works once and expires after 15 minutes.'}
             </p>
             <form method="POST" action="/api/v1/auth/verify">
               <input type="hidden" name="token" value={token} />
+              {es && <input type="hidden" name="lang" value="es" />}
               <button type="submit" class="btn-primary" style="width:100%">
-                Confirm sign-in
+                {es ? 'Confirmar acceso' : 'Confirm sign-in'}
               </button>
             </form>
           </>
         ) : (
           <>
-            <div class="notice notice-error">This link is invalid or malformed.</div>
+            <div class="notice notice-error">{es ? 'Este enlace no es válido.' : 'This link is invalid or malformed.'}</div>
             <p style="margin-top:1rem;margin-bottom:0">
-              <a href="/login" class="btn-secondary">Request a new sign-in link</a>
+              <a href={es ? '/es/login' : '/login'} class="btn-secondary">{es ? 'Solicitar un enlace nuevo' : 'Request a new sign-in link'}</a>
             </p>
           </>
         )}

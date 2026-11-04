@@ -241,8 +241,8 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
         status: 'Illustrative',
         isIllustrative: true,
         summary: es
-          ? 'Bloque ilustrativo: ningún perfil se publica sin aprobación expresa del contentDigest.'
-          : 'Illustrative block: no profile is ever published without explicit contentDigest approval.',
+          ? 'Bloque ilustrativo: ningún perfil se publica sin aprobación expresa de su contenido.'
+          : 'Illustrative block: no profile is ever published without explicit approval of its content.',
       },
       {
         id: 'illust-cap',
@@ -398,7 +398,7 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
                 ? `${stats.occupied}/1500 ${es ? 'asignadas' : 'allocated'} · ${
                     stats.currentPriceUsdCents ? formatUsdCents(stats.currentPriceUsdCents, lang) : ''
                   }`
-                : '1,500 total'}
+                : es ? '1.500 en total' : '1,500 total'}
             </span>
           </div>
 
@@ -541,7 +541,7 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
       {/* Lower Proof Strip (Stat Chips — Component #4) */}
       <div className="hero-proof-strip" aria-label={es ? 'Métricas clave de THE1500' : 'THE1500 key proof metrics'}>
         <div className="stat-chip">
-          <strong className="mono">1,500</strong>
+          <strong className="mono">{es ? '1.500' : '1,500'}</strong>
           <span>{es ? '1.500 posiciones totales' : '1,500 total positions'}</span>
         </div>
         <div className="stat-chip">

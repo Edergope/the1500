@@ -16,6 +16,10 @@ const {
 } = Astro.props;
 
 const es = lang === 'es';
+// Only changes a nav label; the account page itself validates the session.
+const signedIn = (Astro.request.headers.get('cookie') || '').includes('__Host-the1500_session=');
+const accountHref = es ? '/es/mi-cuenta' : '/mi-cuenta';
+const accountLabel = es ? 'Mi cuenta' : 'My account';
 const indexingEnabled = !forceNoIndex && import.meta.env.PUBLIC_INDEXING_ENABLED === 'true';
 const currentPath = Astro.url.pathname;
 
@@ -532,6 +536,12 @@ const metaDesc =
       }
 
       /* Interactive Mosaic Column & Slot Tiles (Component #5) */
+      /* Grid tracks otherwise grow to their widest child and push the page past a phone's width. */
+      .hero-copy-col,
+      .hero-mosaic-col {
+        min-width: 0;
+      }
+
       .hero-mosaic-col {
         background: linear-gradient(160deg, rgba(18, 32, 53, 0.86), rgba(9, 17, 30, 0.94));
         border: 1px solid var(--border-strong);
@@ -1121,7 +1131,7 @@ const metaDesc =
       /* Responsive Rules (Desktop vs Mobile) */
       @media (max-width: 1024px) {
         .hero-inner-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr);
         }
         .steps-timeline {
           grid-template-columns: repeat(2, 1fr);
@@ -1190,7 +1200,18 @@ const metaDesc =
         }
 
         .mosaic-grid {
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        /* Long badges and tile labels wrap on a phone instead of widening the page. */
+        .badge,
+        .slot-tile-meta {
+          white-space: normal;
+          max-width: 100%;
+        }
+
+        .slot-tile {
+          min-width: 0;
         }
 
         .hero-proof-strip,
@@ -1249,8 +1270,8 @@ const metaDesc =
             <a class="btn-primary" href={es ? '/es/unirse' : '/unirse'}>
               {es ? 'Unirse a THE1500' : 'Join THE1500'}
             </a>
-            <a class="btn-secondary" href={es ? '/es/login' : '/login'}>
-              {es ? 'Iniciar sesión' : 'Sign in'}
+            <a class="btn-secondary" href={signedIn ? accountHref : es ? '/es/login' : '/login'}>
+              {signedIn ? accountLabel : es ? 'Iniciar sesión' : 'Sign in'}
             </a>
             <a class="lang-pill" style="text-align:center" href={switchHref} hreflang={es ? 'en' : 'es'}>
               {es ? 'Switch to English (EN)' : 'Cambiar a Español (ES)'}
@@ -1268,8 +1289,8 @@ const metaDesc =
           >
             {es ? 'EN' : 'ES'}
           </a>
-          <a class="nav-signin-btn" href={es ? '/es/login' : '/login'}>
-            {es ? 'Iniciar sesión' : 'Sign in'}
+          <a class="nav-signin-btn" href={signedIn ? accountHref : es ? '/es/login' : '/login'}>
+            {signedIn ? accountLabel : es ? 'Iniciar sesión' : 'Sign in'}
           </a>
           <a class="btn-primary btn-sm" href={es ? '/es/unirse' : '/unirse'}>
             {es ? 'Unirse a THE1500' : 'Join THE1500'}
@@ -1296,7 +1317,7 @@ const metaDesc =
                 : 'A structured business index for the AI era.'}
             </p>
             <span class="badge badge-slate mono" style="font-size:0.7rem">
-              1,500 LIFETIME POSITIONS
+              {es ? '1.500 POSICIONES VITALICIAS' : '1,500 LIFETIME POSITIONS'}
             </span>
           </div>
 
@@ -1316,8 +1337,6 @@ const metaDesc =
             <div class="footer-col-title">{es ? 'Legal y Políticas' : 'Legal & Policies'}</div>
             <ul class="footer-col-list">
               <li><a href={es ? '/es/unirse#terms' : '/unirse#terms'}>{es ? 'Términos' : 'Terms'}</a></li>
-              <li><a href={es ? '/es/unirse#privacy' : '/unirse#privacy'}>{es ? 'Privacidad' : 'Privacy'}</a></li>
-              <li><a href={es ? '/es/login' : '/login'}>{es ? 'Contacto' : 'Contact'}</a></li>
               <li>
                 <a href={es ? '/es/#trust-proof' : '/#trust-proof'}>
                   {es ? 'Política de datos y publicación' : 'Data & publication policy'}

@@ -4,9 +4,10 @@ import type { ApiError, Locale } from '../lib/contracts/api';
 interface Props {
   lang?: Locale;
   requiredRedirect?: boolean;
+  linkExpired?: boolean;
 }
 
-export default function AuthPortal({ lang = 'en', requiredRedirect = false }: Props) {
+export default function AuthPortal({ lang = 'en', requiredRedirect = false, linkExpired = false }: Props) {
   const es = lang === 'es';
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -69,6 +70,14 @@ export default function AuthPortal({ lang = 'en', requiredRedirect = false }: Pr
           {es
             ? 'Inicia sesión con tu correo corporativo para acceder al portal de titular y gestionar tu empresa.'
             : 'Please sign in with your corporate email to access the member portal and manage your company.'}
+        </div>
+      )}
+
+      {linkExpired && (
+        <div className="notice notice-error" style={{ marginBottom: '1.25rem' }}>
+          {es
+            ? 'Ese enlace ya se usó o venció. Solicita uno nuevo.'
+            : 'That link was already used or has expired. Request a new one.'}
         </div>
       )}
 

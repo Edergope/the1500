@@ -86,6 +86,7 @@ export async function requestLoginLink(env: IdentityEnv, emailInput: string, ip:
   await env.DB.prepare(`INSERT INTO login_challenges(id,email,token_digest,ip_digest,requested_at,expires_at,locale)
       VALUES (?,?,?,?,?,?,?)`).bind(id,email,digest,ipDigest,requestedAt,expiresAt,locale).run();
   const url=new URL('/auth/verify',publicOrigin);url.searchParams.set('token',raw);
+  if (locale==='es') url.searchParams.set('lang','es');
   const message=loginEmail(locale,url.toString());
   const sent=await sendMail(env,{to:email,...message});
   if (!sent.accepted) {

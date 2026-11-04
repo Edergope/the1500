@@ -1,13 +1,22 @@
 ---
+import { env } from 'cloudflare:workers';
 import Shell from '../layouts/Shell.astro';
+import { authenticatedPrincipal } from '../core/identity';
 import AuthPortal from '../components/AuthPortal';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 const requiredRedirect = Astro.url.searchParams.get('required') === '1';
+const linkExpired = Astro.url.searchParams.get('expired') === '1';
+try {
+  await authenticatedPrincipal(env.DB, Astro.request);
+  return Astro.redirect('/mi-cuenta', 302);
+} catch {
+  /* not signed in: show the form */
+}
 ---
 <Shell title="Sign in — THE1500" lang="en" forceNoIndex={true}>
   <main>
-    <AuthPortal client:load lang="en" requiredRedirect={requiredRedirect} />
+    <AuthPortal client:load lang="en" requiredRedirect={requiredRedirect} linkExpired={linkExpired} />
   </main>
 </Shell>

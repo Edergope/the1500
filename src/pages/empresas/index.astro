@@ -20,7 +20,7 @@ let retiredItems: Array<{ position: number; label: string; labelEs: string }> = 
 
 try {
   const [dir, s, ret] = await Promise.all([
-    listPublishedCompanies(env.DB, { page, q, country, industry, service }),
+    listPublishedCompanies(env.DB, { page, q, country, industry, service, language: 'en' }),
     getPublicStats(env.DB),
     listRetiredPositions(env.DB),
   ]);

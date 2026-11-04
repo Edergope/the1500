@@ -36,7 +36,7 @@ Branch on `code`. Show `message`. Status: 400 invalid · 401 no session · 403 n
 | Method, path | Perm | Body | Success |
 |---|---|---|---|
 | POST `/auth/request-link` | public | `RequestLinkBody` | 202 `{status:"link_requested"}`. Same reply whether or not the address exists or was rate limited. 503 `MAIL_NOT_CONFIGURED` / `MAIL_DELIVERY_UNAVAILABLE`. |
-| POST `/auth/verify` | public | form `token` | 303 to `/mi-cuenta` with cookie. 401 `INVALID_OR_EXPIRED_LINK`. Used by the existing `/auth/verify` page. Links last 15 minutes and work once; opening the page does not consume them. |
+| POST `/auth/verify` | public | form `token`, `lang?` | 303 to `/mi-cuenta` (`/es/mi-cuenta` with `lang=es`) with cookie. 401 `INVALID_OR_EXPIRED_LINK`; a browser navigation gets 303 to `/login?expired=1`. Used by the existing `/auth/verify` page. Links last 15 minutes and work once; opening the page does not consume them. |
 | GET `/auth/me` | user | | `MeResponse` |
 | POST `/auth/logout` | user | | `{status:"signed_out"}` |
 | POST `/auth/logout-all` | user | | `{status:"signed_out_everywhere",sessionsRevoked}` |
@@ -99,10 +99,10 @@ Preview screen must:
 | Method, path | Query / body | Success |
 |---|---|---|
 | GET `/public/stats` | | `InventorySummary` |
-| GET `/public/companies` | `page,query,country,industry,service` | `DirectoryResponse` (ascending position, 24 per page) |
+| GET `/public/companies` | `page,query,country,industry,service,lang` | `DirectoryResponse` (ascending position, 24 per page) |
 | GET `/public/companies/:slug` | `lang` | `PublicProfile`; 404 `PROFILE_NOT_FOUND`, also when withdrawn |
 | GET `/public/companies/:slug.json` | `lang` | Schema.org JSON-LD (`application/ld+json`); 404 with empty body |
-| GET `/public/search` | `query` (≤220), `limit` (1–12), `country`, `industry` | `SearchResponse` |
+| GET `/public/search` | `query` (≤220), `limit` (1–12), `country`, `industry`, `lang` | `SearchResponse` |
 | POST `/public/ask` (1.2 KB, same origin, 20/hour per client) | `AskBody` | `AskResponse` |
 | GET `/public/retired-positions` | | `RetiredPositionsResponse` |
 
