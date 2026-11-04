@@ -140,7 +140,7 @@ export default function HomeRegister({ lang = 'en', stats, businesses, positionM
               {es ? 'Fase' : 'Phase'} {phase.phase}
             </span>
             <span className="board-range">
-              {phase.firstPosition.toLocaleString(es ? 'es-ES' : 'en-US')}–{phase.lastPosition.toLocaleString(es ? 'de-DE' : 'en-US')}
+              {phase.firstPosition.toLocaleString(es ? 'de-DE' : 'en-US')}–{phase.lastPosition.toLocaleString(es ? 'de-DE' : 'en-US')}
             </span>
             <span className="board-price">{formatUsdCents(phase.priceUsdCents, lang).replace(' USD', '')}</span>
           </div>
