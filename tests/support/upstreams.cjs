@@ -54,6 +54,7 @@ function createUpstreams(){
         let m;
         if(req.method==='GET'&&(m=url.pathname.match(/^\/v1\/checkout\/sessions\/([^/]+)$/))){const s=state.stripe.sessions.get(m[1]);return s?send(200,s):send(404,{error:{message:'none'}});}
         if(req.method==='POST'&&(m=url.pathname.match(/^\/v1\/checkout\/sessions\/([^/]+)\/expire$/))){const s=state.stripe.sessions.get(m[1]);if(!s)return send(404,{error:{}});if(s.status!=='open')return send(400,{error:{message:'not open'}});s.status='expired';return send(200,s);}
+        if(req.method==='GET'&&url.pathname.startsWith('/v1/payment_intents/')){return state.stripe.chargeCreated?send(200,{latest_charge:{created:state.stripe.chargeCreated}}):send(404,{error:{message:'no charge'}});}
         if(req.method==='POST'&&url.pathname==='/v1/refunds'){const f=new URLSearchParams(raw);const r={id:'re_'+state.stripe.refunds.length,status:state.stripe.refundStatus,payment_intent:f.get('payment_intent')};state.stripe.refunds.push(r);return send(200,r);}
       }
       send(404,{error:{message:'unmocked '+url.pathname}});

@@ -1,8 +1,10 @@
 import {IdentityError,sha256,type Principal} from './identity';
 import {assignFreeSlotInPhase,convertHold,getHold,getSalesState,InventoryError,releaseAssignmentStatements,releaseHold} from './inventory';
+import {adminEvent,requireEvidence} from './admin';
+import {expireStaleHolds} from './inventory';
 import {notifyOwners,openIncident} from './ops';
-import {latePaymentEmail,purchaseConfirmedEmail} from '../lib/i18n/comms';
-import {createCheckoutSession,createRefund,expireSession,paymentsGate,retrieveSession,StripeApiError,verifyStripeSignature,type StripeEnv,type StripeSession} from './stripe';
+import {latePaymentEmail,latePaymentResolvedEmail,purchaseConfirmedEmail} from '../lib/i18n/comms';
+import {createCheckoutSession,createRefund,expireSession,paymentsGate,retrieveChargeTime,retrieveSession,StripeApiError,verifyStripeSignature,type StripeEnv,type StripeSession} from './stripe';
 
 /**
  * Stripe's Checkout expires_at cannot be under 30 minutes, while the approved reservation lasts 20.
@@ -80,7 +82,16 @@ function checkoutReply(a:PurchaseAttempt,url:string|null,seller:{legalName:strin
 }
 type SessionOutcome='assigned'|'already_processed'|'amount_review'|'late_review'|'not_paid'|'unknown_attempt';
 /** Single path for webhooks and reconciliation; every transition is a compare-and-swap, so repeats are harmless. */
-export async function applyPaidSession(db:D1Database,env:StripeEnv,session:StripeSession,now=new Date()):Promise<{outcome:SessionOutcome;attemptId?:string;slotNumber?:number}> {
+/** Best evidence of when the payment happened, and which evidence it was. The reconciler sees both. */
+async function effectivePaymentTime(env:StripeEnv,paymentIntent:string|null,eventCreated:number|undefined,now:Date) {
+  if (paymentIntent&&env.STRIPE_SECRET_KEY) {
+    const charge=await retrieveChargeTime(env,paymentIntent).catch(()=>null);
+    if (charge&&typeof charge==='object'&&typeof charge.created==='number') return {at:new Date(charge.created*1000).toISOString(),source:'provider_charge'};
+  }
+  if (typeof eventCreated==='number') return {at:new Date(eventCreated*1000).toISOString(),source:'provider_event'};
+  return {at:now.toISOString(),source:'processing_time'};
+}
+export async function applyPaidSession(db:D1Database,env:StripeEnv,session:StripeSession,now=new Date(),eventCreated?:number):Promise<{outcome:SessionOutcome;attemptId?:string;slotNumber?:number}> {
   const attemptId=session.metadata?.attempt_id;
   const attempt=attemptId?await db.prepare(`SELECT * FROM purchase_attempts WHERE id=?`).bind(attemptId).first<PurchaseAttempt>():null;
   if (!attempt) {
@@ -111,11 +122,12 @@ export async function applyPaidSession(db:D1Database,env:StripeEnv,session:Strip
   if (result.outcome==='already_processed'&&attempt.status!=='expired'&&attempt.status!=='failed')
     return {outcome:'already_processed',attemptId:attempt.id};
   // Decision 42: a payment confirmed after the reservation ended takes nothing automatically.
+  const paid=await effectivePaymentTime(env,paymentIntent,eventCreated,now);
   const moved=await db.batch([
-    db.prepare(`UPDATE purchase_attempts SET status='late_review',paid_at=?,provider_payment_intent=COALESCE(?,provider_payment_intent),provider_session_id=COALESCE(provider_session_id,?),payer_email=COALESCE(?,payer_email),updated_at=?
-      WHERE id=? AND status IN('creating','pending','expired','failed')`).bind(at,paymentIntent,session.id,payerEmail,at,attempt.id),
+    db.prepare(`UPDATE purchase_attempts SET status='late_review',paid_at=?,paid_at_source=?,provider_payment_intent=COALESCE(?,provider_payment_intent),provider_session_id=COALESCE(provider_session_id,?),payer_email=COALESCE(?,payer_email),updated_at=?
+      WHERE id=? AND status IN('creating','pending','expired','failed')`).bind(paid.at,paid.source,paymentIntent,session.id,payerEmail,at,attempt.id),
     openIncident(db,'payment_after_hold_expiry','critical',{attemptId:attempt.id,companyId:attempt.company_id,dedupeKey:`late:${attempt.id}`},
-      {holdExpiresAt:attempt.hold_expires_at,paidAt:at,phase:attempt.phase},now),
+      {holdExpiresAt:attempt.hold_expires_at,paidAt:paid.at,paidAtSource:paid.source,phase:attempt.phase},now),
   ]);
   if (moved[0]?.meta?.changes===1) {
     const company=await db.prepare(`SELECT display_name FROM companies WHERE id=?`).bind(attempt.company_id).first<{display_name:string}>();
@@ -135,7 +147,7 @@ async function finalizeRefund(db:D1Database,attempt:PurchaseAttempt,now:Date):Pr
   if (attempt.assigned_slot_number) await db.batch(releaseAssignmentStatements(db,attempt.assigned_slot_number,attempt.company_id,'refund_release',attempt.id,now));
   return 'refunded';
 }
-interface StripeEvent {id:string;type:string;livemode?:boolean;data:{object:Record<string,unknown>};}
+interface StripeEvent {id:string;type:string;created?:number;livemode?:boolean;data:{object:Record<string,unknown>};}
 export async function handleStripeWebhook(db:D1Database,env:StripeEnv,rawBody:string,signature:string|null,now=new Date()) {
   if (!env.STRIPE_WEBHOOK_SECRET||!await verifyStripeSignature(rawBody,signature,env.STRIPE_WEBHOOK_SECRET,now)) throw new PaymentError('INVALID_WEBHOOK_SIGNATURE',400);
   let event:StripeEvent;
@@ -159,7 +171,7 @@ async function applyEvent(db:D1Database,env:StripeEnv,event:StripeEvent,now:Date
   switch (event.type) {
     case 'checkout.session.completed':
     case 'checkout.session.async_payment_succeeded':
-      return applyPaidSession(db,env,object as unknown as StripeSession,now);
+      return applyPaidSession(db,env,object as unknown as StripeSession,now,event.created);
     case 'checkout.session.expired':
     case 'checkout.session.async_payment_failed': {
       const attemptId=(object.metadata as Record<string,string>|null)?.attempt_id;
@@ -235,15 +247,51 @@ export async function reconcileAttempt(db:D1Database,env:StripeEnv,attemptId:str
   const after=await db.prepare(`SELECT status FROM purchase_attempts WHERE id=?`).bind(attemptId).first<{status:string}>();
   return {attemptId,providerStatus:session.payment_status,localStatus:after?.status,outcome:result.outcome};
 }
-/** Decision 42/44: same tier and original price if capacity remains; otherwise the only path is a refund. */
-export async function resolveLatePayment(db:D1Database,attemptId:string,now=new Date()) {
-  const attempt=await db.prepare(`SELECT * FROM purchase_attempts WHERE id=?`).bind(attemptId).first<PurchaseAttempt>();
+/** What a human must weigh: when it was paid, when the reservation ended, what happened to that number, what is really free. */
+export async function latePaymentFacts(db:D1Database,attemptId:string,now=new Date()) {
+  await expireStaleHolds(db,now);
+  const attempt=await db.prepare(`SELECT a.*,a.paid_at_source AS source,h.slot_number AS reserved FROM purchase_attempts a JOIN slot_holds h ON h.id=a.hold_id WHERE a.id=?`).bind(attemptId)
+    .first<PurchaseAttempt&{source:string|null;reserved:number|null}>();
   if (!attempt) throw new IdentityError('ATTEMPT_NOT_FOUND',404);
-  if (attempt.status!=='late_review') throw new PaymentError('PAYMENT_STATE_CONFLICT');
-  const sales=await getSalesState(db);
-  if (sales.currentPhase!==null&&attempt.phase>sales.currentPhase) throw new PaymentError('PAYMENT_STATE_CONFLICT');
-  const slot=await assignFreeSlotInPhase(db,attemptId,attempt.company_id,attempt.phase,now);
-  return slot?{attemptId,status:'paid',position:slot}:{attemptId,status:'late_review',position:null,refundRequired:true};
+  const [reserved,free,own,sales]=await Promise.all([
+    attempt.reserved?db.prepare(`SELECT status,company_id FROM slots WHERE number=?`).bind(attempt.reserved).first<{status:string;company_id:string|null}>():null,
+    db.prepare(`SELECT COUNT(*) AS n FROM slots WHERE phase=? AND number>=101 AND status='available'`).bind(attempt.phase).first<{n:number}>(),
+    db.prepare(`SELECT number FROM slots WHERE company_id=? AND status IN('assigned','retired')`).bind(attempt.company_id).first<{number:number}>(),
+    getSalesState(db),
+  ]);
+  const tierOpen=sales.currentPhase!==null&&attempt.phase<=sales.currentPhase;
+  const freeInTier=free?.n??0;
+  const assignable=attempt.status==='late_review'&&tierOpen&&freeInTier>0&&!own;
+  return {attemptId,companyId:attempt.company_id,status:attempt.status,phase:attempt.phase,paidAt:attempt.paid_at,paidAtSource:attempt.source,holdExpiresAt:attempt.hold_expires_at,
+    paidWithinReservation:!!attempt.paid_at&&attempt.paid_at<=attempt.hold_expires_at,
+    reservedPosition:attempt.reserved?{number:attempt.reserved,status:reserved?.status??null,takenByAnotherCompany:!!reserved?.company_id&&reserved.company_id!==attempt.company_id}:null,
+    tierOpen,freeInTier,companyAlreadyHasPosition:own?.number??null,assignable,allowedDecisions:assignable?['assign','refund']:['refund']};
+}
+/** Owner decision 2026-11-04: always a human decision, documented. Only a free number is ever taken, so nothing is displaced. */
+export async function resolveLatePayment(db:D1Database,env:StripeEnv,adminId:string,attemptId:string,input:{decision:unknown;reasonCode:unknown;evidence:unknown},now=new Date()) {
+  requireEvidence(input.reasonCode,input.evidence);
+  if (input.decision!=='assign'&&input.decision!=='refund') throw new IdentityError('INVALID_ACTION',400);
+  const facts=await latePaymentFacts(db,attemptId,now);
+  if (facts.status!=='late_review') throw new PaymentError('PAYMENT_STATE_CONFLICT');
+  const at=now.toISOString(),evidence=(input.evidence as string).trim();
+  const record=(resolution:'assigned'|'refund',position:number|null)=>db.batch([
+    db.prepare(`UPDATE purchase_attempts SET late_resolution=?,late_resolved_at=?,late_resolved_by=?,late_resolution_evidence=?,updated_at=? WHERE id=?`).bind(resolution,at,adminId,evidence,at,attemptId),
+    adminEvent(db,adminId,'late_payment_resolved','payment',attemptId,input.reasonCode as string,evidence,{decision:input.decision,position,facts},now),
+    db.prepare(`UPDATE incidents SET status='resolved',resolved_at=?,resolved_by=?,resolution_code=? WHERE attempt_id=? AND kind='payment_after_hold_expiry' AND status='open'`).bind(at,adminId,input.reasonCode as string,attemptId),
+  ]);
+  const notify=async(position:number|null)=>{
+    const company=await db.prepare(`SELECT display_name FROM companies WHERE id=?`).bind(facts.companyId).first<{display_name:string}>();
+    await notifyOwners(db,facts.companyId,'late_payment_resolved',l=>latePaymentResolvedEmail(l,company?.display_name??'',position),`late_resolved:${attemptId}`,now);
+  };
+  if (input.decision==='assign') {
+    const position=facts.assignable?await assignFreeSlotInPhase(db,attemptId,facts.companyId,facts.phase,now).catch(()=>null):null;
+    if (!position) return {attemptId,status:'late_review',position:null,refundRequired:true,facts};
+    await record('assigned',position);await notify(position);
+    return {attemptId,status:'paid',position,refundRequired:false,facts};
+  }
+  await record('refund',null);await notify(null);
+  const refund=await requestRefund(db,env,attemptId,input.reasonCode as string,now);
+  return {...refund,position:null,refundRequired:false,facts};
 }
 export async function requestRefund(db:D1Database,env:StripeEnv,attemptId:string,reason:string,now=new Date()) {
   const attempt=await db.prepare(`SELECT * FROM purchase_attempts WHERE id=?`).bind(attemptId).first<PurchaseAttempt>();

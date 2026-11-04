@@ -41,3 +41,33 @@ export function latePaymentEmail(l:Locale,company:string):Mail {
     {subject:'THE1500: payment received after the reservation expired',
     text:`We received payment for ${company} after the 20-minute reservation expired. No position has been assigned yet: we are reconciling it and will tell you whether it is assigned or refunded.`};
 }
+export function reactivationEmail(l:Locale,kind:'approved'|'rejected'|'lapsed',baseUrl:string):Mail {
+  const copy={
+    approved:{en:['Your THE1500 reactivation was approved','Your reactivation was approved. You have 15 calendar days from this notice to complete your company form. No automatic extension applies.'],
+      es:['Se aprobó la reactivación de tu incorporación a THE1500','Tu reactivación fue aprobada. Tienes 15 días calendario desde este aviso para completar el formulario de tu empresa. No se aplica ninguna prórroga automática.']},
+    rejected:{en:['Your THE1500 reactivation is under individual review','Your reactivation request moved to individual administrative review. You do not automatically lose your position or your payment.'],
+      es:['Tu reactivación en THE1500 pasó a revisión individual','Tu solicitud de reactivación pasó a revisión administrativa individual. No pierdes automáticamente tu cupo ni tu dinero.']},
+    lapsed:{en:['Your THE1500 case is under individual review','The 15 days granted after reactivation ended without a completed form. Your case moved to individual administrative review. You do not automatically lose your position or your payment.'],
+      es:['Tu expediente de THE1500 pasó a revisión individual','Los 15 días concedidos tras la reactivación terminaron sin formulario completado. Tu expediente pasó a revisión administrativa individual. No pierdes automáticamente tu cupo ni tu dinero.']},
+  }[kind][l];
+  return {subject:copy[0]!,text:`${copy[1]}\n${baseUrl}/mi-cuenta`};
+}
+export function serviceRequestDecisionEmail(l:Locale,company:string,kind:'withdrawal'|'cancellation',decision:'completed'|'rejected'):Mail {
+  const what=l==='es'?(kind==='withdrawal'?'retiro':'cancelación'):kind;
+  return l==='es'?{subject:`THE1500: decisión sobre tu solicitud de ${what}`,
+    text:decision==='completed'?`Se ejecutó la solicitud de ${what} de ${company}.`:`La solicitud de ${what} de ${company} fue rechazada. Puedes pedir el motivo respondiendo a este mensaje.`}:
+    {subject:`THE1500: decision on your ${what} request`,
+    text:decision==='completed'?`The ${what} request for ${company} was carried out.`:`The ${what} request for ${company} was rejected. You can ask for the reason by replying to this message.`};
+}
+export function latePaymentResolvedEmail(l:Locale,company:string,position:number|null):Mail {
+  return l==='es'?{subject:'THE1500: resolución de tu pago tardío',
+    text:position?`Conciliamos el pago de ${company} y se adjudicó el cupo número ${position}.`:`Conciliamos el pago de ${company}. No pudo adjudicarse un cupo, por lo que corresponde su reembolso.`}:
+    {subject:'THE1500: your late payment was resolved',
+    text:position?`We reconciled the payment for ${company} and assigned position ${position}.`:`We reconciled the payment for ${company}. No position could be assigned, so it is being refunded.`};
+}
+export function premiumDecisionEmail(l:Locale,company:string,status:'in_review'|'accepted'|'rejected'):Mail {
+  const es={in_review:'está en evaluación. Podríamos escribirte o proponerte una reunión si necesitamos más información',accepted:'fue aceptada. Administración te indicará cómo continuar; aceptarla no adjudica todavía un cupo',rejected:'no fue aceptada'};
+  const en={in_review:'is being evaluated. We may email you or suggest a meeting if we need more information',accepted:'was accepted. Administration will tell you how to proceed; acceptance does not assign a position yet',rejected:'was not accepted'};
+  return l==='es'?{subject:'THE1500: tu solicitud Premium',text:`La solicitud Premium de ${company} ${es[status]}.`}:
+    {subject:'THE1500: your Premium application',text:`The Premium application for ${company} ${en[status]}.`};
+}

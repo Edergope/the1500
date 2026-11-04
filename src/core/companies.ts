@@ -78,18 +78,19 @@ export async function setCompanyMember(db:D1Database,ownerId:string,companyId:st
 }
 /** Everything the owner's account page needs about one company, without administrative internals. */
 export async function getOwnerCompanyStatus(db:D1Database,companyId:string) {
-  const [company,slot,onboarding,hold,versions,invitation,requests]=await Promise.all([
+  const [company,slot,onboarding,hold,versions,invitation,requests,premium]=await Promise.all([
     db.prepare(`SELECT id,display_name AS displayName,slug,country,industry,website,identity_state AS identityState,
       publication_status AS publicationStatus,publication_block AS publicationBlock,published_at AS firstPublishedAt,
       correction_window_ends_at AS correctionWindowEndsAt,guarantee_ends_at AS guaranteeEndsAt FROM companies WHERE id=?`).bind(companyId).first(),
     db.prepare(`SELECT number AS position,status,phase,first_published_at AS firstPublishedAt FROM slots WHERE company_id=? AND status IN('assigned','retired')`).bind(companyId).first(),
     db.prepare(`SELECT status,started_at AS startedAt,form_due_at AS formDueAt,extension_due_at AS extensionDueAt,
-      reactivation_due_at AS reactivationDueAt,submitted_at AS submittedAt FROM onboarding_cases WHERE company_id=?`).bind(companyId).first(),
+      reactivation_due_at AS reactivationDueAt,submitted_at AS submittedAt,reactivation_requested_at AS reactivationRequestedAt,reactivation_approved_at AS reactivationApprovedAt,reactivation_notified_at AS reactivationNotifiedAt,reactivation_form_due_at AS reactivationFormDueAt FROM onboarding_cases WHERE company_id=?`).bind(companyId).first(),
     db.prepare(`SELECT id AS holdId,expires_at AS expiresAt FROM slot_holds WHERE company_id=? AND status='active'`).bind(companyId).first(),
     db.prepare(`SELECT version,approved_at AS approvedAt,published_at AS publishedAt,review_status AS reviewStatus FROM profile_versions WHERE company_id=? ORDER BY version DESC LIMIT 20`).bind(companyId).all(),
     db.prepare(`SELECT id AS invitationId,expires_at AS expiresAt FROM founder_invitations WHERE company_id=? AND status='pending'`).bind(companyId).first(),
-    db.prepare(`SELECT id,kind,status,requested_at AS requestedAt,resolved_at AS resolvedAt FROM service_requests WHERE company_id=? ORDER BY requested_at DESC LIMIT 10`).bind(companyId).all(),
+    db.prepare(`SELECT id,kind,status,legal_basis AS legalBasis,requested_at AS requestedAt,resolved_at AS resolvedAt FROM service_requests WHERE company_id=? AND origin='owner' ORDER BY requested_at DESC LIMIT 10`).bind(companyId).all(),
+    db.prepare(`SELECT id,status,contact_preference AS contactPreference,created_at AS createdAt,updated_at AS updatedAt FROM premium_requests WHERE company_id=? ORDER BY created_at DESC LIMIT 1`).bind(companyId).first(),
   ]);
   if (!company) throw new IdentityError('COMPANY_NOT_FOUND',404);
-  return {company,position:slot??null,onboarding:onboarding??null,activeHold:hold??null,profileVersions:versions.results,founderInvitation:invitation??null,requests:requests.results};
+  return {company,position:slot??null,onboarding:onboarding??null,activeHold:hold??null,profileVersions:versions.results,founderInvitation:invitation??null,requests:requests.results,premiumRequest:premium??null};
 }

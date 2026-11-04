@@ -1,8 +1,10 @@
 import { IdentityError, revokeAllSessions } from './identity';
-import { FOUNDER_PLACES, onboardingStart, releaseAssignmentStatements } from './inventory';
-import { notifyOwners, openIncident, ownerContacts } from './ops';
-import { founderAwardedEmail, founderInvitationEmail } from '../lib/i18n/comms';
-import { withdrawCompany } from './profiles';
+import { FOUNDER_PLACES, getSalesState, onboardingStart, releaseAssignmentStatements } from './inventory';
+import { notifyOwners, openIncident, ownerContacts, startReactivationClock } from './ops';
+import { founderAwardedEmail, founderInvitationEmail, premiumDecisionEmail, reactivationEmail, serviceRequestDecisionEmail } from '../lib/i18n/comms';
+import { paymentsGate, type StripeEnv } from './stripe';
+import { mailConfigured, type MailEnv } from './mail';
+import { withdrawalPlan } from './profiles';
 
 export class AdminError extends IdentityError {
   constructor(code: string, httpStatus = 409) { super(code, httpStatus); }
@@ -21,7 +23,7 @@ export function adminEvent(db:D1Database,adminId:string,action:string,subjectTyp
   return db.prepare(`INSERT INTO admin_events(id,admin_id,action,subject_type,subject_id,reason_code,evidence_reference,details_json,occurred_at) VALUES(?,?,?,?,?,?,?,?,?)`)
     .bind(crypto.randomUUID(),adminId,action,subjectType,subjectId,reasonCode,evidence,JSON.stringify(details),now.toISOString());
 }
-function requireEvidence(reasonCode:unknown,evidenceReference:unknown):asserts reasonCode is string {
+export function requireEvidence(reasonCode:unknown,evidenceReference:unknown):asserts reasonCode is string {
   if (typeof reasonCode!=='string'||!/^[a-zA-Z0-9_-]{3,64}$/.test(reasonCode)||typeof evidenceReference!=='string'||!evidenceReference.trim()||evidenceReference.length>400)
     throw new AdminError('REVIEW_EVIDENCE_REQUIRED',400);
 }
@@ -134,34 +136,132 @@ export async function reviewProfile(db:D1Database,adminId:string,companyId:strin
   if (result[0]?.meta?.changes!==1) throw new AdminError('REVIEW_CONFLICT');
   return {companyId,version,reviewStatus:decision};
 }
-export async function requestService(db:D1Database,companyId:string,userId:string,kind:'withdrawal'|'cancellation',reason:string,now=new Date()) {
-  const started=await db.prepare(`SELECT MIN(processing_started_at) AS at FROM company_declarations WHERE company_id=?`).bind(companyId).first<{at:string|null}>();
+export type LegalBasis='data_protection'|'illicit_content';
+export function parseLegalBasis(value:unknown):LegalBasis|null {
+  if (value===undefined||value===null) return null;
+  if (value!=='data_protection'&&value!=='illicit_content') throw new AdminError('INVALID_REQUEST',400);
+  return value;
+}
+async function insertServiceRequest(db:D1Database,input:{companyId:string;userId:string;kind:'withdrawal'|'cancellation';reason:string;legalBasis:LegalBasis|null;origin:'owner'|'recorded_by_admin';channelNote?:string|null},now:Date,extra:D1PreparedStatement[]=[]) {
+  const started=await db.prepare(`SELECT MIN(processing_started_at) AS at FROM company_declarations WHERE company_id=?`).bind(input.companyId).first<{at:string|null}>();
   const id=crypto.randomUUID();
   try {
     await db.batch([
-      db.prepare(`INSERT INTO service_requests(id,company_id,kind,requested_by,reason,structuring_started_at,requested_at) VALUES(?,?,?,?,?,?,?)`)
-        .bind(id,companyId,kind,userId,reason,started?.at??null,now.toISOString()),
-      openIncident(db,`${kind}_requested`,'warning',{companyId,dedupeKey:`service:${id}`},{requestId:id},now),
+      db.prepare(`INSERT INTO service_requests(id,company_id,kind,requested_by,reason,structuring_started_at,requested_at,legal_basis,origin,channel_note) VALUES(?,?,?,?,?,?,?,?,?,?)`)
+        .bind(id,input.companyId,input.kind,input.userId,input.reason,started?.at??null,now.toISOString(),input.legalBasis,input.origin,input.channelNote??null),
+      openIncident(db,input.legalBasis?'legal_request_received':`${input.kind}_requested`,input.legalBasis?'critical':'warning',{companyId:input.companyId,dedupeKey:`service:${id}`},{requestId:id,legalBasis:input.legalBasis},now),
+      ...extra,
     ]);
   } catch {throw new AdminError('REQUEST_ALREADY_OPEN');}
   // Decision 10: whether structuring had begun decides what refund applies, so it is stored with the request.
-  return {requestId:id,kind,status:'requested',requestedAt:now.toISOString(),structuringStartedAt:started?.at??null};
+  return {requestId:id,kind:input.kind,status:'requested',legalBasis:input.legalBasis,requestedAt:now.toISOString(),structuringStartedAt:started?.at??null};
+}
+export function requestService(db:D1Database,companyId:string,userId:string,kind:'withdrawal'|'cancellation',reason:string,now=new Date(),legalBasis:LegalBasis|null=null) {
+  return insertServiceRequest(db,{companyId,userId,kind,reason,legalBasis,origin:'owner'},now);
+}
+/** A legal request may reach administration from outside the account, for example from the affected person. */
+export async function recordLegalRequest(db:D1Database,adminId:string,companyId:string,legalBasis:LegalBasis,reason:string,channelNote:string,now=new Date()) {
+  const exists=await db.prepare(`SELECT 1 AS ok FROM companies WHERE id=?`).bind(companyId).first();
+  if (!exists) throw new AdminError('COMPANY_NOT_FOUND',404);
+  return insertServiceRequest(db,{companyId,userId:adminId,kind:'withdrawal',reason,legalBasis,origin:'recorded_by_admin',channelNote},now,
+    [adminEvent(db,adminId,'legal_request_recorded','company',companyId,legalBasis,channelNote,{},now)]);
+}
+/** The applicable term depends on the case and the jurisdiction, so administration sets it: no number of days is assumed here. */
+export async function setLegalDeadline(db:D1Database,adminId:string,requestId:string,legalDueAt:unknown,reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  if (typeof legalDueAt!=='string'||Number.isNaN(Date.parse(legalDueAt))) throw new AdminError('INVALID_REQUEST',400);
+  const due=new Date(legalDueAt).toISOString();
+  const result=await db.batch([
+    db.prepare(`UPDATE service_requests SET legal_due_at=? WHERE id=? AND status='requested' AND legal_basis IS NOT NULL`).bind(due,requestId),
+    adminEvent(db,adminId,'legal_deadline_set','service_request',requestId,reasonCode,(evidence as string).trim(),{legalDueAt:due},now),
+  ]);
+  if (result[0]?.meta?.changes!==1) throw new AdminError('REQUEST_NOT_FOUND',404);
+  return {requestId,legalDueAt:due};
 }
 export async function listServiceRequests(db:D1Database,status='requested',limit=50) {
   clampLimit(limit);
-  const rows=await db.prepare(`SELECT r.id,r.company_id AS companyId,c.display_name AS companyName,r.kind,r.status,r.reason,r.structuring_started_at AS structuringStartedAt,r.requested_at AS requestedAt,r.resolved_at AS resolvedAt
-    FROM service_requests r JOIN companies c ON c.id=r.company_id WHERE r.status=? ORDER BY r.requested_at LIMIT ?`).bind(status,limit).all();
+  const rows=await db.prepare(`SELECT r.id,r.company_id AS companyId,c.display_name AS companyName,r.kind,r.status,r.reason,r.legal_basis AS legalBasis,r.legal_due_at AS legalDueAt,r.origin,r.channel_note AS channelNote,
+    r.structuring_started_at AS structuringStartedAt,r.requested_at AS requestedAt,r.resolved_at AS resolvedAt,r.resolution_code AS resolutionCode,r.resolution_evidence AS resolutionEvidence
+    FROM service_requests r JOIN companies c ON c.id=r.company_id WHERE r.status=? ORDER BY r.legal_basis IS NULL,r.legal_due_at IS NULL,r.legal_due_at,r.requested_at LIMIT ?`).bind(status,limit).all();
   return {requests:rows.results};
 }
-export async function executeWithdrawal(db:D1Database,adminId:string,companyId:string,requestId:string|null,reasonCode:unknown,evidence:unknown,now=new Date()) {
+async function notifyRequestDecision(db:D1Database,companyId:string,requestId:string,kind:'withdrawal'|'cancellation',decision:'completed'|'rejected',now:Date) {
+  const company=await db.prepare(`SELECT display_name FROM companies WHERE id=?`).bind(companyId).first<{display_name:string}>();
+  await notifyOwners(db,companyId,'service_request_decision',l=>serviceRequestDecisionEmail(l,company?.display_name??'',kind,decision),`service_decision:${requestId}`,now);
+}
+/** Owner decision 2026-11-04: the holder asks, administration executes, and request and decision stay on record. */
+export async function executeWithdrawal(db:D1Database,adminId:string,companyId:string,requestId:string,reasonCode:unknown,evidence:unknown,now=new Date()) {
   requireEvidence(reasonCode,evidence);
-  const result=await withdrawCompany(db,companyId,requestId??`admin:${adminId}`,now);
+  const request=await db.prepare(`SELECT id FROM service_requests WHERE id=? AND company_id=? AND kind='withdrawal' AND status='requested'`).bind(requestId,companyId).first();
+  if (!request) throw new AdminError('REQUEST_NOT_FOUND',404);
+  const plan=await withdrawalPlan(db,companyId,requestId,now);
+  const ref=(evidence as string).trim();
   await db.batch([
-    ...(requestId?[db.prepare(`UPDATE service_requests SET status='completed',resolved_at=?,resolved_by=?,resolution_code=? WHERE id=? AND company_id=? AND status='requested'`)
-      .bind(now.toISOString(),adminId,reasonCode,requestId,companyId)]:[]),
-    adminEvent(db,adminId,'withdrawal','company',companyId,reasonCode,(evidence as string).trim(),{requestId},now),
+    ...plan.statements,
+    // Withdrawal is one fact: every request open for it is answered by this decision.
+    db.prepare(`UPDATE service_requests SET status='completed',resolved_at=?,resolved_by=?,resolution_code=?,resolution_evidence=? WHERE company_id=? AND kind='withdrawal' AND status='requested'`)
+      .bind(now.toISOString(),adminId,reasonCode,ref,companyId),
+    adminEvent(db,adminId,'withdrawal','company',companyId,reasonCode,ref,{requestId},now),
   ]);
-  return result;
+  await notifyRequestDecision(db,companyId,requestId,'withdrawal','completed',now);
+  return plan.result;
+}
+export async function resolveServiceRequest(db:D1Database,adminId:string,requestId:string,decision:unknown,reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  const request=await db.prepare(`SELECT company_id,kind FROM service_requests WHERE id=? AND status='requested'`).bind(requestId).first<{company_id:string;kind:'withdrawal'|'cancellation'}>();
+  if (!request) throw new AdminError('REQUEST_NOT_FOUND',404);
+  // A withdrawal is only ever completed by executing it.
+  if (decision!=='rejected'&&!(decision==='completed'&&request.kind==='cancellation')) throw new AdminError('INVALID_ACTION',400);
+  const ref=(evidence as string).trim();
+  await db.batch([
+    db.prepare(`UPDATE service_requests SET status=?,resolved_at=?,resolved_by=?,resolution_code=?,resolution_evidence=? WHERE id=? AND status='requested'`)
+      .bind(decision,now.toISOString(),adminId,reasonCode,ref,requestId),
+    adminEvent(db,adminId,'service_request_resolved','service_request',requestId,reasonCode,ref,{decision},now),
+  ]);
+  await notifyRequestDecision(db,request.company_id,requestId,request.kind,decision,now);
+  return {requestId,status:decision};
+}
+/** Decision 21: the owner may ask until day 45. Asking does not reopen the form; administration decides. */
+export async function requestReactivation(db:D1Database,companyId:string,now=new Date()) {
+  const at=now.toISOString();
+  const result=await db.batch([
+    db.prepare(`UPDATE onboarding_cases SET status='reactivation_requested',reactivation_requested_at=? WHERE company_id=? AND status='suspended' AND reactivation_due_at>?`).bind(at,companyId,at),
+    openIncident(db,'reactivation_requested','warning',{companyId,dedupeKey:`reactivation_requested:${companyId}:${at}`},{},now),
+  ]);
+  if (result[0]?.meta?.changes!==1) {
+    await db.prepare(`UPDATE incidents SET status='resolved',resolved_at=?,resolution_code='not_applicable' WHERE dedupe_key=?`).bind(at,`reactivation_requested:${companyId}:${at}`).run();
+    throw new AdminError('INVALID_ACTION');
+  }
+  return {companyId,status:'reactivation_requested',reactivationRequestedAt:at};
+}
+/**
+ * Owner decision 2026-11-04. Approval queues the notice; the 15 days start when it is actually delivered (ops.flushNotifications)
+ * or when administration records having notified by another means. An approval from individual review is a fresh human decision.
+ */
+export async function decideReactivation(db:D1Database,adminId:string,companyId:string,decision:unknown,reasonCode:unknown,evidence:unknown,now=new Date(),baseUrl='') {
+  requireEvidence(reasonCode,evidence);
+  const at=now.toISOString(),ref=(evidence as string).trim();
+  const event=adminEvent(db,adminId,'reactivation_decision','company',companyId,reasonCode,ref,{decision},now);
+  let moved:D1PreparedStatement;
+  if (decision==='approved') moved=db.prepare(`UPDATE onboarding_cases SET status='reactivation_approved',reactivation_approved_at=?,reactivation_approved_by=?,reactivation_notified_at=NULL,reactivation_form_due_at=NULL WHERE company_id=? AND status IN('reactivation_requested','admin_review')`).bind(at,adminId,companyId);
+  else if (decision==='rejected') moved=db.prepare(`UPDATE onboarding_cases SET status='admin_review',admin_review_at=? WHERE company_id=? AND status='reactivation_requested'`).bind(at,companyId);
+  else if (decision==='notified_by_other_means') moved=startReactivationClock(db,companyId,now);
+  else throw new AdminError('INVALID_ACTION',400);
+  const result=await db.batch([moved,event]);
+  if (result[0]?.meta?.changes!==1) throw new AdminError('INVALID_ACTION');
+  if (decision==='approved') await notifyOwners(db,companyId,'reactivation_approved',l=>reactivationEmail(l,'approved',baseUrl),`reactivation_approved:${companyId}:${at}`,now);
+  if (decision==='rejected') await notifyOwners(db,companyId,'reactivation_rejected',l=>reactivationEmail(l,'rejected',baseUrl),`reactivation_rejected:${companyId}:${at}`,now);
+  return db.prepare(`SELECT company_id AS companyId,status,reactivation_approved_at AS reactivationApprovedAt,reactivation_notified_at AS reactivationNotifiedAt,reactivation_form_due_at AS reactivationFormDueAt FROM onboarding_cases WHERE company_id=?`).bind(companyId).first<Record<string,unknown>>().then(r=>r??{});
+}
+/** Reports presence and mode only. No secret value ever leaves this function. */
+export function integrationStatus(env:StripeEnv&MailEnv&{AI_API_KEY?:string;AI_PROVIDER?:string;AI_MODEL?:string;SNAPSHOTS?:unknown}) {
+  const gate=paymentsGate(env);
+  return {
+    mail:{configured:mailConfigured(env),keyPresent:!!env.RESEND_API_KEY,from:env.MAIL_FROM??null},
+    stripe:{enabled:env.PAYMENTS_ENABLED==='true',keyPresent:!!env.STRIPE_SECRET_KEY,keyIsTestMode:env.STRIPE_SECRET_KEY?/^(sk|rk)_test_/.test(env.STRIPE_SECRET_KEY):null,webhookSecretPresent:!!env.STRIPE_WEBHOOK_SECRET,gate:gate.ok?'open_test_mode':gate.code},
+    ai:{configured:!!env.AI_API_KEY,provider:env.AI_PROVIDER??null,model:env.AI_MODEL??null},
+    publicBaseUrl:env.PUBLIC_BASE_URL??null,snapshotsBound:!!env.SNAPSHOTS,
+  };
 }
 export async function listIncidents(db:D1Database,status:string,limit=50) {
   clampLimit(limit);
@@ -308,31 +408,40 @@ export async function revokeFounderAward(db:D1Database,adminId:string,companyId:
   ]);
   return {companyId,status:'revoked',positionReleased:award.slot_number};
 }
-/** Question 64 is open. Admins record requests that arrive through any channel; there is no public intake. */
-export async function recordPremiumRequest(db:D1Database,adminId:string,companyId:string,channelNote:string,now=new Date()) {
+/** Decision 64: application form in the portal, once Premium is the tier available. It holds no position and there is no checkout. */
+export async function submitPremiumRequest(db:D1Database,companyId:string,userId:string,input:{message:string;contactPreference:'email'|'meeting'|'no_preference'},now=new Date()) {
+  const sales=await getSalesState(db);
+  if (sales.mode!=='premium_admission') throw new AdminError('PREMIUM_NOT_OPEN');
+  const company=await db.prepare(`SELECT identity_state,(SELECT COUNT(*) FROM slots s WHERE s.company_id=companies.id AND s.status IN('assigned','retired')) AS assigned FROM companies WHERE id=?`)
+    .bind(companyId).first<{identity_state:string;assigned:number}>();
+  if (!company||!['self_declared','admin_verified'].includes(company.identity_state)) throw new AdminError('COMPANY_NOT_ELIGIBLE',403);
+  if (company.assigned) throw new AdminError('COMPANY_ALREADY_ASSIGNED');
   const id=crypto.randomUUID(),at=now.toISOString();
   try {
     await db.batch([
-      db.prepare(`INSERT INTO premium_requests(id,company_id,channel_note,recorded_by,created_at,updated_at) VALUES(?,?,?,?,?,?)`).bind(id,companyId,channelNote,adminId,at,at),
-      adminEvent(db,adminId,'premium_recorded','company',companyId,null,null,{requestId:id},now),
+      db.prepare(`INSERT INTO premium_requests(id,company_id,channel_note,recorded_by,message,contact_preference,created_at,updated_at) VALUES(?,?,'portal_form',?,?,?,?,?)`).bind(id,companyId,userId,input.message,input.contactPreference,at,at),
+      openIncident(db,'premium_request_received','info',{companyId,dedupeKey:`premium:${id}`},{requestId:id},now),
     ]);
   } catch {throw new AdminError('REQUEST_ALREADY_OPEN');}
-  return {requestId:id,companyId,status:'received'};
+  return {requestId:id,companyId,status:'received',contactPreference:input.contactPreference,createdAt:at};
 }
 export async function listPremiumRequests(db:D1Database,limit=50) {
   clampLimit(limit);
-  const rows=await db.prepare(`SELECT p.id,p.company_id AS companyId,c.display_name AS companyName,p.status,p.channel_note AS channelNote,p.created_at AS createdAt,p.updated_at AS updatedAt
-    FROM premium_requests p JOIN companies c ON c.id=p.company_id ORDER BY p.created_at DESC LIMIT ?`).bind(limit).all();
+  const rows=await db.prepare(`SELECT p.id,p.company_id AS companyId,c.display_name AS companyName,c.website,c.identity_state AS identityState,u.email AS applicantEmail,p.status,p.message,p.contact_preference AS contactPreference,p.created_at AS createdAt,p.updated_at AS updatedAt
+    FROM premium_requests p JOIN companies c ON c.id=p.company_id LEFT JOIN users u ON u.id=p.recorded_by ORDER BY p.created_at DESC LIMIT ?`).bind(limit).all();
   return {requests:rows.results};
 }
+/** Email exchanges or meetings that informed the evaluation are cited in the evidence reference. Neither is a requirement. */
 export async function updatePremiumRequest(db:D1Database,adminId:string,requestId:string,status:string,reasonCode:unknown,evidence:unknown,now=new Date()) {
   requireEvidence(reasonCode,evidence);
-  if (!['in_review','accepted','rejected'].includes(status)) throw new AdminError('INVALID_ACTION',400);
+  if (status!=='in_review'&&status!=='accepted'&&status!=='rejected') throw new AdminError('INVALID_ACTION',400);
   const result=await db.batch([
     db.prepare(`UPDATE premium_requests SET status=?,updated_at=? WHERE id=? AND status IN('received','in_review','accepted')`).bind(status,now.toISOString(),requestId),
     adminEvent(db,adminId,'premium_status','premium_request',requestId,reasonCode,(evidence as string).trim(),{status},now),
   ]);
   if (result[0]?.meta?.changes!==1) throw new AdminError('REQUEST_NOT_FOUND',404);
+  const request=await db.prepare(`SELECT p.company_id,c.display_name FROM premium_requests p JOIN companies c ON c.id=p.company_id WHERE p.id=?`).bind(requestId).first<{company_id:string;display_name:string}>();
+  if (request) await notifyOwners(db,request.company_id,'premium_decision',l=>premiumDecisionEmail(l,request.display_name,status),`premium_decision:${requestId}:${status}`,now);
   return {requestId,status};
 }
 /** Only after human acceptance and credited funds, referenced as evidence. Never automatic, never before tier 4 opens. */

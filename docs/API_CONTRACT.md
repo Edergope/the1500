@@ -1,9 +1,11 @@
-# THE1500 API Contract v1.0 (CORE-005)
+# THE1500 API Contract v1.1 (CORE-006)
 
 **Owner:** Claude (core). **Consumer:** Antigravity. **Types to import:** `src/lib/contracts/api.ts`.
 **Verified by:** `tests/integration/*`, `tests/e2e/journey.cjs`. A test fails if a route exists without being listed here, or the reverse.
 Business rules live on the server. The frontend never computes price, position, availability or permission.
 
+> **Changes in v1.1:** reactivation is now requested and then decided by administration (new onboarding states). Premium has a portal form. `legalBasis` on requests. Late payments need a documented human decision. `requestId` is required to execute a withdrawal.
+>
 > **Breaking changes from v0.2:** `hold.slotNumber` removed (a number is assigned on confirmation, Decision 30). `PUT /me/company/profile` body changed (`description`, `consent` required). Founder accept requires `acceptTerms`, `termsVersion` and no longer assigns a position: an admin awards it. JSON-LD is now `@graph`.
 
 ## 1. Conventions
@@ -44,8 +46,9 @@ Branch on `code`. Show `message`. Status: 400 invalid · 401 no session · 403 n
 | POST `/registrations` | user | `RegistrationBody` | 201 `RegistrationResponse` · `INVALID_REGISTRATION`, `INVALID_WEBSITE`, `COMPANY_CONFLICT`, `REGISTRATION_LIMIT` |
 | GET `/me/company?companyId=` | member | | `CompanyStatusResponse`: drives `/mi-cuenta` |
 | POST `/me/company/members` | owner | `{companyId,email,action:"add"\|"remove"}` | `{companyId,email,role}` · `MEMBER_NOT_REGISTERED` |
-| POST `/me/company/requests` | owner | `{companyId,kind:"withdrawal"\|"cancellation",reason}` | 201 `{requestId,kind,status,requestedAt,structuringStartedAt}` · `REQUEST_ALREADY_OPEN`. Administration executes it. |
-| POST `/me/company/reactivate` | owner | `{companyId}` | `{companyId,status:"reactivated",reactivationRequestedAt}`. Valid until day 45. |
+| POST `/me/company/requests` | owner | `{companyId,kind:"withdrawal"\|"cancellation",reason,legalBasis?:"data_protection"\|"illicit_content"}` | 201 `{requestId,kind,status,legalBasis,requestedAt,structuringStartedAt}` · `REQUEST_ALREADY_OPEN`. Administration decides and executes it. `legalBasis` only on withdrawals. |
+| POST `/me/company/reactivate` | owner | `{companyId}` | `{companyId,status:"reactivation_requested",reactivationRequestedAt}`. Valid until day 45 · `INVALID_ACTION`. Does not reopen the form: see §8. |
+| POST `/me/company/premium-request` | owner | `{companyId,message,contactPreference?:"email"\|"meeting"\|"no_preference"}` | 201 `{requestId,companyId,status:"received",contactPreference,createdAt}` · `PREMIUM_NOT_OPEN`, `REQUEST_ALREADY_OPEN`, `COMPANY_ALREADY_ASSIGNED`. `message` 10–2000 chars. |
 | GET `/me/founder-invitations` | user | | `{invitations:[{invitationId,companyId,companyName,expiresAt}]}` |
 | POST `/me/founder-invitations/accept` | owner | `{invitationId,acceptTerms:true,termsVersion}` | `{invitationId,companyId,status:"accepted",acceptedAt}`. **No position yet**: show "pending award" until `GET /me/company` returns `position`. · `TERMS_REQUIRED`, `INVITATION_EXPIRED` |
 
@@ -107,7 +110,7 @@ HTML at `/empresas/:slug` and `/es/empresas/:slug` is rendered by the page; use 
 |---|---|---|
 | `selling` | Automatic checkout open at `currentPriceUsdCents` | Buy |
 | `awaiting_founder_allocation` | 101-600 sold out; tier 2 opens only when all 600 are definitively awarded (Decisions 38-39) | No buy; say the next tier is not open yet |
-| `premium_admission` | Last 150. Human admission. **Intake channel undecided (Question 64)** | No checkout and no invented form; ask the owner |
+| `premium_admission` | Last 150. Human admission (Decision 64) | Application form posting to `/me/company/premium-request`. No checkout. Never present a meeting as a requirement. Applying holds no position. Show progress from `premiumRequest` in `GET /me/company` |
 | `closed_archive` | All positions consumed | Sold out; directory stays fully available |
 
 Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or AI search. Ask: label `llm_grounded`, `retrieval_only` and `abstained` differently; always render `citations` with links and `limitations`. Retired positions show **only** the number and the exact label: `labelEs` is Decision 29's text, `label` is an English rendering pending the owner's approval. Never display fictitious numbers or a founder badge. Positions 1-100 are founders' and 101-600 paid (Decision 05, confirmed 2026-11-03), and sales of 101-600 run while founders join: do not build any UI that points this out.
@@ -127,16 +130,20 @@ Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or A
 | POST `/admin/founder-revoke` | `{companyId,reasonCode,evidenceReference}` | Only before first publication |
 | GET `/admin/profiles` | `limit` | Profiles pending review, with claims |
 | POST `/admin/profiles/review` | `{companyId,version,decision:"cleared"\|"rejected",reasonCode,evidenceReference}` | Exceptional profile decision |
-| GET `/admin/requests` | `status,limit` | Withdrawal and cancellation requests |
-| POST `/admin/withdrawals/execute` | `{companyId,requestId?,reasonCode,evidenceReference}` | Definitive and irreversible |
+| GET, POST `/admin/requests` | GET `status,limit`. POST 201 `{companyId,legalBasis,reason,channelNote}` | Withdrawal and cancellation queue, legal requests first. POST records a legal request that arrived outside the owner's account (no `reasonCode` needed; `channelNote` is the source) |
+| POST `/admin/requests/resolve` | `{requestId,decision:"rejected"\|"completed",reasonCode,evidenceReference}` | Documented decision. `completed` only for cancellations: a withdrawal completes by executing it |
+| POST `/admin/requests/legal-deadline` | `{requestId,legalDueAt,reasonCode,evidenceReference}` | Administration sets the applicable term. Passing it with the request open raises a critical incident |
+| POST `/admin/withdrawals/execute` | `{companyId,requestId,reasonCode,evidenceReference}` | Definitive and irreversible. Closes every open withdrawal request of that company |
+| POST `/admin/onboarding/reactivation` | `{companyId,decision:"approved"\|"rejected"\|"notified_by_other_means",reasonCode,evidenceReference}` | Decides a request or a case in review. Returns `{companyId,status,reactivationApprovedAt,reactivationNotifiedAt,reactivationFormDueAt}` |
 | GET `/admin/incidents` | `status,limit` | Open incidents |
 | POST `/admin/incidents/resolve` | `{incidentId,reasonCode,evidenceReference}` | Close with reason |
 | GET `/admin/payments` | `status,limit` | Operations |
 | POST `/admin/payments/reconcile` | `{attemptId}` | Compare with Stripe and apply |
-| POST `/admin/payments/resolve-late` | `{attemptId}` | Same tier and price if free; else `refundRequired:true` |
+| GET, POST `/admin/payments/resolve-late` | GET `attemptId`. POST `{attemptId,decision:"assign"\|"refund",reasonCode,evidenceReference}` | GET returns `LatePaymentFacts`. POST is the documented human decision. `assign` takes only a free number in the same tier and price, or returns `refundRequired:true` |
 | POST `/admin/payments/refund` | `{attemptId,reason}` | Position returns only after confirmed refund, and never if published |
-| GET, POST `/admin/premium/requests` | POST `{companyId,channelNote}` or `{requestId,status,reasonCode,evidenceReference}` | Staff record only. **No public intake exists: Question 64 is open.** |
+| GET, POST `/admin/premium/requests` | POST `{requestId,status:"in_review"\|"accepted"\|"rejected",reasonCode,evidenceReference}` | Applications from the portal form. Email or meeting notes go in the evidence reference |
 | POST `/admin/premium/assign` | `{requestId,reasonCode,evidenceReference}` | Accepted request, tier 4 open, funds evidence |
+| GET `/admin/integrations` | | Whether mail, Stripe (test mode) and AI are configured. Presence and mode only, never a value |
 | GET, POST `/admin/seller` | POST `{sellerEntityId,legalName,country,reasonCode,evidenceReference}` | Seller is configuration. Does not enable live payments. |
 
 Admin bootstrap is by SQL on verified user IDs only: `docs/CORE004_IMPLEMENTATION.md` §3.
@@ -152,10 +159,16 @@ Payment:  creating → pending → paid → refund_pending → refunded
                         ├→ late_review → paid | refund_pending  (paid after reservation ended)
                         └→ amount_review → refund_pending       (amount or currency mismatch)
 Company:  draft → generated → owner_approved → published → withdrawn
+Withdrawal request: requested → completed (executed) | rejected. Both keep who, when, reason and evidence.
 Profile:  version created → approved by owner → published. Approved content is immutable.
-Onboarding: active → extended (day 15) → suspended (day 30) → reactivated | admin_review (day 45); completed on form submission
+Onboarding: active → extended (day 15) → suspended (day 30) → admin_review (day 45, if nothing was requested)
+          suspended → reactivation_requested (until day 45) → reactivation_approved → reactivated → completed
+                                  └→ admin_review (rejected)                             └→ admin_review (form not sent in 15 days)
+          completed on form submission. admin_review can return to reactivation_approved only by a new human approval.
 ```
+
+Reactivation on screen: while `reactivation_requested`, say the request is being reviewed and keep the form closed. From `reactivation_approved` the form opens. Once `reactivated`, count down to `reactivationFormDueAt`: 15 calendar days from the notice, no automatic extension. Failing to submit never means losing the position or the money: say it goes to individual review.
 
 ## 9. Not available yet
 
-No real Stripe/LLM/email has been exercised. No tax calculation, invoicing or bank transfers. No Premium public intake. See `CORE005_STATUS.md`.
+No real Stripe/LLM/email has been exercised. No tax calculation, invoicing or bank transfers. See `CORE006_STATUS.md`.

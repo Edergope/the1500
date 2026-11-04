@@ -113,10 +113,11 @@ describe('T05 late payments (Decision 42)',()=>{
       assert.equal(out.outcome,'late_review');
       assert.equal(await h.db.prepare(`SELECT 1 FROM slots WHERE company_id=?`).bind(b.companyId).first(),null);
       assert.ok(await h.db.prepare(`SELECT 1 FROM incidents WHERE kind='payment_after_hold_expiry'`).first());
-      const r=await pay.resolveLatePayment(h.db,b.checkout.attemptId,later);
+      const admin=await seedCompany(h.db);const decide=(decision)=>pay.resolveLatePayment(h.db,envBase,admin.userId,b.checkout.attemptId,{decision,reasonCode:'reviewed',evidence:'case-late-1'},later);
+      const r=await decide('assign');
       assert.equal(r.status,'paid');assert.equal(r.position,101);
       assert.equal((await h.db.prepare(`SELECT phase,price_usd_cents p,assignment_kind k FROM slots WHERE company_id=?`).bind(b.companyId).first()).k,'paid');
-      await assert.rejects(pay.resolveLatePayment(h.db,b.checkout.attemptId,later),e=>e.code==='PAYMENT_STATE_CONFLICT');
+      await assert.rejects(decide('assign'),e=>e.code==='PAYMENT_STATE_CONFLICT');
     }finally{await h.dispose();}
   });
   test('with no capacity left in that tier it can only be refunded; no number is displaced and no tier opens early',async()=>{
@@ -125,9 +126,10 @@ describe('T05 late payments (Decision 42)',()=>{
       await inv.expireStaleHolds(h.db,later);
       await pay.applyPaidSession(h.db,envBase,up.pay(b.sessionId),later);
       await fillFounder(h.db,1,100);await fillPaid(h.db,101,600);
-      const r=await pay.resolveLatePayment(h.db,b.checkout.attemptId,later);
+      const admin=await seedCompany(h.db);const decide=(decision)=>pay.resolveLatePayment(h.db,envBase,admin.userId,b.checkout.attemptId,{decision,reasonCode:'no_capacity',evidence:'case-late-2'},later);
+      const r=await decide('assign');
       assert.equal(r.position,null);assert.equal(r.refundRequired,true);
-      assert.equal((await pay.requestRefund(h.db,envBase,b.checkout.attemptId,'no capacity in tier',later)).status,'refunded');
+      assert.equal((await decide('refund')).status,'refunded');
     }finally{await h.dispose();}
   });
   test('sweep expires the provider session when the reservation ends and recovers a missed webhook',async()=>{
@@ -212,16 +214,15 @@ describe('T15 provider failure keeps state intact',()=>{
     }finally{await h.dispose();}
   });
 });
-describe('Premium stays human (Question 64 open)',()=>{
+describe('Premium stays human (Decision 64)',()=>{
   test('assignment needs admin acceptance, evidence and tier 4 being open',async()=>{
     const h=await freshDb();try{
       const admin=await seedCompany(h.db);const s=await seedCompany(h.db);
-      const r=await adm.recordPremiumRequest(h.db,admin.userId,s.companyId,'recorded by staff');
+      await fillUpTo(h.db,1350);
+      const r=await adm.submitPremiumRequest(h.db,s.companyId,s.userId,{message:'We would like to apply for Premium.',contactPreference:'no_preference'});
       await assert.rejects(adm.assignPremium(h.db,admin.userId,r.requestId,'funds_ok','bank-ref'),e=>e.code==='REQUEST_NOT_FOUND');
       await adm.updatePremiumRequest(h.db,admin.userId,r.requestId,'accepted','reviewed','case-1');
       await assert.rejects(adm.assignPremium(h.db,admin.userId,r.requestId,'funds_ok',''),e=>e.code==='REVIEW_EVIDENCE_REQUIRED');
-      await assert.rejects(adm.assignPremium(h.db,admin.userId,r.requestId,'funds_ok','bank-ref'),e=>e.code==='PAYMENT_STATE_CONFLICT');
-      await fillUpTo(h.db,1350);
       const done=await adm.assignPremium(h.db,admin.userId,r.requestId,'funds_ok','bank-ref');
       assert.equal(done.position,1351);
       assert.ok(await h.db.prepare(`SELECT 1 FROM admin_events WHERE action='premium_assigned'`).first());

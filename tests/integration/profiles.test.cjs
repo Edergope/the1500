@@ -262,7 +262,9 @@ describe('T09, T11, T12 discovery',()=>{
     assert.match(none.answer,/evidencia suficiente/);
   });
   test('T09 withdrawal removes identity everywhere; the number stays consumed, shown only as retired',async()=>{
-    const r=await adm.executeWithdrawal(h.db,ocean.userId,ocean.companyId,null,'owner_request','case-w1');
+    await assert.rejects(adm.executeWithdrawal(h.db,ocean.userId,ocean.companyId,'no-such-request','owner_request','case-w1'),e=>e.code==='REQUEST_NOT_FOUND');
+    const req=await adm.requestService(h.db,ocean.companyId,ocean.userId,'withdrawal','Closing this business line');
+    const r=await adm.executeWithdrawal(h.db,ocean.userId,ocean.companyId,req.requestId,'owner_request','case-w1');
     assert.equal(r.positionStatus,'retired');
     assert.equal(await dir.findPublicProfile(h.db,'ocean-line'),null);
     assert.equal((await srch.searchPublishedProfiles(h.db,'ocean freight shipment')).count,0);

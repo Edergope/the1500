@@ -223,7 +223,7 @@ export async function submitDeclaration(db:D1Database,env:ProfileEnv,companyId:s
   const slot=await allocatedSlot(db,companyId);
   if (!slot) throw new IdentityError('NO_CONFIRMED_SLOT',403);
   const onboarding=await db.prepare(`SELECT status FROM onboarding_cases WHERE company_id=?`).bind(companyId).first<{status:string}>();
-  if (onboarding&&['suspended','admin_review','cancelled'].includes(onboarding.status)) throw new IdentityError('ONBOARDING_SUSPENDED',409);
+  if (onboarding&&['suspended','reactivation_requested','admin_review','cancelled'].includes(onboarding.status)) throw new IdentityError('ONBOARDING_SUSPENDED',409);
   const at=now.toISOString();
   // Decision 06: after first publication corrections close, unless legally reopened by an admin.
   if (company.published_at&&company.correction_window_ends_at&&at>company.correction_window_ends_at&&
@@ -239,7 +239,7 @@ export async function submitDeclaration(db:D1Database,env:ProfileEnv,companyId:s
         VALUES(?,?,?,?,?,?,?,?)`).bind(companyId,revision,payload,payloadDigest,input.language,input.formVersion,userId,at),
       db.prepare(`INSERT INTO consent_records(id,company_id,user_id,kind,document_version,subject_digest,accepted_at) VALUES(?,?,?,'processing_authorization',?,?,?)`)
         .bind(crypto.randomUUID(),companyId,userId,input.consent.documentVersion,payloadDigest,at),
-      db.prepare(`UPDATE onboarding_cases SET status='completed',submitted_at=COALESCE(submitted_at,?) WHERE company_id=? AND status IN('active','extended','reactivated')`).bind(at,companyId),
+      db.prepare(`UPDATE onboarding_cases SET status='completed',submitted_at=COALESCE(submitted_at,?) WHERE company_id=? AND status IN('active','extended','reactivation_approved','reactivated')`).bind(at,companyId),
       // Decision 11: the verifiable start of structuring, relevant for any later refund.
       db.prepare(`UPDATE company_declarations SET processing_started_at=? WHERE company_id=? AND revision=?`).bind(at,companyId,revision),
     ]);
@@ -383,18 +383,20 @@ export async function publishProfile(db:D1Database,companyId:string,version:numb
     correctionWindowEndsAt:dates?.correction_window_ends_at,guaranteeEndsAt:dates?.guarantee_ends_at};
 }
 /** Decisions 17, 29: definitive withdrawal. Identity leaves every public surface; the number stays consumed. */
-export async function withdrawCompany(db:D1Database,companyId:string,reference:string,now=new Date()) {
+export async function withdrawalPlan(db:D1Database,companyId:string,reference:string,now=new Date()) {
   const company=await db.prepare(`SELECT publication_status FROM companies WHERE id=?`).bind(companyId).first<{publication_status:string}>();
   if (!company) throw new IdentityError('COMPANY_NOT_FOUND',404);
   const at=now.toISOString();
   const slot=await db.prepare(`SELECT number,first_published_at FROM slots WHERE company_id=? AND status IN('assigned','retired')`).bind(companyId).first<{number:number;first_published_at:string|null}>();
   if (!slot?.first_published_at) throw new IdentityError('COMPANY_NOT_ELIGIBLE',409);
-  await db.batch([
-    db.prepare(`UPDATE companies SET publication_status='withdrawn',public_summary=NULL,withdrawn_at=COALESCE(withdrawn_at,?) WHERE id=?`).bind(at,companyId),
-    db.prepare(`DELETE FROM published_company_fts WHERE company_id=?`).bind(companyId),
-    db.prepare(`INSERT INTO slot_audit(event_id,slot_number,action,company_id,reference_id,occurred_at)
-      SELECT ?,number,'retire',company_id,?,? FROM slots WHERE number=? AND status='assigned'`).bind(crypto.randomUUID(),reference,at,slot.number),
-    db.prepare(`UPDATE slots SET status='retired' WHERE number=? AND status='assigned'`).bind(slot.number),
-  ]);
-  return {companyId,publicationStatus:'withdrawn',position:slot.number,positionStatus:'retired',withdrawnAt:at};
+  return {
+    statements:[
+      db.prepare(`UPDATE companies SET publication_status='withdrawn',public_summary=NULL,withdrawn_at=COALESCE(withdrawn_at,?) WHERE id=?`).bind(at,companyId),
+      db.prepare(`DELETE FROM published_company_fts WHERE company_id=?`).bind(companyId),
+      db.prepare(`INSERT INTO slot_audit(event_id,slot_number,action,company_id,reference_id,occurred_at)
+        SELECT ?,number,'retire',company_id,?,? FROM slots WHERE number=? AND status='assigned'`).bind(crypto.randomUUID(),reference,at,slot.number),
+      db.prepare(`UPDATE slots SET status='retired' WHERE number=? AND status='assigned'`).bind(slot.number),
+    ],
+    result:{companyId,publicationStatus:'withdrawn',position:slot.number,positionStatus:'retired',withdrawnAt:at},
+  };
 }

@@ -1,12 +1,10 @@
 import type {APIRoute} from 'astro';
 import {env} from 'cloudflare:workers';
-import {adminPost} from '../../../../../core/http';
+import {adminGet,adminPost} from '../../../../../core/http';
 import {IdentityError} from '../../../../../core/identity';
-import {adminEvent} from '../../../../../core/admin';
-import {resolveLatePayment} from '../../../../../core/payments';
+import {latePaymentFacts,resolveLatePayment} from '../../../../../core/payments';
+export const GET:APIRoute=adminGet(()=>env.DB,async({db,url})=>latePaymentFacts(db,url.searchParams.get('attemptId')||'')) as unknown as APIRoute;
 export const POST:APIRoute=adminPost(()=>env.DB,async({db,user,body})=>{
   if (typeof body.attemptId!=='string') throw new IdentityError('ATTEMPT_NOT_FOUND',404);
-  const result=await resolveLatePayment(db,body.attemptId);
-  await adminEvent(db,user.id,'late_payment_resolved','payment',body.attemptId,null,null,result,new Date()).run();
-  return result;
+  return resolveLatePayment(db,env,user.id,body.attemptId,{decision:body.decision,reasonCode:body.reasonCode,evidence:body.evidenceReference});
 },200) as unknown as APIRoute;

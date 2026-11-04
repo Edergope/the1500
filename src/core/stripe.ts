@@ -44,6 +44,9 @@ export function createCheckoutSession(env:StripeEnv,params:{attemptId:string;com
   },idempotencyKey);
 }
 export const retrieveSession=(env:StripeEnv,id:string)=>call<StripeSession>(env,'GET',`/v1/checkout/sessions/${encodeURIComponent(id)}`);
+/** When the card was actually charged, according to the provider. */
+export const retrieveChargeTime=async(env:StripeEnv,paymentIntent:string)=>
+  (await call<{latest_charge?:{created?:number}|string|null}>(env,'GET',`/v1/payment_intents/${encodeURIComponent(paymentIntent)}?expand[]=latest_charge`)).latest_charge;
 export const expireSession=(env:StripeEnv,id:string)=>call<StripeSession>(env,'POST',`/v1/checkout/sessions/${encodeURIComponent(id)}/expire`,{});
 export const createRefund=(env:StripeEnv,paymentIntent:string,attemptId:string)=>
   call<{id:string;status:string}>(env,'POST','/v1/refunds',{payment_intent:paymentIntent,metadata:{attempt_id:attemptId}},`refund:${attemptId}`);
