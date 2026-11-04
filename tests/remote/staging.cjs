@@ -5,7 +5,7 @@ const {execFileSync}=require('node:child_process');const crypto=require('node:cr
 const assert=require('node:assert/strict');
 const ROOT=path.join(__dirname,'../..');const WR=path.join(ROOT,'node_modules/.bin/wrangler');
 const BASE=process.env.STAGING_URL,SECRET=process.env.STAGING_WEBHOOK_SECRET;
-assert.match(BASE||'',/^https:\/\/the1500-staging\./,'staging target only');assert.ok(SECRET,'STAGING_WEBHOOK_SECRET');
+assert.match(BASE||'',/^https:\/\/(the1500-staging\.|staging\.the1500\.com)/,'staging target only');assert.ok(SECRET,'STAGING_WEBHOOK_SECRET');
 const RUN=Date.now().toString(36);const log=[];
 const step=(s,d='')=>{const l=`PASS  ${s}${d?`  →  ${d}`:''}`;log.push(l);console.log(l);};
 const wr=(...a)=>{try{return execFileSync(WR,a,{cwd:ROOT,stdio:'pipe',maxBuffer:1<<26,env:{...process.env,CI:'1',WRANGLER_SEND_METRICS:'false'}}).toString();}catch(e){throw new Error(`wrangler ${a.slice(0,3).join(' ')}: ${(e.stdout||'').toString().slice(0,600)}`);}};

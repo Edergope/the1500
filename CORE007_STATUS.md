@@ -46,3 +46,7 @@ El propietario no autoriza por ahora Workers Paid. No se creó ni modificó nada
 
 Esa prueba gratuita, aunque pase, validaría el adaptador y el enlace de un solo uso hacia direcciones verificadas. No validaría el envío a clientes, que exige Workers Paid.
 
+## Decisión de infraestructura (2026-11-04)
+
+THE1500 operará en una cuenta de Cloudflare independiente, confirmado por el propietario. Dominio preferido: `the1500.com`, sin comprar. Revisión: `docs/DOMAIN_REVIEW_2026-11-04.md`. Traslado preparado, sin ejecutar: `docs/STAGING_MIGRATION.md`. El staging actual se conserva hasta entonces.
+
