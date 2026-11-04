@@ -1,0 +1,63 @@
+---
+import type { PublicCompanyCard, Locale } from '../lib/contracts/api';
+import { formatPosition } from '../ui/i18n';
+
+interface Props {
+  company: PublicCompanyCard;
+  lang?: Locale;
+}
+
+const { company, lang = 'en' } = Astro.props;
+const es = lang === 'es';
+const profileHref = `${es ? '/es' : ''}/empresas/${company.slug}`;
+const jsonLdHref = `/api/v1/public/companies/${company.slug}.json${es ? '?lang=es' : ''}`;
+---
+<article
+  class="surface-card"
+  style="margin:0;display:flex;flex-direction:column;justify-content:space-between;transition:border-color 0.15s ease,transform 0.15s ease;padding:1.35rem"
+>
+  <div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;margin-bottom:0.85rem">
+      <span class="badge badge-gold mono" title={es ? 'Posición asignada en THE1500' : 'Allocated position in THE1500'}>
+        {formatPosition(company.position)}
+      </span>
+      <div style="display:flex;align-items:center;gap:0.4rem">
+        {company.industry && <span class="badge badge-slate">{company.industry}</span>}
+        <span class="badge badge-blue mono">{company.country}</span>
+      </div>
+    </div>
+
+    <h3 style="margin:0 0 0.5rem 0;font-size:1.18rem">
+      <a href={profileHref} style="color:var(--text-primary);text-decoration:none">
+        {company.name}
+      </a>
+    </h3>
+
+    {company.summary ? (
+      <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1.1rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">
+        {company.summary}
+      </p>
+    ) : (
+      <p class="muted" style="margin-bottom:1.1rem">
+        {es ? 'Perfil estructurado aprobado por el titular.' : 'Owner-approved structured business profile.'}
+      </p>
+    )}
+  </div>
+
+  <div
+    style="display:flex;justify-content:space-between;align-items:center;padding-top:0.85rem;border-top:1px solid var(--border-subtle);gap:0.5rem;flex-wrap:wrap"
+  >
+    <a href={profileHref} style="font-size:0.85rem;font-weight:600;display:inline-flex;align-items:center;gap:0.3rem">
+      <span>{es ? 'Ver ficha pública' : 'View public profile'}</span>
+      <span aria-hidden="true">→</span>
+    </a>
+    <a
+      href={jsonLdHref}
+      class="mono muted"
+      style="font-size:0.75rem;text-decoration:underline"
+      title="Schema.org JSON-LD (@graph)"
+    >
+      JSON-LD
+    </a>
+  </div>
+</article>

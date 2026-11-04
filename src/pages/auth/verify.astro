@@ -1,18 +1,42 @@
 ---
+import Shell from '../../layouts/Shell.astro';
+
 // GET is intentionally side-effect-free. Email-link scanners cannot consume login tokens.
-const token=Astro.url.searchParams.get('token')||'';
-const valid=/^[a-f0-9]{64}$/.test(token);
-Astro.response.headers.set('Cache-Control','no-store');
+const token = Astro.url.searchParams.get('token') || '';
+const valid = /^[a-f0-9]{64}$/.test(token);
+Astro.response.headers.set('Cache-Control', 'no-store');
 // Not no-referrer: browsers then send "Origin: null" on this form's POST, and the origin check refuses it.
 // same-origin still keeps the token in this URL away from any other site.
-Astro.response.headers.set('Referrer-Policy','same-origin');
-Astro.response.headers.set('X-Robots-Tag','noindex, nofollow');
+Astro.response.headers.set('Referrer-Policy', 'same-origin');
+Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 ---
-<html lang="en"><head><meta charset="utf-8" /><meta name="robots" content="noindex,nofollow" />
-<title>Confirm sign-in — THE1500</title></head>
-<body style="max-width:38rem;margin:4rem auto;padding:1rem;font:16px system-ui">
-<h1>Sign in to THE1500</h1>
-{valid ? <><p>Confirm your sign-in request. This link works once and expires after 15 minutes.</p>
-<form method="POST" action="/api/v1/auth/verify"><input type="hidden" name="token" value={token} />
-<button type="submit">Confirm sign-in</button></form></> : <p>This link is invalid.</p>}
-</body></html>
+<Shell title="Confirm sign-in — THE1500" lang="en" forceNoIndex={true}>
+  <main>
+    <div style="max-width:500px;margin:2rem auto">
+      <div class="surface-card surface-card-gold">
+        <div class="eyebrow">ONE-TIME VERIFICATION</div>
+        <h1 style="font-size:1.95rem;margin-bottom:0.5rem">Sign in to THE1500</h1>
+        {valid ? (
+          <>
+            <p style="margin-bottom:1.5rem">
+              Confirm your sign-in request. This link works once and expires after 15 minutes.
+            </p>
+            <form method="POST" action="/api/v1/auth/verify">
+              <input type="hidden" name="token" value={token} />
+              <button type="submit" class="btn-primary" style="width:100%">
+                Confirm sign-in
+              </button>
+            </form>
+          </>
+        ) : (
+          <>
+            <div class="notice notice-error">This link is invalid or malformed.</div>
+            <p style="margin-top:1rem;margin-bottom:0">
+              <a href="/login" class="btn-secondary">Request a new sign-in link</a>
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  </main>
+</Shell>

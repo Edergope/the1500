@@ -1,0 +1,214 @@
+---
+import type { InventorySummary, Locale } from '../lib/contracts/api';
+import InventoryTelemetry from './InventoryTelemetry.astro';
+import { formatUsdCents, salesModeCopy } from '../ui/i18n';
+
+interface Props {
+  lang: Locale;
+  stats: InventorySummary | null;
+}
+
+const { lang, stats } = Astro.props;
+const es = lang === 'es';
+const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
+---
+<main>
+  <section style="padding:clamp(1rem,3vw,2rem) 0 1.5rem 0">
+    <div class="eyebrow">
+      {es ? '1.500 POSICIONES. UN DIRECTORIO GLOBAL.' : '1,500 POSITIONS. ONE GLOBAL DIRECTORY.'}
+    </div>
+    <h1>
+      {es
+        ? 'Tu empresa existe. ¿Pueden los sistemas de información entender qué hace?'
+        : 'Your company exists. Can information systems understand what it does?'}
+    </h1>
+    <p style="font-size:1.08rem;max-width:66ch">
+      {es
+        ? 'THE1500 convierte información empresarial autorizada en un perfil semántico público con descripción aprobada por su titular, servicios estructurados, matriz de problemas y soluciones, y datos JSON-LD exportables.'
+        : 'THE1500 turns authorized business information into a public semantic profile with an owner-approved description, structured services, problem-solution pairs, and exportable JSON-LD.'}
+    </p>
+  </section>
+
+  <!-- Live SalesMode Action Card -->
+  <section class="surface-card surface-card-gold" aria-label={es ? 'Estado comercial actual' : 'Current commercial status'}>
+    {stats && modeInfo ? (
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem">
+        <div style="flex:1 1 480px">
+          <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.5rem">
+            <span class={`badge badge-${modeInfo.tone}`}>{modeInfo.badge}</span>
+            {stats.currentPhase && (
+              <span class="badge badge-slate mono">
+                {es ? `Tramo activo: ${stats.currentPhase}` : `Active tier: ${stats.currentPhase}`}
+              </span>
+            )}
+          </div>
+          <h2 style="margin:0 0 0.4rem 0">{modeInfo.title}</h2>
+          <p style="margin:0">{modeInfo.description}</p>
+
+          {stats.salesMode === 'selling' && (
+            <p class="muted" style="margin:0.65rem 0 0 0;font-size:0.84rem">
+              {es
+                ? 'Precio base antes de impuestos (taxStatus se determina al facturar). La posición numerada se adjudica al confirmarse el pago.'
+                : 'Base price before tax (taxStatus shown at checkout). Your position number is assigned upon payment confirmation.'}
+            </p>
+          )}
+
+          {stats.salesMode === 'awaiting_founder_allocation' && (
+            <div class="notice" style="margin-top:0.85rem;margin-bottom:0">
+              {es
+                ? 'El siguiente tramo aún no está abierto. Se habilitará automáticamente cuando todas las posiciones del primer tramo estén definitivamente adjudicadas.'
+                : 'The next tier is not open yet. It opens automatically only once all positions in Tier 1 are definitively allocated.'}
+            </div>
+          )}
+
+          {stats.salesMode === 'premium_admission' && (
+            <div className="notice" style="margin-top:0.85rem;margin-bottom:0">
+              {es
+                ? 'Admisión Premium (posiciones 1351–1500): No hay checkout automático. Las empresas interesadas presentan su solicitud desde su portal de cuenta (POST /api/v1/me/company/premium-request). Enviar la solicitud no reserva posición y una reunión nunca es obligatoria.'
+                : 'Premium Admission (positions 1351–1500): Automatic checkout is not available. Interested companies apply from their account portal (POST /api/v1/me/company/premium-request). Applying holds no position and a meeting is never required.'}
+            </div>
+          )}
+
+          {stats.salesMode === 'closed_archive' && (
+            <div class="notice" style="margin-top:0.85rem;margin-bottom:0">
+              {es
+                ? 'Las 1.500 posiciones han sido adjudicadas. No hay posiciones en venta; el directorio público permanece disponible.'
+                : 'All 1,500 positions have been allocated. Sales are closed; the public directory remains fully available.'}
+            </div>
+          )}
+        </div>
+
+        <div
+          style="flex:0 1 300px;padding:1.25rem;border-radius:var(--radius-md);background:var(--bg-surface);border:1px solid var(--border-subtle);text-align:center"
+        >
+          {stats.salesMode === 'selling' && stats.checkoutOpen ? (
+            <>
+              <div class="mono muted" style="font-size:0.75rem">
+                {es ? 'PRECIO DEL TRAMO ACTIVO' : 'ACTIVE TIER BASE PRICE'}
+              </div>
+              <div class="mono" style="font-size:2rem;font-weight:800;color:var(--gold-primary);margin:0.25rem 0">
+                {formatUsdCents(stats.currentPriceUsdCents, lang)}
+              </div>
+              <div class="muted" style="font-size:0.78rem;margin-bottom:1rem">
+                {es ? 'Antes de impuestos · Reserva de 20 min' : 'Before tax · 20-minute hold'}
+              </div>
+              <a class="button" href={es ? '/es/mi-cuenta' : '/mi-cuenta'} style="width:100%">
+                {es ? 'Registrar empresa y reservar cupo' : 'Register company & hold position'}
+              </a>
+            </>
+          ) : stats.salesMode === 'premium_admission' ? (
+            <>
+              <div class="mono muted" style="font-size:0.75rem">
+                {es ? 'TRAMO 4 · ADMISIÓN HUMANA' : 'TIER 4 · HUMAN ADMISSION'}
+              </div>
+              <div class="mono" style="font-size:1.7rem;font-weight:800;color:var(--gold-primary);margin:0.35rem 0">
+                {formatUsdCents(stats.currentPriceUsdCents, lang)}
+              </div>
+              <a class="button" href={es ? '/es/mi-cuenta' : '/mi-cuenta'} style="width:100%;margin-top:0.5rem">
+                {es ? 'Solicitar admisión en Mi Cuenta' : 'Apply in Member Portal'}
+              </a>
+            </>
+          ) : stats.salesMode === 'awaiting_founder_allocation' ? (
+            <>
+              <span class="badge badge-amber" style="margin-bottom:0.65rem">
+                {es ? 'Ventas en pausa entre tramos' : 'Sales paused between tiers'}
+              </span>
+              <p class="muted" style="font-size:0.84rem;margin-bottom:0.85rem">
+                {es
+                  ? 'Puedes crear tu cuenta y registrar tu empresa ahora para estar listo cuando abra el siguiente tramo.'
+                  : 'You may sign in and register your company now to be ready when the next tier opens.'}
+              </p>
+              <a class="btn-secondary" href={es ? '/es/login' : '/login'} style="width:100%">
+                {es ? 'Crear cuenta / Registrar empresa' : 'Sign in / Register company'}
+              </a>
+            </>
+          ) : (
+            <>
+              <span class="badge badge-slate" style="margin-bottom:0.65rem">
+                {es ? 'Capacidad agotada' : 'Sold out'}
+              </span>
+              <a class="btn-secondary" href={es ? '/es/empresas' : '/empresas'} style="width:100%">
+                {es ? 'Consultar el directorio' : 'Explore the directory'}
+              </a>
+            </>
+          )}
+        </div>
+      </div>
+    ) : (
+      <p class="notice" style="margin:0">
+        {es
+          ? 'El estado en vivo de tramos y disponibilidad se consulta directamente desde el servidor. No mostramos precios ni cupos estimados.'
+          : 'Live tier pricing and availability are queried directly from the server. We never display estimated prices or availability.'}
+      </p>
+    )}
+  </section>
+
+  <!-- Live Inventory & 4-Phase Breakdown -->
+  <InventoryTelemetry stats={stats} lang={lang} showPhases={true} />
+
+  <!-- Deliverables & Contractual Scope -->
+  <div class="grid-2" style="margin-top:1.75rem">
+    <section class="surface-card" style="margin:0">
+      <div class="eyebrow">{es ? 'ENTREGABLES ESTRUCTURADOS' : 'WHAT YOUR COMPANY RECEIVES'}</div>
+      <h2 style="font-size:1.4rem">
+        {es ? 'Qué recibe cada miembro de THE1500' : 'What every THE1500 member receives'}
+      </h2>
+      <ul style="padding-left:1.1rem;color:var(--text-secondary);display:grid;gap:0.65rem;font-size:0.92rem">
+        <li>
+          <strong style="color:var(--text-primary)">
+            {es ? 'Posición numerada única (1–1.500):' : 'Unique numbered position (1–1,500):'}
+          </strong>{' '}
+          {es
+            ? 'Asignada tras la confirmación y conservada durante toda la vigencia de la publicación.'
+            : 'Assigned upon confirmation and tied to your company’s public record.'}
+        </li>
+        <li>
+          <strong style="color:var(--text-primary)">
+            {es ? 'Perfil semántico bilingüe (EN/ES):' : 'Bilingual semantic profile (EN/ES):'}
+          </strong>{' '}
+          {es
+            ? 'Descripción estructurada, servicios, audiencias objetivo y pares problema-solución revisados y aprobados expresamente por el titular.'
+            : 'Structured description, services, target audiences, and problem-solution pairs reviewed and explicitly approved by the business owner.'}
+        </li>
+        <li>
+          <strong style="color:var(--text-primary)">
+            {es ? 'JSON-LD Schema.org (@graph) exportable:' : 'Exportable Schema.org (@graph) JSON-LD:'}
+          </strong>{' '}
+          {es
+            ? 'Documento legible por máquinas servido en ruta dedicada y descargable desde el portal del titular.'
+            : 'Machine-readable structured document served at a dedicated endpoint and exportable from your portal.'}
+        </li>
+        <li>
+          <strong style="color:var(--text-primary)">
+            {es ? 'Presencia en buscador léxico y asistente:' : 'Inclusion in lexical search & grounded assistant:'}
+          </strong>{' '}
+          {es
+            ? 'Indexación inmediata tras publicar en el buscador FTS5 y el asistente con citas verificables del propio directorio.'
+            : 'Immediate indexing upon publication in THE1500’s FTS5 lexical search and verifiable citation assistant.'}
+        </li>
+      </ul>
+    </section>
+
+    <section class="surface-card" style="margin:0">
+      <div class="eyebrow">{es ? 'CONDICIONES DE PUBLICACIÓN' : 'PUBLICATION & ARCHIVE TERMS'}</div>
+      <h2 style="font-size:1.4rem">
+        {es ? 'Garantías contractuales y límites claros' : 'Contractual commitments & transparent limits'}
+      </h2>
+      <p style="font-size:0.92rem">
+        {es
+          ? 'La publicación está garantizada contractualmente durante 12 meses a partir de la primera publicación del perfil, sujeta a los términos aceptados. La conservación técnica como archivo por 10 años es un objetivo técnico de la plataforma, no una promesa contractual.'
+          : 'Publication is contractually guaranteed for 12 months from first publication, subject to agreed terms. The 10-year archive is a technical goal, not a contractual promise.'}
+      </p>
+      <p style="font-size:0.92rem">
+        {es
+          ? 'Después de la primera publicación, el titular cuenta con una ventana de 15 días para correcciones iniciales.'
+          : 'Following first publication, the owner has a 15-day window for initial profile corrections.'}
+      </p>
+      <div class="notice" style="margin-bottom:0">
+        {es
+          ? 'THE1500 no garantiza que ChatGPT, Gemini, Claude, buscadores u otras plataformas externas indexen, recomienden o citen a ninguna empresa.'
+          : 'THE1500 does not guarantee that ChatGPT, Gemini, Claude, search engines or other external systems will index, recommend or cite your business.'}
+      </div>
+    </section>
+  </div>
+</main>

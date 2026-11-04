@@ -1,20 +1,42 @@
 ---
-import {env} from 'cloudflare:workers';
+import { env } from 'cloudflare:workers';
 import Shell from '../../../layouts/Shell.astro';
-import {listPublishedCompanies} from '../../../core/directory';
-const page=Number(Astro.url.searchParams.get('page')||'1');
-const q=Astro.url.searchParams.get('query')||undefined;
-let result;
-try{result=await listPublishedCompanies(env.DB,{page,q});}
-catch{result={items:[],total:0,page:1,pageSize:24};}
+import DirectoryPageView from '../../../components/DirectoryPageView.astro';
+import { listPublishedCompanies, listRetiredPositions } from '../../../core/directory';
+import { getPublicStats } from '../../../core/public';
+import type { DirectoryResponse } from '../../../lib/contracts/api';
+
+const rawPage = Number(Astro.url.searchParams.get('page') || '1');
+const page = Number.isSafeInteger(rawPage) && rawPage >= 1 && rawPage <= 500 ? rawPage : 1;
+const q = Astro.url.searchParams.get('query')?.trim() || undefined;
+const rawCountry = Astro.url.searchParams.get('country')?.trim().toUpperCase() || undefined;
+const country = rawCountry && /^[A-Z]{2}$/.test(rawCountry) ? rawCountry : undefined;
+const industry = Astro.url.searchParams.get('industry')?.trim() || undefined;
+const service = Astro.url.searchParams.get('service')?.trim() || undefined;
+
+let result: DirectoryResponse = { items: [], total: 0, page: 1, pageSize: 24 };
+let stats = null;
+let retiredItems: Array<{ position: number; label: string; labelEs: string }> = [];
+
+try {
+  const [dir, s, ret] = await Promise.all([
+    listPublishedCompanies(env.DB, { page, q, country, industry, service }),
+    getPublicStats(env.DB),
+    listRetiredPositions(env.DB),
+  ]);
+  result = dir as DirectoryResponse;
+  stats = s;
+  retiredItems = ret.items;
+} catch {
+  result = { items: [], total: 0, page: 1, pageSize: 24 };
+}
 ---
-<Shell title="Empresas" lang="es"><main>
-<h1>Explora THE1500</h1><p>Consulta únicamente perfiles empresariales aprobados y publicados.</p>
-<form action="/es/empresas" method="GET"><label for="q">Buscar empresas</label>
-<input id="q" name="query" type="search" maxlength="100" value={q||''}/><button>Buscar</button></form>
-{result.items.length ? <ul>{result.items.map(company=><li><a href={`/es/empresas/${company.slug}`}>{company.name}</a> — {company.industry}, {company.country}</li>)}</ul>
-: <p>No encontramos perfiles publicados con esos criterios.</p>}
-<p>{result.total} empresas publicadas coinciden con la búsqueda.</p>
-{page>1&&<a href={`/es/empresas?page=${page-1}${q?`&query=${encodeURIComponent(q)}`:''}`}>Anterior</a>}
-{page*24<result.total&&<a href={`/es/empresas?page=${page+1}${q?`&query=${encodeURIComponent(q)}`:''}`}>Siguiente</a>}
-</main></Shell>
+<Shell title="Directorio de Empresas" lang="es">
+  <DirectoryPageView
+    lang="es"
+    result={result}
+    stats={stats}
+    retiredItems={retiredItems}
+    filters={{ page, q, country, industry, service }}
+  />
+</Shell>

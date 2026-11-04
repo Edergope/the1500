@@ -1,0 +1,216 @@
+---
+import type { InventorySummary, Locale, PublicCompanyCard } from '../lib/contracts/api';
+import InventoryTelemetry from './InventoryTelemetry.astro';
+import CompanyCard from './CompanyCard.astro';
+import RetiredPositionsLedger from './RetiredPositionsLedger.astro';
+import DiscoveryHub from './DiscoveryHub';
+import { formatUsdCents, salesModeCopy } from '../ui/i18n';
+
+interface RetiredItem {
+  position: number;
+  label: string;
+  labelEs: string;
+}
+
+interface Props {
+  lang: Locale;
+  stats: InventorySummary | null;
+  businesses: PublicCompanyCard[];
+  totalPublished: number;
+  retiredItems: RetiredItem[];
+}
+
+const { lang, stats, businesses, totalPublished, retiredItems } = Astro.props;
+const es = lang === 'es';
+const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
+---
+<main>
+  <!-- Hero Section -->
+  <section
+    style="padding:clamp(1rem,3vw,2.5rem) 0 2rem 0;border-bottom:1px solid var(--border-subtle);margin-bottom:2rem"
+  >
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:2rem">
+      <div style="flex:1 1 560px">
+        <div class="eyebrow">
+          {es
+            ? 'UN DIRECTORIO EMPRESARIAL FINITO PARA LA ERA DE LA IA'
+            : 'A FINITE BUSINESS DIRECTORY FOR THE AI ERA'}
+        </div>
+        <h1>
+          {es
+            ? '1.500 posiciones numeradas. Perfiles empresariales estructurados y verificables.'
+            : '1,500 numbered positions. Structured, owner-approved business profiles.'}
+        </h1>
+        <p style="font-size:1.1rem;color:var(--text-secondary);max-width:64ch;margin-bottom:1.5rem">
+          {es
+            ? 'THE1500 reúne hasta 1.500 empresas en un registro público consultable con descripciones aprobadas por sus titulares, capacidades estructuradas, problemas que resuelven y datos legibles por máquinas en formato Schema.org JSON-LD.'
+            : 'THE1500 brings together strictly 1,500 companies in a searchable public registry featuring owner-approved descriptions, structured capabilities, problem-solution pairs, and machine-readable Schema.org JSON-LD.'}
+        </p>
+
+        <div style="display:flex;align-items:center;gap:0.85rem;flex-wrap:wrap">
+          <a class="button" href={es ? '/es/unirse' : '/unirse'}>
+            {es ? 'Explorar membresía y tramos' : 'Explore membership & tiers'}
+          </a>
+          <a class="btn-secondary" href={es ? '/es/empresas' : '/empresas'}>
+            {es ? 'Explorar directorio completo' : 'Browse full directory'}
+          </a>
+          <a class="btn-secondary" href="#discovery-hub">
+            {es ? 'Buscador y Asistente' : 'Search & Assistant'}
+          </a>
+        </div>
+      </div>
+
+      <!-- Scarcity & Architectural Highlights Card -->
+      <div
+        class="surface-card"
+        style="flex:0 1 360px;margin:0;padding:1.35rem;background:var(--bg-elevated);border:1px solid var(--border-strong)"
+      >
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+          <span class="mono muted" style="font-size:0.75rem">
+            {es ? 'REGLAS DE INTEGRIDAD' : 'REGISTRY INTEGRITY'}
+          </span>
+          {modeInfo && <span class={`badge badge-${modeInfo.tone}`}>{modeInfo.badge}</span>}
+        </div>
+        <ul
+          style="list-style:none;padding:0;margin:0;display:grid;gap:0.75rem;font-size:0.88rem;color:var(--text-secondary)"
+        >
+          <li style="display:flex;gap:0.6rem;align-items:flex-start">
+            <span class="mono" style="color:var(--gold-primary);font-weight:700">01</span>
+            <span>
+              <strong style="color:var(--text-primary)">
+                {es ? 'Escasez verificable:' : 'Verifiable scarcity:'}
+              </strong>{' '}
+              {es
+                ? 'Capacidad fija de 1.500 posiciones. Los cupos publicados y retirados jamás se revenden.'
+                : 'Fixed capacity of 1,500 positions. Published and withdrawn positions are never resold.'}
+            </span>
+          </li>
+          <li style="display:flex;gap:0.6rem;align-items:flex-start">
+            <span class="mono" style="color:var(--gold-primary);font-weight:700">02</span>
+            <span>
+              <strong style="color:var(--text-primary)">
+                {es ? 'Aprobación expresa del titular:' : 'Explicit owner approval:'}
+              </strong>{' '}
+              {es
+                ? 'Ningún perfil se publica sin autorización criptográfica (contentDigest) de su representante.'
+                : 'No profile is published without cryptographic contentDigest approval by its representative.'}
+            </span>
+          </li>
+          <li style="display:flex;gap:0.6rem;align-items:flex-start">
+            <span class="mono" style="color:var(--gold-primary);font-weight:700">03</span>
+            <span>
+              <strong style="color:var(--text-primary)">
+                {es ? 'JSON-LD y citas verificables:' : 'JSON-LD & grounded citations:'}
+              </strong>{' '}
+              {es
+                ? 'Cada ficha expone datos estructurados @graph y se integra en la búsqueda léxica y asistente del directorio.'
+                : 'Every profile serves @graph JSON-LD and integrates with our lexical search and cited assistant.'}
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Telemetry Section -->
+  <InventoryTelemetry stats={stats} lang={lang} showPhases={true} />
+
+  <!-- Interactive Lexical Search & Grounded Assistant -->
+  <DiscoveryHub client:load lang={lang} />
+
+  <!-- Published Companies Section -->
+  <section style="margin:2.5rem 0" aria-label={es ? 'Empresas publicadas' : 'Published companies'}>
+    <div
+      style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem"
+    >
+      <div>
+        <div class="eyebrow" style="margin-bottom:0.3rem">
+          {es ? 'REGISTRO PÚBLICO EN VIVO' : 'LIVE PUBLIC REGISTRY'}
+        </div>
+        <h2 style="margin:0">
+          {es ? 'Empresas publicadas en THE1500' : 'Published companies in THE1500'}
+        </h2>
+        <p class="muted" style="margin:0.25rem 0 0 0">
+          {es
+            ? 'Ordenadas por número de posición ascendente. Solo aparecen perfiles aprobados por sus titulares.'
+            : 'Ordered by ascending position number. Only owner-approved, published profiles appear here.'}
+        </p>
+      </div>
+      <a class="btn-secondary btn-sm" href={es ? '/es/empresas' : '/empresas'}>
+        {es
+          ? `Explorar todas las empresas (${totalPublished}) →`
+          : `Explore all companies (${totalPublished}) →`}
+      </a>
+    </div>
+
+    {businesses.length > 0 ? (
+      <div class="grid-3">
+        {businesses.map((business) => (
+          <CompanyCard company={business} lang={lang} />
+        ))}
+      </div>
+    ) : (
+      <div class="surface-card">
+        <p class="muted" style="margin:0">
+          {es
+            ? 'Las primeras empresas están preparando sus perfiles. Solo aparecen empresas que hayan aprobado expresamente su publicación.'
+            : 'The first companies are preparing their profiles. Only approved, published companies appear here.'}
+        </p>
+      </div>
+    )}
+  </section>
+
+  <!-- Retired Positions Ledger -->
+  <RetiredPositionsLedger items={retiredItems} lang={lang} />
+
+  <!-- Architectural Methodology & Non-Guarantee Section -->
+  <section class="surface-card" style="margin-top:2.5rem">
+    <div class="eyebrow">{es ? 'ARQUITECTURA DE DESCUBRIMIENTO' : 'DISCOVERY ARCHITECTURE'}</div>
+    <h2>
+      {es
+        ? 'Cómo transforma THE1500 la información empresarial en datos estructurados'
+        : 'How THE1500 turns business declarations into structured discovery'}
+    </h2>
+    <div class="grid-3" style="margin-top:1.25rem">
+      <div class="stat-tile">
+        <span class="badge badge-gold mono" style="margin-bottom:0.5rem">STEP 01</span>
+        <h3 style="font-size:1.05rem">
+          {es ? 'Registro corporativo y adjudicación' : 'Corporate verification & slot allocation'}
+        </h3>
+        <p class="muted" style="margin:0;font-size:0.86rem">
+          {es
+            ? 'El representante accede mediante enlace único, registra la empresa y adquiere una posición numerada dentro del tramo activo.'
+            : 'An authorized representative signs in via one-time link, registers the company, and acquires a numbered position in the active tier.'}
+        </p>
+      </div>
+      <div class="stat-tile">
+        <span class="badge badge-gold mono" style="margin-bottom:0.5rem">STEP 02</span>
+        <h3 style="font-size:1.05rem">
+          {es ? 'Estructuración con trazabilidad de origen' : 'Provenance-tracked semantic structuring'}
+        </h3>
+        <p class="muted" style="margin:0;font-size:0.86rem">
+          {es
+            ? 'Cada campo distingue si fue declarado por el titular, estructurado/traducido con IA o corroborado, y exige aprobación explícita del digest.'
+            : 'Every field records whether it is owner-declared, AI-structured/translated, or corroborated, requiring explicit contentDigest approval.'}
+        </p>
+      </div>
+      <div class="stat-tile">
+        <span class="badge badge-gold mono" style="margin-bottom:0.5rem">STEP 03</span>
+        <h3 style="font-size:1.05rem">
+          {es ? 'Ficha pública, JSON-LD y citas' : 'Public profile, JSON-LD & cited answers'}
+        </h3>
+        <p class="muted" style="margin:0;font-size:0.86rem">
+          {es
+            ? 'La empresa obtiene su página pública bilingüe, documento Schema.org @graph exportable y presencia en el buscador léxico y asistente del directorio.'
+            : 'The company receives its bilingual public page, exportable Schema.org @graph JSON-LD, and inclusion in the directory’s lexical search and grounded assistant.'}
+        </p>
+      </div>
+    </div>
+
+    <div class="notice" style="margin-top:1.25rem;margin-bottom:0">
+      {es
+        ? 'Aviso de transparencia: THE1500 no garantiza recomendaciones, citaciones ni posicionamiento en plataformas de IA externas (como ChatGPT, Gemini, Claude) ni en motores de búsqueda de terceros.'
+        : 'Transparency notice: THE1500 does not guarantee recommendations, citations, or rankings from external AI platforms (such as ChatGPT, Gemini, Claude) or third-party search engines.'}
+    </div>
+  </section>
+</main>

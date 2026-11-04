@@ -1,0 +1,147 @@
+---
+import type { InventorySummary, Locale } from '../lib/contracts/api';
+import { formatUsdCents, salesModeCopy } from '../ui/i18n';
+
+interface Props {
+  stats: InventorySummary | null;
+  lang?: Locale;
+  showPhases?: boolean;
+}
+
+const { stats, lang = 'en', showPhases = false } = Astro.props;
+const es = lang === 'es';
+const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
+const occupiedPct = stats ? Math.min(100, Math.round(((stats.occupied + stats.held) / 1500) * 1000) / 10) : 0;
+---
+{stats && modeInfo ? (
+  <section class="surface-card surface-card-gold" aria-label={es ? 'Estadísticas del directorio en tiempo real' : 'Live directory telemetry'}>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem">
+      <div>
+        <div style="display:flex;align-items:center;gap:0.65rem;flex-wrap:wrap;margin-bottom:0.4rem">
+          <span class={`badge badge-${modeInfo.tone}`}>{modeInfo.badge}</span>
+          {stats.currentPhase && (
+            <span class="badge badge-slate mono">
+              {es ? `Tramo ${stats.currentPhase}` : `Tier ${stats.currentPhase}`}
+              {stats.currentPriceUsdCents !== null ? ` · ${formatUsdCents(stats.currentPriceUsdCents, lang)}` : ''}
+            </span>
+          )}
+          <span class="muted mono" style="font-size:0.76rem">
+            {es ? 'Precios base antes de impuestos' : 'Base prices before tax'}
+          </span>
+        </div>
+        <h3 style="margin:0">{modeInfo.title}</h3>
+        <p class="muted" style="margin:0.25rem 0 0 0">{modeInfo.description}</p>
+      </div>
+      <div style="text-align:right">
+        <div class="mono" style="font-size:0.78rem;color:var(--text-muted)">
+          {es ? 'CAPACIDAD TOTAL VERIFICABLE' : 'VERIFIABLE FINITE CAPACITY'}
+        </div>
+        <div class="mono" style="font-size:1.45rem;font-weight:700;color:var(--gold-primary)">
+          {stats.occupied} <span style="color:var(--text-muted);font-weight:400">/ {stats.capacity}</span>
+        </div>
+      </div>
+    </div>
+
+    <div
+      style="height:8px;width:100%;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;margin-bottom:1.25rem;border:1px solid var(--border-subtle)"
+      role="progressbar"
+      aria-valuenow={stats.occupied}
+      aria-valuemin={0}
+      aria-valuemax={1500}
+    >
+      <div
+        style={`height:100%;width:${Math.max(occupiedPct, stats.occupied > 0 ? 1.5 : 0)}%;background:linear-gradient(90deg, var(--gold-primary), var(--emerald));border-radius:999px`}
+      />
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-tile">
+        <strong>{stats.occupied}</strong>
+        <span>{es ? 'Posiciones asignadas' : 'Allocated positions'}</span>
+      </div>
+      <div class="stat-tile">
+        <strong>{stats.available}</strong>
+        <span>{es ? 'Posiciones sin asignar' : 'Unallocated positions'}</span>
+      </div>
+      <div class="stat-tile">
+        <strong>{stats.published}</strong>
+        <span>{es ? 'Perfiles publicados' : 'Published profiles'}</span>
+      </div>
+      <div class="stat-tile">
+        <strong>{stats.sectorsRepresented}</strong>
+        <span>{es ? 'Sectores representados' : 'Represented industries'}</span>
+      </div>
+      <div class="stat-tile">
+        <strong>{stats.held}</strong>
+        <span>{es ? 'Reservas activas (20m)' : 'Active reservations (20m)'}</span>
+      </div>
+      <div class="stat-tile">
+        <strong>{stats.retired}</strong>
+        <span>{es ? 'Cupos retirados' : 'Retired positions'}</span>
+      </div>
+    </div>
+
+    {showPhases && stats.phases && stats.phases.length > 0 && (
+      <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border-subtle)">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.85rem">
+          <h4 style="margin:0;font-size:0.95rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-secondary)">
+            {es ? 'Estructura de los 4 tramos de capacidad (1–1.500)' : '4-Tier Capacity Ledger (Positions 1–1,500)'}
+          </h4>
+          <span class="muted" style="font-size:0.78rem">
+            {es ? 'Datos en vivo desde la base de datos D1' : 'Live telemetry from D1 database'}
+          </span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.85rem">
+          {stats.phases.map((p) => {
+            const isCurrent = p.status === 'current';
+            const isSoldOut = p.status === 'sold_out';
+            const statusText = isCurrent
+              ? es
+                ? 'Tramo actual'
+                : 'Active tier'
+              : isSoldOut
+                ? es
+                  ? 'Agotado'
+                  : 'Sold out'
+                : es
+                  ? 'Próximo tramo'
+                  : 'Upcoming tier';
+            return (
+              <div
+                style={`padding:1rem;border-radius:var(--radius-md);border:1px solid ${
+                  isCurrent ? 'var(--border-gold)' : 'var(--border-subtle)'
+                };background:${isCurrent ? 'rgba(238,198,121,0.06)' : 'rgba(255,255,255,0.015)'}`}
+              >
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
+                  <span class="mono" style="font-weight:700;color:var(--text-primary)">
+                    {es ? `Tramo ${p.phase}` : `Tier ${p.phase}`}
+                  </span>
+                  <span class={`badge ${isCurrent ? 'badge-gold' : isSoldOut ? 'badge-slate' : 'badge-blue'}`}>
+                    {statusText}
+                  </span>
+                </div>
+                <div class="mono" style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.5rem">
+                  {es ? 'Posiciones' : 'Positions'} #{String(p.firstPosition).padStart(4, '0')} – #{String(p.lastPosition).padStart(4, '0')}
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:0.5rem">
+                  <span class="mono" style="font-size:1.15rem;font-weight:700;color:var(--gold-primary)">
+                    {formatUsdCents(p.priceUsdCents, lang)}
+                  </span>
+                  <span class="muted mono" style="font-size:0.78rem">
+                    {p.remaining} {es ? 'restantes' : 'remaining'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+  </section>
+) : (
+  <p class="notice">
+    {es
+      ? 'Todavía no hay estadísticas operativas verificables disponibles. No mostramos cantidades estimadas ni inventadas.'
+      : 'Live directory statistics are not available right now. We never display estimated or fabricated inventory numbers.'}
+  </p>
+)}

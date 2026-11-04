@@ -1,21 +1,16 @@
 ---
 import Shell from '../layouts/Shell.astro';
+import JoinPageView from '../components/JoinPageView.astro';
+import { env } from 'cloudflare:workers';
+import { getPublicStats } from '../core/public';
+
+let stats = null;
+try {
+  stats = await getPublicStats(env.DB);
+} catch {
+  /* never fabricate data */
+}
 ---
-<Shell title="Join" lang="en">
-  <main>
-    <div class="eyebrow">1,500 positions. One global directory.</div>
-    <h1>Your company exists. Can AI understand what it does?</h1>
-    <p>THE1500 turns authorized business information into a public semantic profile with an approved description, structured services and exportable JSON-LD.</p>
-    <div class="panel">
-      <h2>What you receive</h2>
-      <p>A profile the business can review and approve, a public company page, machine-readable semantic data and inclusion in the directory's own search and grounded AI experience.</p>
-      <p class="muted">Publication is contractually guaranteed for 12 months from first publication, subject to agreed terms. The 10-year archive is a technical goal, not a contractual promise.</p>
-    </div>
-    <div class="panel">
-      <h2>Finite inventory, transparent phases</h2>
-      <p>Positions 1–600: $100 USD (100 invitation-only founders at no charge); 601–1050: $400; 1051–1350: $1,000; 1351–1500: $5,066 (manual Premium admission).</p>
-      <p class="notice">Payments and registration are not enabled in this Sprint 0 bootstrap. No position is claimed or charged here.</p>
-    </div>
-    <p>THE1500 does not guarantee that ChatGPT, Gemini, Claude, search engines or other external systems will index, recommend or cite your business.</p>
-  </main>
+<Shell title="Join & Membership Tiers" lang="en">
+  <JoinPageView lang="en" stats={stats} />
 </Shell>

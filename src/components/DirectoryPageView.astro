@@ -1,0 +1,194 @@
+---
+import type { DirectoryResponse, InventorySummary, Locale } from '../lib/contracts/api';
+import CompanyCard from './CompanyCard.astro';
+import InventoryTelemetry from './InventoryTelemetry.astro';
+import RetiredPositionsLedger from './RetiredPositionsLedger.astro';
+import DiscoveryHub from './DiscoveryHub';
+
+interface RetiredItem {
+  position: number;
+  label: string;
+  labelEs: string;
+}
+
+interface Props {
+  lang: Locale;
+  result: DirectoryResponse;
+  stats: InventorySummary | null;
+  retiredItems: RetiredItem[];
+  filters: {
+    page: number;
+    q?: string;
+    country?: string;
+    industry?: string;
+    service?: string;
+  };
+}
+
+const { lang, result, stats, retiredItems, filters } = Astro.props;
+const es = lang === 'es';
+const basePath = es ? '/es/empresas' : '/empresas';
+
+function buildPageHref(targetPage: number): string {
+  const p = new URLSearchParams();
+  if (targetPage > 1) p.set('page', String(targetPage));
+  if (filters.q) p.set('query', filters.q);
+  if (filters.country) p.set('country', filters.country);
+  if (filters.industry) p.set('industry', filters.industry);
+  if (filters.service) p.set('service', filters.service);
+  const qs = p.toString();
+  return qs ? `${basePath}?${qs}` : basePath;
+}
+
+const hasActiveFilters = Boolean(filters.q || filters.country || filters.industry || filters.service);
+---
+<main>
+  <section style="padding:clamp(0.75rem,2vw,1.5rem) 0 1rem 0">
+    <div class="eyebrow">
+      {es ? 'DIRECTORIO DE 1.500 POSICIONES' : '1,500-POSITION BUSINESS DIRECTORY'}
+    </div>
+    <h1>{es ? 'Explora THE1500' : 'Explore THE1500'}</h1>
+    <p style="font-size:1.05rem">
+      {es
+        ? 'Consulta únicamente perfiles empresariales publicados y aprobados expresamente por sus titulares, ordenados por número de posición ascendente.'
+        : 'Discover only published, owner-approved business profiles, ordered by ascending position number.'}
+    </p>
+  </section>
+
+  <!-- Live Inventory Summary -->
+  <InventoryTelemetry stats={stats} lang={lang} showPhases={false} />
+
+  <!-- Directory Filter Bar -->
+  <section class="surface-card" aria-label={es ? 'Filtros del directorio' : 'Directory filters'}>
+    <form method="GET" action={basePath}>
+      <div
+        style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0.85rem;align-items:end"
+      >
+        <div style="grid-column:span 2">
+          <label for="q">
+            {es ? 'Buscar por nombre, sector o resumen' : 'Filter by company name, industry, or summary'}
+          </label>
+          <input
+            id="q"
+            type="search"
+            name="query"
+            value={filters.q || ''}
+            maxlength="100"
+            placeholder={es ? 'Ej. Ocean freight, Accounting, Security...' : 'e.g. Ocean freight, Accounting, Security...'}
+          />
+        </div>
+
+        <div>
+          <label for="dir-country">{es ? 'País (ISO-2)' : 'Country (ISO-2)'}</label>
+          <input
+            id="dir-country"
+            type="text"
+            name="country"
+            value={filters.country || ''}
+            maxlength="2"
+            placeholder="US, CO, MX..."
+          />
+        </div>
+
+        <div>
+          <label for="dir-industry">{es ? 'Sector / Industria' : 'Industry'}</label>
+          <input
+            id="dir-industry"
+            type="text"
+            name="industry"
+            value={filters.industry || ''}
+            maxlength="100"
+            placeholder={es ? 'Ej. Packaging, Legal...' : 'e.g. Packaging, Legal...'}
+          />
+        </div>
+
+        <div>
+          <label for="dir-service">{es ? 'Servicio específico' : 'Specific service'}</label>
+          <input
+            id="dir-service"
+            type="text"
+            name="service"
+            value={filters.service || ''}
+            maxlength="100"
+            placeholder={es ? 'Ej. container tracking...' : 'e.g. container tracking...'}
+          />
+        </div>
+
+        <div style="display:flex;gap:0.5rem">
+          <button type="submit" class="btn-primary" style="flex:1">
+            {es ? 'Filtrar' : 'Search'}
+          </button>
+          {hasActiveFilters && (
+            <a href={basePath} class="btn-secondary">
+              {es ? 'Limpiar' : 'Reset'}
+            </a>
+          )}
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <!-- Directory Results Grid -->
+  <section style="margin:2rem 0" aria-label={es ? 'Listado de empresas' : 'Company listing'}>
+    <div
+      style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.15rem"
+    >
+      <p style="margin:0;font-weight:600;color:var(--text-primary)">
+        {es
+          ? `${result.total} empresas publicadas coinciden con la búsqueda.`
+          : `${result.total} published companies match the current filters.`}
+      </p>
+      <span class="badge badge-slate mono">
+        {es ? `Página ${result.page} · 24 por página` : `Page ${result.page} · 24 per page`}
+      </span>
+    </div>
+
+    {result.items.length > 0 ? (
+      <div class="grid-3">
+        {result.items.map((company) => (
+          <CompanyCard company={company} lang={lang} />
+        ))}
+      </div>
+    ) : (
+      <div class="surface-card">
+        <p style="margin:0">
+          {es
+            ? 'No encontramos perfiles publicados con esos criterios.'
+            : 'No approved published companies match your search.'}
+        </p>
+      </div>
+    )}
+
+    <!-- Pagination -->
+    {(filters.page > 1 || filters.page * 24 < result.total) && (
+      <nav
+        aria-label={es ? 'Paginación del directorio' : 'Directory pagination'}
+        style="display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border-subtle)"
+      >
+        <div>
+          {filters.page > 1 && (
+            <a class="btn-secondary btn-sm" href={buildPageHref(filters.page - 1)}>
+              ← {es ? 'Anterior' : 'Previous'}
+            </a>
+          )}
+        </div>
+        <span class="mono muted" style="font-size:0.84rem">
+          {es ? `Página ${filters.page}` : `Page ${filters.page}`}
+        </span>
+        <div>
+          {filters.page * 24 < result.total && (
+            <a class="btn-secondary btn-sm" href={buildPageHref(filters.page + 1)}>
+              {es ? 'Siguiente' : 'Next'} →
+            </a>
+          )}
+        </div>
+      </nav>
+    )}
+  </section>
+
+  <!-- Interactive Lexical Search & Grounded Assistant -->
+  <DiscoveryHub client:load lang={lang} initialQuery={filters.q || ''} />
+
+  <!-- Retired Positions Ledger -->
+  <RetiredPositionsLedger items={retiredItems} lang={lang} />
+</main>
