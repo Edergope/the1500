@@ -30,22 +30,26 @@ const activePhaseObj = stats?.phases?.find((p) => p.phase === currentPhaseNum) |
 const nextPhaseObj = stats?.phases?.find((p) => p.phase === currentPhaseNum + 1) || null;
 const progressPct = stats ? Math.min(100, Math.round(((stats.occupied + stats.held) / 1500) * 1000) / 10) : 0;
 
-// Visual Inventory State (Section 12: Normal, Near sellout, Phase transition, Premium open)
+// Visual Inventory State using salesMode, checkoutOpen, and stats.phases
 function computeInventoryVisualState(s: InventorySummary | null) {
   if (!s) return { label: es ? 'En vivo' : 'Live', tone: 'emerald' };
-  if (s.salesMode === 'premium_admission') {
-    return { label: es ? 'Admisión Premium abierta' : 'Premium open', tone: 'gold' };
-  }
-  if (s.salesMode === 'awaiting_founder_allocation') {
-    return { label: es ? 'Transición de fase' : 'Phase transition', tone: 'amber' };
-  }
   if (s.salesMode === 'closed_archive') {
-    return { label: es ? 'Capacidad completa' : 'Archive complete', tone: 'slate' };
+    return { label: es ? 'Directorio agotado' : 'Directory sold out', tone: 'slate' };
+  }
+  if (s.salesMode === 'premium_admission') {
+    const p4 = s.phases?.find((p) => p.phase === 4);
+    if (p4 && (p4.status === 'sold_out' || p4.remaining <= 0)) {
+      return { label: es ? 'Directorio agotado' : 'Directory sold out', tone: 'slate' };
+    }
+    return { label: es ? 'Admisión Premium' : 'Premium admission', tone: 'gold' };
+  }
+  if (s.salesMode === 'awaiting_founder_allocation' || !s.checkoutOpen) {
+    return { label: es ? 'En transición · Ventas en pausa' : 'In transition · Sales paused', tone: 'amber' };
   }
   if (activePhaseObj && activePhaseObj.remaining <= 50) {
     return { label: es ? 'Próximo a agotar fase' : 'Near sellout', tone: 'amber' };
   }
-  return { label: es ? 'Asignación activa' : 'Active allocation', tone: 'emerald' };
+  return { label: es ? 'Venta abierta' : 'Open sale', tone: 'emerald' };
 }
 
 const invState = computeInventoryVisualState(stats);
@@ -311,43 +315,72 @@ const invState = computeInventoryVisualState(stats);
         </div>
       </div>
 
-      <!-- Right Side: 4 Phase Cards driven by backend stats.phases -->
+      <!-- Right Side: 4 Phase Cards driven by backend stats.phases + salesMode + checkoutOpen -->
       <div class="pricing-phases-grid">
         {(stats?.phases || []).map((phase) => {
+          const archiveClosed = stats?.salesMode === 'closed_archive';
           const isCurrent = phase.status === 'current';
-          const isSoldOut = phase.status === 'sold_out';
+          const isSoldOut = phase.status === 'sold_out' || archiveClosed || phase.remaining <= 0;
           const isPremium = phase.phase === 4;
-          const badgeLabel = isPremium
-            ? es
-              ? 'Solicitud requerida'
-              : 'Application required'
-            : isCurrent
+          const isOpenSale = Boolean(!isPremium && !isSoldOut && isCurrent && stats?.salesMode === 'selling' && stats?.checkoutOpen);
+          const isTransition = Boolean(!isPremium && !isSoldOut && isCurrent && (!stats?.checkoutOpen || stats?.salesMode === 'awaiting_founder_allocation'));
+          const isPremiumOpen = Boolean(isPremium && !isSoldOut && isCurrent && stats?.salesMode === 'premium_admission');
+
+          let badgeLabel = es ? 'Fase futura' : 'Future phase';
+          let badgeClass = 'badge-slate';
+          let footerNote = '';
+
+          if (isSoldOut) {
+            badgeLabel = es ? 'Agotada' : 'Sold out';
+            badgeClass = 'badge-slate';
+            footerNote = archiveClosed
               ? es
-                ? 'Fase actual'
-                : 'Current phase'
-              : isSoldOut
+                ? 'Directorio completo (0 posiciones disponibles)'
+                : 'Directory sold out (0 positions remaining)'
+              : es
+                ? 'Fase agotada (0 posiciones disponibles)'
+                : 'Phase sold out (0 positions remaining)';
+          } else if (isPremium) {
+            if (isPremiumOpen) {
+              badgeLabel = es ? 'Admisión Premium' : 'Premium admission';
+              badgeClass = 'badge-gold';
+              footerNote = es
+                ? `Admisión humana abierta · ${phase.remaining} disponibles (sin checkout automático)`
+                : `Human admission open · ${phase.remaining} remaining (no auto-checkout)`;
+            } else {
+              badgeLabel = es ? 'Fase futura' : 'Future phase';
+              badgeClass = 'badge-slate';
+              footerNote = es
+                ? `Fase futura · Admisión humana (${phase.remaining} cupos, sin checkout automático)`
+                : `Future phase · Human admission (${phase.remaining} positions, no auto-checkout)`;
+            }
+          } else if (isOpenSale) {
+            badgeLabel = es ? 'Venta abierta' : 'Open sale';
+            badgeClass = 'badge-gold';
+            footerNote =
+              phase.phase === 1
                 ? es
-                  ? 'Agotada'
-                  : 'Sold out'
+                  ? `100 invitaciones del programa en esta fase · ${phase.remaining} disponibles`
+                  : `100 program invitations inside this phase · ${phase.remaining} remaining`
                 : es
-                  ? 'Próxima'
-                  : 'Upcoming';
-          const badgeClass = isPremium || isCurrent ? 'badge-gold' : 'badge-slate';
-          const footerNote =
-            phase.phase === 1
-              ? es
-                ? `100 invitaciones del programa dentro de esta fase · ${phase.remaining} disponibles`
-                : `100 program invitations inside this phase · ${phase.remaining} remaining`
-              : isPremium
-                ? es
-                  ? `Últimas 150 posiciones · Admisión humana (${phase.remaining} disponibles)`
-                  : `Final 150 positions · Human admission (${phase.remaining} remaining)`
-                : es
-                  ? `${phase.remaining} posiciones disponibles en esta fase`
-                  : `${phase.remaining} positions remaining in this phase`;
+                  ? `Venta abierta · ${phase.remaining} posiciones disponibles`
+                  : `Open sale · ${phase.remaining} positions remaining`;
+          } else if (isTransition) {
+            badgeLabel = es ? 'En transición' : 'In transition';
+            badgeClass = 'badge-amber';
+            footerNote = es
+              ? `Ventas en pausa · En transición (${phase.remaining} posiciones pendientes)`
+              : `Sales paused · In transition (${phase.remaining} positions pending)`;
+          } else {
+            badgeLabel = es ? 'Fase futura' : 'Future phase';
+            badgeClass = 'badge-slate';
+            footerNote = es
+              ? `Fase futura · ${phase.remaining} posiciones (abre al completarse Fase ${phase.phase - 1})`
+              : `Future phase · ${phase.remaining} positions (opens after Phase ${phase.phase - 1} completes)`;
+          }
 
           return (
-            <div class={`pricing-phase-card ${isCurrent ? 'active-phase' : ''}`}>
+            <div class={`pricing-phase-card ${isCurrent && !isSoldOut ? 'active-phase' : ''}`}>
               <div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
                   <span class="mono" style="font-weight:700;font-size:0.95rem">
@@ -363,7 +396,7 @@ const invState = computeInventoryVisualState(stats);
                 <div
                   class="mono"
                   style={`font-size:1.85rem;font-weight:800;color:${
-                    isCurrent ? 'var(--gold-primary)' : 'var(--text-primary)'
+                    isCurrent && !isSoldOut ? 'var(--gold-primary)' : 'var(--text-primary)'
                   };margin-bottom:0.5rem`}
                 >
                   {formatUsdCents(phase.priceUsdCents, lang)}

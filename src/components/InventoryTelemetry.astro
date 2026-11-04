@@ -93,30 +93,41 @@ const occupiedPct = stats ? Math.min(100, Math.round(((stats.occupied + stats.he
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.85rem">
           {stats.phases.map((p) => {
+            const archiveClosed = stats.salesMode === 'closed_archive';
             const isCurrent = p.status === 'current';
-            const isSoldOut = p.status === 'sold_out';
-            const statusText = isCurrent
-              ? es
-                ? 'Tramo actual'
-                : 'Active tier'
-              : isSoldOut
-                ? es
-                  ? 'Agotado'
-                  : 'Sold out'
-                : es
-                  ? 'Próximo tramo'
-                  : 'Upcoming tier';
+            const isSoldOut = p.status === 'sold_out' || archiveClosed || p.remaining <= 0;
+            const isPremium = p.phase === 4;
+            const isOpenSale = Boolean(!isPremium && !isSoldOut && isCurrent && stats.salesMode === 'selling' && stats.checkoutOpen);
+            const isTransition = Boolean(!isPremium && !isSoldOut && isCurrent && (!stats.checkoutOpen || stats.salesMode === 'awaiting_founder_allocation'));
+            const isPremiumOpen = Boolean(isPremium && !isSoldOut && isCurrent && stats.salesMode === 'premium_admission');
+
+            let statusText = es ? 'Fase futura' : 'Future phase';
+            let badgeTone = 'badge-blue';
+            if (isSoldOut) {
+              statusText = es ? 'Agotado' : 'Sold out';
+              badgeTone = 'badge-slate';
+            } else if (isPremiumOpen) {
+              statusText = es ? 'Admisión Premium' : 'Premium admission';
+              badgeTone = 'badge-gold';
+            } else if (isOpenSale) {
+              statusText = es ? 'Venta abierta' : 'Open sale';
+              badgeTone = 'badge-gold';
+            } else if (isTransition) {
+              statusText = es ? 'En transición' : 'In transition';
+              badgeTone = 'badge-amber';
+            }
+
             return (
               <div
                 style={`padding:1rem;border-radius:var(--radius-md);border:1px solid ${
-                  isCurrent ? 'var(--border-gold)' : 'var(--border-subtle)'
-                };background:${isCurrent ? 'rgba(238,198,121,0.06)' : 'rgba(255,255,255,0.015)'}`}
+                  isCurrent && !isSoldOut ? 'var(--border-gold)' : 'var(--border-subtle)'
+                };background:${isCurrent && !isSoldOut ? 'rgba(238,198,121,0.06)' : 'rgba(255,255,255,0.015)'}`}
               >
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
                   <span class="mono" style="font-weight:700;color:var(--text-primary)">
                     {es ? `Tramo ${p.phase}` : `Tier ${p.phase}`}
                   </span>
-                  <span class={`badge ${isCurrent ? 'badge-gold' : isSoldOut ? 'badge-slate' : 'badge-blue'}`}>
+                  <span class={`badge ${badgeTone}`}>
                     {statusText}
                   </span>
                 </div>

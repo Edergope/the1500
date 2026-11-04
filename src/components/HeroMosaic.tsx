@@ -21,7 +21,15 @@ interface MosaicTile {
   name: string;
   country: string;
   vertical: string;
-  status: 'Published' | 'Retired' | 'OpenPhase' | 'FuturePhase' | 'SoldOutPhase' | 'PremiumApplication' | 'Illustrative';
+  status:
+    | 'Published'
+    | 'Retired'
+    | 'OpenPhase'
+    | 'TransitionPhase'
+    | 'FuturePhase'
+    | 'SoldOutPhase'
+    | 'PremiumAdmissionOpen'
+    | 'Illustrative';
   slug?: string;
   isDemo?: boolean;
   isIllustrative?: boolean;
@@ -93,7 +101,7 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
       });
     }
 
-    // 2. Real retired positions from backend DB (Decision 29: only number & exact label)
+    // 2. Real retired positions from backend DB (Decision 29: ONLY number & exact backend label)
     for (const r of retiredItems.slice(0, 2)) {
       if (list.length < 8) {
         list.push({
@@ -101,71 +109,88 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
           headerCode: formatPosition(r.position),
           name: es ? r.labelEs : r.label,
           country: '—',
-          vertical: es ? 'Consumido' : 'Consumed',
+          vertical: '',
           status: 'Retired',
-          summary: es
-            ? 'Posición retirada permanentemente del directorio. Nunca vuelve a la venta.'
-            : 'Position permanently withdrawn from the directory. Never returns to sale.',
+          summary: null,
         });
       }
     }
 
-    // 3. Aggregate phase blocks from backend stats.phases (never atribuing status to an unverified individual slot number)
+    // 3. Aggregate phase blocks from backend stats.phases + salesMode + checkoutOpen
     if (stats?.phases && stats.phases.length > 0) {
+      const archiveClosed = stats.salesMode === 'closed_archive';
+
       for (const phase of stats.phases) {
         if (list.length >= 12) break;
         const rangeLabel = `${phase.firstPosition}–${phase.lastPosition}`;
         const priceLabel = formatUsdCents(phase.priceUsdCents, lang);
         const isPremiumPhase = phase.phase === 4;
         const isCurrent = phase.status === 'current';
-        const isSoldOut = phase.status === 'sold_out';
+        const isSoldOut = phase.status === 'sold_out' || archiveClosed || phase.remaining <= 0;
 
         let tileStatus: MosaicTile['status'] = 'FuturePhase';
-        if (isPremiumPhase) {
-          tileStatus = 'PremiumApplication';
-        } else if (isCurrent && stats.checkoutOpen) {
-          tileStatus = 'OpenPhase';
-        } else if (isSoldOut) {
+        let verticalText = '';
+        let summaryText = '';
+        let allowCheckout = false;
+
+        if (isSoldOut) {
           tileStatus = 'SoldOutPhase';
+          verticalText = archiveClosed
+            ? es
+              ? 'Directorio agotado (0 disponibles)'
+              : 'Directory sold out (0 remaining)'
+            : es
+              ? 'Fase agotada (0 disponibles)'
+              : 'Phase sold out (0 remaining)';
+          summaryText = es
+            ? `Fase ${phase.phase} (${rangeLabel}) agotada. No quedan posiciones disponibles en este tramo.`
+            : `Phase ${phase.phase} (${rangeLabel}) is sold out. No positions remain in this phase.`;
+        } else if (isPremiumPhase) {
+          if (isCurrent && stats.salesMode === 'premium_admission') {
+            tileStatus = 'PremiumAdmissionOpen';
+            verticalText = es
+              ? `Admisión humana · ${phase.remaining} disponibles`
+              : `Human admission · ${phase.remaining} remaining`;
+            summaryText = es
+              ? `Fase 4 (${rangeLabel}) · ${priceLabel}. Abierta mediante solicitud y evaluación humana (${phase.remaining} disponibles); sin checkout automático.`
+              : `Phase 4 (${rangeLabel}) · ${priceLabel}. Open via application and human evaluation (${phase.remaining} remaining); no automatic checkout.`;
+          } else {
+            tileStatus = 'FuturePhase';
+            verticalText = es
+              ? 'Fase futura · Admisión humana (sin checkout)'
+              : 'Future phase · Human admission (no auto-checkout)';
+            summaryText = es
+              ? `Fase futura 4 (${rangeLabel}) · ${priceLabel}. Aún cerrada; requerirá solicitud y evaluación humana (sin checkout automático).`
+              : `Future Phase 4 (${rangeLabel}) · ${priceLabel}. Not open yet; will require application and human evaluation (no automatic checkout).`;
+          }
+        } else if (isCurrent) {
+          if (stats.salesMode === 'selling' && stats.checkoutOpen) {
+            tileStatus = 'OpenPhase';
+            allowCheckout = true;
+            verticalText = es
+              ? `Venta abierta · ${phase.remaining} disponibles`
+              : `Open sale · ${phase.remaining} remaining`;
+            summaryText = es
+              ? `Fase ${phase.phase} (${rangeLabel}) con venta abierta a ${priceLabel} (${phase.remaining} posiciones disponibles en este tramo).`
+              : `Phase ${phase.phase} (${rangeLabel}) open for sale at ${priceLabel} (${phase.remaining} positions remaining in this phase).`;
+          } else {
+            tileStatus = 'TransitionPhase';
+            verticalText = es
+              ? `Ventas en pausa · En transición (${phase.remaining} pendientes)`
+              : `Sales paused · In transition (${phase.remaining} pending)`;
+            summaryText = es
+              ? `Fase ${phase.phase} (${rangeLabel}) en transición (${phase.remaining} posiciones pendientes de adjudicación definitiva). Ventas automáticas en pausa.`
+              : `Phase ${phase.phase} (${rangeLabel}) in transition (${phase.remaining} positions pending final allocation). Automatic sales are paused.`;
+          }
         } else {
           tileStatus = 'FuturePhase';
+          verticalText = es
+            ? `Fase futura · Abre tras Fase ${phase.phase - 1}`
+            : `Future phase · Opens after Phase ${phase.phase - 1}`;
+          summaryText = es
+            ? `Fase futura ${phase.phase} (${rangeLabel}) a ${priceLabel}. Aún cerrada; se habilitará cuando se adjudique por completo la fase anterior.`
+            : `Future Phase ${phase.phase} (${rangeLabel}) at ${priceLabel}. Not open yet; unlocks only once the previous phase is fully allocated.`;
         }
-
-        const verticalText = isPremiumPhase
-          ? isCurrent
-            ? es
-              ? 'Abierta · Evaluación humana (sin checkout)'
-              : 'Open · Human review (no auto-checkout)'
-            : es
-              ? 'Fase futura · Sin checkout automático'
-              : 'Future phase · No auto-checkout'
-          : isCurrent
-            ? es
-              ? `${phase.remaining} disponibles en tramo activo`
-              : `${phase.remaining} remaining in open phase`
-            : isSoldOut
-              ? es
-                ? 'Fase completada (0 disponibles)'
-                : 'Phase completed (0 remaining)'
-              : es
-                ? `Abre al completar Fase ${phase.phase - 1}`
-                : `Opens after Phase ${phase.phase - 1} fills`;
-
-        const summaryText = isPremiumPhase
-          ? es
-            ? `Fase 4 (${rangeLabel}) · ${priceLabel}. Admisión mediante solicitud y evaluación humana; no existe adjudicación ni checkout automático.`
-            : `Phase 4 (${rangeLabel}) · ${priceLabel}. Admission via application and human evaluation; never allocated via automatic checkout.`
-          : isCurrent
-            ? es
-              ? `Fase ${phase.phase} (${rangeLabel}) abierta actualmente a ${priceLabel} (${phase.remaining} posiciones disponibles en este tramo).`
-              : `Phase ${phase.phase} (${rangeLabel}) currently open at ${priceLabel} (${phase.remaining} positions remaining in this phase).`
-            : isSoldOut
-              ? es
-                ? `Fase ${phase.phase} (${rangeLabel}) completada.`
-                : `Phase ${phase.phase} (${rangeLabel}) is sold out.`
-              : es
-                ? `Fase futura ${phase.phase} (${rangeLabel}) a ${priceLabel}. Aún cerrada; se habilitará cuando se adjudique por completo la fase anterior.`
-                : `Future Phase ${phase.phase} (${rangeLabel}) at ${priceLabel}. Not open yet; unlocks only once the previous phase is fully allocated.`;
 
         list.push({
           id: `phase-${phase.phase}`,
@@ -175,7 +200,7 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
           vertical: verticalText,
           status: tileStatus,
           isIllustrative: true,
-          canCheckout: Boolean(!isPremiumPhase && isCurrent && stats.checkoutOpen),
+          canCheckout: allowCheckout,
           summary: summaryText,
         });
       }
@@ -246,15 +271,17 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
       case 'Published':
         return { bg: 'rgba(52, 211, 153, 0.14)', border: 'rgba(52, 211, 153, 0.38)', color: '#34d399', label: es ? 'Publicado' : 'Published' };
       case 'Retired':
-        return { bg: 'rgba(248, 113, 113, 0.12)', border: 'rgba(248, 113, 113, 0.32)', color: '#f87171', label: es ? 'Retirado' : 'Retired' };
+        return null;
       case 'OpenPhase':
-        return { bg: 'rgba(238, 198, 121, 0.14)', border: 'rgba(238, 198, 121, 0.38)', color: '#eec679', label: es ? 'Fase abierta' : 'Open phase' };
+        return { bg: 'rgba(238, 198, 121, 0.14)', border: 'rgba(238, 198, 121, 0.38)', color: '#eec679', label: es ? 'Venta abierta' : 'Open sale' };
+      case 'TransitionPhase':
+        return { bg: 'rgba(251, 191, 36, 0.14)', border: 'rgba(251, 191, 36, 0.38)', color: '#fbbf24', label: es ? 'En transición' : 'In transition' };
       case 'FuturePhase':
         return { bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.28)', color: '#94a3b8', label: es ? 'Fase futura' : 'Future phase' };
       case 'SoldOutPhase':
         return { bg: 'rgba(148, 163, 184, 0.1)', border: 'rgba(148, 163, 184, 0.24)', color: '#64748b', label: es ? 'Agotada' : 'Sold out' };
-      case 'PremiumApplication':
-        return { bg: 'rgba(192, 132, 252, 0.14)', border: 'rgba(192, 132, 252, 0.38)', color: '#c084fc', label: es ? 'Por solicitud' : 'By application' };
+      case 'PremiumAdmissionOpen':
+        return { bg: 'rgba(192, 132, 252, 0.14)', border: 'rgba(192, 132, 252, 0.38)', color: '#c084fc', label: es ? 'Admisión Premium' : 'Premium admission' };
       default:
         return { bg: 'rgba(96, 165, 250, 0.1)', border: 'rgba(96, 165, 250, 0.28)', color: '#60a5fa', label: es ? 'Ilustrativo' : 'Illustrative' };
     }
@@ -425,24 +452,28 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
                         </span>
                       )}
                     </span>
-                    <span
-                      className="slot-tile-badge"
-                      style={{
-                        background: badge.bg,
-                        border: `1px solid ${badge.border}`,
-                        color: badge.color,
-                      }}
-                    >
-                      {badge.label}
-                    </span>
+                    {badge && (
+                      <span
+                        className="slot-tile-badge"
+                        style={{
+                          background: badge.bg,
+                          border: `1px solid ${badge.border}`,
+                          color: badge.color,
+                        }}
+                      >
+                        {badge.label}
+                      </span>
+                    )}
                   </div>
                   <div className="slot-tile-name" title={tile.name}>
                     {tile.name}
                   </div>
-                  <div className="slot-tile-meta">
-                    <span>{tile.vertical}</span>
-                    {tile.country !== '—' && <span className="mono">{tile.country}</span>}
-                  </div>
+                  {tile.status !== 'Retired' && (tile.vertical || tile.country !== '—') && (
+                    <div className="slot-tile-meta">
+                      <span>{tile.vertical}</span>
+                      {tile.country !== '—' && <span className="mono">{tile.country}</span>}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -469,9 +500,11 @@ export default function HeroMosaic({ lang = 'en', stats, businesses, retiredItem
                       </span>
                     )}
                   </div>
-                  <div className="muted" style={{ fontSize: '0.78rem', marginTop: '0.15rem' }}>
-                    {hoveredTile.summary || `${hoveredTile.vertical} · ${hoveredTile.country}`}
-                  </div>
+                  {hoveredTile.status !== 'Retired' && (
+                    <div className="muted" style={{ fontSize: '0.78rem', marginTop: '0.15rem' }}>
+                      {hoveredTile.summary || `${hoveredTile.vertical}${hoveredTile.country !== '—' ? ` · ${hoveredTile.country}` : ''}`}
+                    </div>
+                  )}
                 </div>
                 {hoveredTile.slug ? (
                   <a
