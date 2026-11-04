@@ -100,5 +100,5 @@ export interface ReactivationResponse {companyId:string;status:'reactivation_req
 /** Administration screens. */
 export interface LatePaymentFacts {attemptId:string;companyId:string;status:string;phase:number;paidAt:string|null;paidAtSource:'provider_charge'|'provider_event'|'processing_time'|null;holdExpiresAt:string;paidWithinReservation:boolean;
   reservedPosition:{number:number;status:string|null;takenByAnotherCompany:boolean}|null;tierOpen:boolean;freeInTier:number;companyAlreadyHasPosition:number|null;assignable:boolean;allowedDecisions:Array<'assign'|'refund'>;}
-export interface IntegrationStatus {mail:{configured:boolean;keyPresent:boolean;from:string|null};stripe:{enabled:boolean;keyPresent:boolean;keyIsTestMode:boolean|null;webhookSecretPresent:boolean;gate:'open_test_mode'|'PAYMENTS_DISABLED'|'LIVE_PAYMENTS_NOT_AUTHORIZED'};
+export interface IntegrationStatus {mail:{provider:string|null;configured:boolean;bindingPresent:boolean;keyPresent:boolean;from:string|null};stripe:{enabled:boolean;keyPresent:boolean;keyIsTestMode:boolean|null;webhookSecretPresent:boolean;gate:'open_test_mode'|'PAYMENTS_DISABLED'|'LIVE_PAYMENTS_NOT_AUTHORIZED'};
   ai:{configured:boolean;provider:string|null;model:string|null};publicBaseUrl:string|null;snapshotsBound:boolean;}

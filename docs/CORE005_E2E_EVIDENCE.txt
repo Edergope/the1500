@@ -1,4 +1,4 @@
-THE1500 CORE-005 acceptance journey. 2026-11-04T15:52:34.528Z
+THE1500 CORE-005 acceptance journey. 2026-11-04T16:19:20.777Z
 Worker: built output on workerd via wrangler dev; D1/R2: local persisted.
 Email, LLM, Stripe: local stand-ins (tests/support/upstreams.cjs). NOT real providers, NOT remote Cloudflare.
 
@@ -7,7 +7,7 @@ PASS  Built Worker running in workerd  →  http://localhost:8791
 PASS  Stats come from the database  →  available=1500, tier=1, mode=selling
 PASS  Public pages respond in EN and ES
 PASS  Magic link works once; raw token not reusable
-PASS  1. Company registered by verified corporate email  →  ocean-line-llc-a62489dd
+PASS  1. Company registered by verified corporate email  →  ocean-line-llc-5628b874
 PASS  T07 another user cannot touch a company; no session 401; foreign origin 403; non-admin 403
 PASS  T13 API errors localized  →  en: Please sign in. / es: Inicia sesión.
 PASS  T06 forged webhook rejected over HTTP; nothing assigned

@@ -4,6 +4,8 @@ declare namespace Cloudflare {
   interface Env {
     DB: D1Database;
     SNAPSHOTS?: R2Bucket;
+    MAIL_PROVIDER?: string;
+    EMAIL?: SendEmail;
     RESEND_API_KEY?: string;
     RESEND_API_BASE?: string;
     MAIL_FROM?: string;

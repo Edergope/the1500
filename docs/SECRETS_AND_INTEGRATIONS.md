@@ -1,10 +1,10 @@
 # Credenciales de staging, paso a paso
 
-Comprobado contra la documentación de Resend y Stripe el 2026-11-04. Los paneles cambian: si un botón tiene otro nombre, se sigue la misma intención. La sección de Claude Console no se pudo comprobar en línea.
+Comprobado contra la documentación de Cloudflare, Resend y Stripe el 2026-11-04. Los paneles cambian: si un botón tiene otro nombre, se sigue la misma intención. La sección de Claude Console no se pudo comprobar en línea.
 
-**Estado actual, modo seguro:** ningún secreto configurado, `PAYMENTS_ENABLED="false"`, sin producción. El código rechaza las claves `sk_live_` y `rk_live_` aunque alguien las configure. Nada de esta guía habilita cobros reales.
+**Estado actual, modo seguro:** ningún secreto configurado, sin remitente de correo, `PAYMENTS_ENABLED="false"`, sin producción. El código rechaza las claves `sk_live_` y `rk_live_` aunque alguien las configure. Nada de esta guía habilita cobros reales.
 
-**Orden:** 1 Resend, 2 Stripe sandbox, 3 LLM. Se empieza por el correo porque sin él nadie puede iniciar sesión, y las otras dos verificaciones necesitan una sesión. No se pasa a la siguiente sin haber verificado la anterior.
+**Orden:** 1 correo, 2 Stripe sandbox, 3 LLM. Se empieza por el correo porque sin él nadie puede iniciar sesión, y las otras dos verificaciones necesitan una sesión. No se pasa a la siguiente sin haber verificado la anterior.
 
 ## Reglas para no exponer un secreto
 
@@ -26,34 +26,50 @@ Todos los comandos se ejecutan desde la carpeta del proyecto, con la sesión de 
 cd /Users/edergope/THE1500/THE1500_ENTREGA_INTEGRAL_CLAUDE_2026-11-03/01_CODIGO_ACTUAL_CORE004_v0_3
 ```
 
-## 1. Correo: Resend
+## 1. Correo: Cloudflare Email Sending
 
-### 1.1 Obtener la clave
-1. Crea una cuenta en https://resend.com con un correo al que tengas acceso. Ese correo importa: ver 1.3.
-2. Ve a https://resend.com/api-keys y pulsa **Create API Key**.
-3. Nombre: `the1500-staging`. Permiso: **Sending access**, no Full access.
-4. Copia la clave. Resend la muestra **una sola vez**.
+Proveedor aprobado por el propietario el 2026-11-04. Usa el binding `EMAIL` del Worker, así que **no hay clave que guardar**. El código ya está desplegado, pero sin remitente no envía nada.
 
-### 1.2 Guardarla en Cloudflare
+Sending sigue en beta y parte de un cupo diario "conservador" sin cifra publicada. Antes del lanzamiento hay que comprobar la entrega y pedir aumento en el formulario enlazado desde https://developers.cloudflare.com/email-service/platform/limits/.
+
+### 1.1 Requisitos, los dos a cargo del propietario
+1. **Workers Paid** en la cuenta del Worker: desde 5 USD/mes, con 3.000 correos incluidos y 0,35 USD por 1.000 adicionales. Se contrata por cuenta, así que también cubre lo demás que haya en ella. Panel de Cloudflare → Workers & Pages → Plans.
+2. **Un dominio en Cloudflare DNS** en esa misma cuenta. Se recomienda enviar desde un subdominio, como `mail.tudominio.com`.
+
+### 1.2 Activar el dominio
+En el panel: Email Service → Email Sending → onboarding del subdominio. O bien, con Claude y tu autorización:
+
+```bash
+npx wrangler email sending enable mail.tudominio.com
+```
+
+Cloudflare añade los registros SPF, DKIM, DMARC y de rebotes, normalmente en 5 a 15 minutos. Si Wrangler responde `Unauthorized`, hay que renovar su permiso con `npx wrangler login`.
+
+### 1.3 Remitente
+`MAIL_FROM` no es secreto y vive en `wrangler.jsonc`, por ejemplo `THE1500 <signin@mail.tudominio.com>`. Claude lo cambia y despliega.
+
+### 1.4 Verificar
+1. Abre https://the1500-staging.admonpalmerafood.workers.dev/login con una dirección real de **Gmail** y repite con una de **Outlook**.
+2. Debe llegar el enlace a la bandeja de entrada, no a spam. Vale 15 minutos y una sola vez.
+3. Ábrelo y confirma. Debes llegar a `/mi-cuenta`.
+4. Vuelve a abrir el mismo enlace y confirma: debe rechazarlo.
+5. Claude revisa en los encabezados que SPF, DKIM y DMARC pasen.
+
+**Hecho cuando:** los cinco puntos pasan en ambos buzones. Si no pasan, se cambia al respaldo: Resend.
+
+### 1.5 Primer administrador
+Después de tu primer acceso, y con tu confirmación de que ese correo es el del administrador, Claude ejecuta sobre D1 remoto el alta de `docs/CORE004_IMPLEMENTATION.md` §3. Entonces https://the1500-staging.admonpalmerafood.workers.dev/api/v1/admin/integrations debe mostrar `mail.provider: "cloudflare"` y `mail.configured: true`.
+
+### 1.6 Respaldo: Resend (sin activar)
+El adaptador se conserva y no requiere cambios de código. Solo si se decide usarlo:
+
+1. Crea una cuenta en https://resend.com y una clave en https://resend.com/api-keys con permiso **Sending access**. Se muestra una sola vez.
+2. Guárdala en Cloudflare:
 ```bash
 npx wrangler secret put RESEND_API_KEY --name the1500-staging
 ```
-
-### 1.3 Remitente
-`MAIL_FROM` no es secreto y vive en `wrangler.jsonc`. Claude lo cambia y despliega; solo necesita saber cuál usar.
-
-- **Sin dominio, para verificar ya:** `THE1500 <onboarding@resend.dev>`. Resend solo permite enviar así **al correo de tu propia cuenta de Resend**. Basta para esta verificación y para crear el administrador. A cualquier otra dirección el envío falla y el acceso responde 503.
-- **Con dominio, necesario para otros usuarios:** en https://resend.com/domains pulsa **Add Domain** y usa un subdominio de envío, como `mail.tudominio.com`. Copia los registros DKIM y SPF en tu DNS, exactamente; si alguno es CNAME en Cloudflare, sin proxy. Suele verificarse en 15 minutos y puede tardar hasta 72 horas. Después añade DMARC y, si quieres, restringe la clave a ese dominio.
-
-### 1.4 Verificar
-1. Abre https://the1500-staging.admonpalmerafood.workers.dev/login y escribe el correo de tu cuenta de Resend.
-2. Debe llegar el enlace (revisa spam). Vale 15 minutos y una sola vez.
-3. Ábrelo y confirma. Debes llegar a `/mi-cuenta` con tu correo visible.
-
-**Hecho cuando:** entras con un enlace recibido de verdad. Si responde 503, la clave o el remitente no están bien; el registro está en https://resend.com/emails.
-
-### 1.5 Primer administrador
-Después de tu primer acceso, y con tu confirmación de que ese correo es el del administrador, Claude ejecuta sobre D1 remoto el alta de `docs/CORE004_IMPLEMENTATION.md` §3. Entonces https://the1500-staging.admonpalmerafood.workers.dev/api/v1/admin/integrations debe mostrar `mail.configured: true`. Esa página nunca muestra valores.
+3. Verifica el dominio en https://resend.com/domains. Sin dominio, `onboarding@resend.dev` solo envía al correo de tu propia cuenta de Resend.
+4. Claude cambia `MAIL_PROVIDER` a `"resend"` y `MAIL_FROM`, y despliega.
 
 ## 2. Pagos de prueba: Stripe sandbox
 
@@ -119,7 +135,7 @@ npx wrangler secret put AI_API_KEY --name the1500-staging
 
 | Proveedor | Dónde | Después |
 |---|---|---|
-| Resend | https://resend.com/api-keys | `secret put` con la nueva |
+| Resend, si se activa | https://resend.com/api-keys | `secret put` con la nueva |
 | Stripe | https://dashboard.stripe.com/apikeys → ⋯ → **Rotate key**. Webhook: ⋯ → **Roll secret** | `secret put` con la nueva |
 | Claude | Claude Console → API keys | `secret put` con la nueva |
 

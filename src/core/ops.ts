@@ -18,22 +18,29 @@ export function startReactivationClock(db:D1Database,companyId:string,notifiedAt
     .bind(notifiedAt.toISOString(),new Date(notifiedAt.getTime()+REACTIVATION_FORM_DAYS*86_400_000).toISOString(),companyId);
 }
 /** Sends what is queued. Nothing is marked sent unless the provider accepted it. */
-export async function flushNotifications(db:D1Database,env:MailEnv,now=new Date(),limit=20):Promise<{sent:number;failed:number;skipped:boolean}> {
-  if (!mailConfigured(env)) return {sent:0,failed:0,skipped:true};
+export async function flushNotifications(db:D1Database,env:MailEnv,now=new Date(),limit=20):Promise<{sent:number;failed:number;skipped:boolean;blocked:boolean}> {
+  if (!mailConfigured(env)) return {sent:0,failed:0,skipped:true,blocked:false};
   const pending=await db.prepare(`SELECT id,kind,company_id,recipient,subject,body,attempts FROM notifications WHERE status='pending' ORDER BY created_at LIMIT ?`)
     .bind(limit).all<{id:string;kind:string;company_id:string|null;recipient:string;subject:string;body:string;attempts:number}>();
-  let sent=0,failed=0;
+  let sent=0,failed=0,blocked=false;
   for (const n of pending.results) {
-    const ok=await sendMail(env,{to:n.recipient,subject:n.subject,text:n.body});
-    if (ok) {
-      sent++;await db.prepare(`UPDATE notifications SET status='sent',sent_at=?,attempts=attempts+1 WHERE id=?`).bind(now.toISOString(),n.id).run();
+    const outcome=await sendMail(env,{to:n.recipient,subject:n.subject,text:n.body});
+    if (outcome.accepted) {
+      sent++;await db.prepare(`UPDATE notifications SET status='sent',sent_at=?,attempts=attempts+1,provider=?,provider_message_id=?,failure_code=NULL WHERE id=?`).bind(now.toISOString(),outcome.provider,outcome.messageId,n.id).run();
       if (n.kind==='reactivation_approved'&&n.company_id) await startReactivationClock(db,n.company_id,now).run();
+    } else if (outcome.failure==='blocked') {
+      // Quota or sender problem: the whole queue waits, and no message uses up its attempts meanwhile.
+      blocked=true;
+      await openIncident(db,'mail_provider_blocked','critical',{dedupeKey:`mail_blocked:${outcome.code}:${now.toISOString().slice(0,10)}`},{provider:outcome.provider,code:outcome.code},now).run();
+      break;
     } else {
-      failed++;await db.prepare(`UPDATE notifications SET attempts=attempts+1,status=CASE WHEN attempts>=4 THEN 'failed' ELSE 'pending' END WHERE id=?`).bind(n.id).run();
-      if (n.attempts>=4) await openIncident(db,'notification_failed','warning',{companyId:n.company_id,dedupeKey:`notification_failed:${n.id}`},{kind:n.kind},now).run();
+      failed++;
+      const final=outcome.failure==='rejected'||n.attempts>=4;
+      await db.prepare(`UPDATE notifications SET attempts=attempts+1,status=?,provider=?,failure_code=? WHERE id=?`).bind(final?'failed':'pending',outcome.provider,outcome.code,n.id).run();
+      if (final) await openIncident(db,'notification_failed','warning',{companyId:n.company_id,dedupeKey:`notification_failed:${n.id}`},{kind:n.kind,provider:outcome.provider,code:outcome.code},now).run();
     }
   }
-  return {sent,failed,skipped:false};
+  return {sent,failed,skipped:false,blocked};
 }
 export async function ownerContacts(db:D1Database,companyId:string) {
   const rows=await db.prepare(`SELECT u.email,u.locale FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.company_id=? AND m.role='owner'`)

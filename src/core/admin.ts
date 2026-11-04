@@ -3,7 +3,7 @@ import { FOUNDER_PLACES, getSalesState, onboardingStart, releaseAssignmentStatem
 import { notifyOwners, openIncident, ownerContacts, startReactivationClock } from './ops';
 import { founderAwardedEmail, founderInvitationEmail, premiumDecisionEmail, reactivationEmail, serviceRequestDecisionEmail } from '../lib/i18n/comms';
 import { paymentsGate, type StripeEnv } from './stripe';
-import { mailConfigured, type MailEnv } from './mail';
+import { mailStatus, type MailEnv } from './mail';
 import { withdrawalPlan } from './profiles';
 
 export class AdminError extends IdentityError {
@@ -257,7 +257,7 @@ export async function decideReactivation(db:D1Database,adminId:string,companyId:
 export function integrationStatus(env:StripeEnv&MailEnv&{AI_API_KEY?:string;AI_PROVIDER?:string;AI_MODEL?:string;SNAPSHOTS?:unknown}) {
   const gate=paymentsGate(env);
   return {
-    mail:{configured:mailConfigured(env),keyPresent:!!env.RESEND_API_KEY,from:env.MAIL_FROM??null},
+    mail:mailStatus(env),
     stripe:{enabled:env.PAYMENTS_ENABLED==='true',keyPresent:!!env.STRIPE_SECRET_KEY,keyIsTestMode:env.STRIPE_SECRET_KEY?/^(sk|rk)_test_/.test(env.STRIPE_SECRET_KEY):null,webhookSecretPresent:!!env.STRIPE_WEBHOOK_SECRET,gate:gate.ok?'open_test_mode':gate.code},
     ai:{configured:!!env.AI_API_KEY,provider:env.AI_PROVIDER??null,model:env.AI_MODEL??null},
     publicBaseUrl:env.PUBLIC_BASE_URL??null,snapshotsBound:!!env.SNAPSHOTS,

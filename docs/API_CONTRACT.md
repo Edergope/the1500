@@ -143,7 +143,7 @@ Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or A
 | POST `/admin/payments/refund` | `{attemptId,reason}` | Position returns only after confirmed refund, and never if published |
 | GET, POST `/admin/premium/requests` | POST `{requestId,status:"in_review"\|"accepted"\|"rejected",reasonCode,evidenceReference}` | Applications from the portal form. Email or meeting notes go in the evidence reference |
 | POST `/admin/premium/assign` | `{requestId,reasonCode,evidenceReference}` | Accepted request, tier 4 open, funds evidence |
-| GET `/admin/integrations` | | Whether mail, Stripe (test mode) and AI are configured. Presence and mode only, never a value |
+| GET `/admin/integrations` | | Which mail provider is selected, and whether mail, Stripe (test mode) and AI are configured. Presence and mode only, never a value |
 | GET, POST `/admin/seller` | POST `{sellerEntityId,legalName,country,reasonCode,evidenceReference}` | Seller is configuration. Does not enable live payments. |
 
 Admin bootstrap is by SQL on verified user IDs only: `docs/CORE004_IMPLEMENTATION.md` §3.

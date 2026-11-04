@@ -11,7 +11,7 @@ const sh=(...args)=>execFileSync(WR,args,{cwd:ROOT,stdio:'pipe',env:{...process.
 const sql=c=>JSON.parse(sh('d1','execute','DB','--local','--persist-to',persist,'--json','--command',c)).at(-1).results;
 let up,proc;
 async function startWorker(){
-  const vars={PUBLIC_BASE_URL:BASE,MAIL_FROM:'THE1500 <signin@the1500.test>',RESEND_API_KEY:'re_test',RESEND_API_BASE:up.base,
+  const vars={PUBLIC_BASE_URL:BASE,MAIL_FROM:'THE1500 <signin@the1500.test>',MAIL_PROVIDER:'resend',RESEND_API_KEY:'re_test',RESEND_API_BASE:up.base,
     PAYMENTS_ENABLED:'true',STRIPE_SECRET_KEY:'sk_test_e2e',STRIPE_WEBHOOK_SECRET:WEBHOOK_SECRET,STRIPE_API_BASE:up.base,
     AI_PROVIDER:'anthropic',AI_API_KEY:'test',AI_BASE_URL:up.base};
   const args=['dev','--config','dist/server/wrangler.json','--port',String(PORT),'--persist-to',persist,'--test-scheduled','--show-interactive-dev-session=false',...Object.entries(vars).flatMap(([k,v])=>['--var',`${k}:${v}`])];

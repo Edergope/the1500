@@ -318,7 +318,7 @@ describe('identity and tenancy',()=>{
     await assert.rejects(id.requireMember(h.db,out.userId,s.companyId),e=>e.code==='NOT_COMPANY_MEMBER');
   });
   test('sessions: one-use link, revocation everywhere, blocked users lose access; non-admins cannot act as admin',async()=>{
-    const mailEnv={DB:h.db,RESEND_API_KEY:'re_test',MAIL_FROM:'x@y.test',RESEND_API_BASE:up.base,PUBLIC_BASE_URL:'http://localhost:8799'};
+    const mailEnv={DB:h.db,MAIL_PROVIDER:'resend',RESEND_API_KEY:'re_test',MAIL_FROM:'x@y.test',RESEND_API_BASE:up.base,PUBLIC_BASE_URL:'http://localhost:8799'};
     await id.requestLoginLink(mailEnv,'Person@Acme.example',null,new Date(),'es');
     const mail=up.state.emails.at(-1);assert.match(mail.subject,/enlace de acceso/);
     const token=mail.text.match(/token=([a-f0-9]{64})/)[1];
@@ -339,7 +339,7 @@ describe('identity and tenancy',()=>{
   test('T15 mail down: no valid unused link is left behind',async()=>{
     up.state.mail.fail=true;
     try{
-      const mailEnv={DB:h.db,RESEND_API_KEY:'re_test',MAIL_FROM:'x@y.test',RESEND_API_BASE:up.base,PUBLIC_BASE_URL:'http://localhost:8799'};
+      const mailEnv={DB:h.db,MAIL_PROVIDER:'resend',RESEND_API_KEY:'re_test',MAIL_FROM:'x@y.test',RESEND_API_BASE:up.base,PUBLIC_BASE_URL:'http://localhost:8799'};
       await assert.rejects(id.requestLoginLink(mailEnv,'down@acme.example',null),e=>e.code==='MAIL_DELIVERY_UNAVAILABLE');
       assert.equal((await h.db.prepare(`SELECT COUNT(*) n FROM login_challenges WHERE email='down@acme.example'`).first()).n,0);
     }finally{up.state.mail.fail=false;}
@@ -361,7 +361,7 @@ describe('identity and tenancy',()=>{
     assert.equal((await h.db.prepare(`SELECT COUNT(*) n FROM notifications WHERE company_id=?`).bind(s.companyId).first()).n,2,'no duplicate notices');
   });
   test('notifications are marked sent only after the provider accepts them; rate limiter holds',async()=>{
-    const env={RESEND_API_KEY:'re_test',MAIL_FROM:'x@y.test',RESEND_API_BASE:up.base};
+    const env={MAIL_PROVIDER:'resend',RESEND_API_KEY:'re_test',MAIL_FROM:'x@y.test',RESEND_API_BASE:up.base};
     const r=await ops.flushNotifications(h.db,env);assert.ok(r.sent>0);assert.equal(r.failed,0);
     assert.equal((await ops.flushNotifications(h.db,{})).skipped,true);
     const now=new Date();const hits=await Promise.all(Array.from({length:6},()=>ops.hitRateLimit(h.db,'t:1',3,3600,now)));

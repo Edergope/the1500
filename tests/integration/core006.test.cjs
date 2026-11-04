@@ -11,7 +11,7 @@ const DECL={language:'en',description:'We coordinate ocean freight and shipment 
 let up,payEnv,mailEnv,n=500;
 before(async()=>{up=await createUpstreams();
   payEnv={PAYMENTS_ENABLED:'true',STRIPE_SECRET_KEY:'sk_test_local',STRIPE_WEBHOOK_SECRET:'whsec_x',STRIPE_API_BASE:up.base,PUBLIC_BASE_URL:'http://localhost:8799'};
-  mailEnv={RESEND_API_KEY:'re_test',MAIL_FROM:'x@y.test',RESEND_API_BASE:up.base};});
+  mailEnv={MAIL_PROVIDER:'resend',RESEND_API_KEY:'re_test',MAIL_FROM:'x@y.test',RESEND_API_BASE:up.base};});
 after(()=>up.close());
 const key=()=>`idempotency_key_${String(++n).padStart(6,'0')}`;
 async function publishedCompany(h,opts={}){
@@ -188,7 +188,7 @@ describe('Premium, Decision 64: portal form, human evaluation, no checkout',()=>
 });
 describe('integration status',()=>{
   test('reports presence and mode without exposing any value',()=>{
-    const out=adm.integrationStatus({RESEND_API_KEY:'re_supersecret',MAIL_FROM:'a@b.test',PAYMENTS_ENABLED:'true',STRIPE_SECRET_KEY:'sk_test_supersecret',STRIPE_WEBHOOK_SECRET:'whsec_supersecret',PUBLIC_BASE_URL:'https://x.test',AI_API_KEY:'k_supersecret',AI_PROVIDER:'anthropic'});
+    const out=adm.integrationStatus({MAIL_PROVIDER:'resend',RESEND_API_KEY:'re_supersecret',MAIL_FROM:'a@b.test',PAYMENTS_ENABLED:'true',STRIPE_SECRET_KEY:'sk_test_supersecret',STRIPE_WEBHOOK_SECRET:'whsec_supersecret',PUBLIC_BASE_URL:'https://x.test',AI_API_KEY:'k_supersecret',AI_PROVIDER:'anthropic'});
     assert.equal(JSON.stringify(out).includes('supersecret'),false);
     assert.equal(out.stripe.gate,'open_test_mode');assert.equal(out.stripe.keyIsTestMode,true);assert.equal(out.ai.configured,true);
     assert.equal(adm.integrationStatus({STRIPE_SECRET_KEY:'sk_live_x',STRIPE_WEBHOOK_SECRET:'w',PAYMENTS_ENABLED:'true',PUBLIC_BASE_URL:'https://x.test'}).stripe.gate,'LIVE_PAYMENTS_NOT_AUTHORIZED');

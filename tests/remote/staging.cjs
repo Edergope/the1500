@@ -248,7 +248,7 @@ function seedAttempts(buyers){
     (SELECT COUNT(*) FROM slots WHERE assignment_kind='founder' AND number>100) fHigh,(SELECT COUNT(*) FROM slots WHERE assignment_kind='paid' AND number<=100) pLow FROM slots`);
   assert.deepEqual(f,{n:1500,retired:1,dup:0,fHigh:0,pLow:0});
   step('Final integrity on remote D1',`1,500 positions, no company with two, none outside its range`);
-  console.log(`\n${log.length} steps passed on remote D1, R2 and the deployed Worker. Mail, Stripe API and LLM providers were NOT involved.`);
+  console.log(`\n${log.length} steps passed on remote D1, R2 and the deployed Worker. Mail delivery, the Stripe API and LLM providers were NOT involved.`);
   fs.writeFileSync(path.join(ROOT,'docs/CORE006_REMOTE_EVIDENCE.txt'),`THE1500 CORE-006, staging run ${new Date().toISOString()}\nTarget: ${BASE}, remote D1 the1500-staging, remote R2 the1500-staging-snapshots.\nSign-in links seeded in D1 (no mail provider). Webhooks signed with a temporary test secret, sent to the real route. No real Stripe, LLM or email.\n\n${log.join('\n')}\n`);
   fs.writeFileSync(process.env.STAGING_CLEANUP_FILE||'/dev/null',JSON.stringify({r2:pubs.flatMap((p,i)=>[`profiles/${paying[i].companyId}/v${p.pub.version}/en.jsonld`,`profiles/${paying[i].companyId}/v${p.pub.version}/es.jsonld`])}));
 })().catch(e=>{console.error('\nREMOTE TEST FAILED:',e);process.exitCode=1;});

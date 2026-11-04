@@ -28,7 +28,7 @@
 | Concurrencia en D1 remoto | DONE | Ver abajo |
 | Copia inmutable en R2 remoto | DONE | |
 | Sesiones, cookie, enlaces de un solo uso, aislamiento | DONE | Los enlaces se sembraron en D1 |
-| Envío real de correo | BLOCKED | Falta `RESEND_API_KEY` y dominio verificado |
+| Envío real de correo | BLOCKED | Proveedor y requisitos actuales en `CORE007_STATUS.md` |
 | Stripe sandbox real | BLOCKED | Faltan claves de prueba. Webhooks probados con firma válida contra la ruta real, sin Stripe |
 | LLM real | BLOCKED | Falta `AI_API_KEY`. Controles sin calibrar |
 | Modo real de pagos | BLOCKED | Requiere entidad, impuestos y autorización |

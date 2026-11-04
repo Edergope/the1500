@@ -13,7 +13,7 @@ async function freshDb(){
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'the1500-d1-'));
   fs.cpSync(migrated(),dir,{recursive:true});
   const proxy=await getPlatformProxy({configPath:path.join(ROOT,'wrangler.jsonc'),persist:{path:path.join(dir,'v3')}});
-  return {db:proxy.env.DB,bucket:proxy.env.SNAPSHOTS,dispose:async()=>{await proxy.dispose();fs.rmSync(dir,{recursive:true,force:true});}};
+  return {db:proxy.env.DB,bucket:proxy.env.SNAPSHOTS,email:proxy.env.EMAIL,dispose:async()=>{await proxy.dispose();fs.rmSync(dir,{recursive:true,force:true});}};
 }
 let seq=0;
 async function seedCompany(db,opts={}){

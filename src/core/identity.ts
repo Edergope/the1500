@@ -1,18 +1,15 @@
 /** Passwordless identity. Raw tokens exist only in-memory until the email provider accepts them. */
 import {loginEmail} from '../lib/i18n/comms';
-import {sendMail} from './mail';
+import {mailConfigured,sendMail,type MailEnv} from './mail';
 
 const MAGIC_LINK_MS = 15 * 60 * 1000;
 const SESSION_MS = 14 * 24 * 60 * 60 * 1000;
 export const SESSION_COOKIE = '__Host-the1500_session';
 const enc = new TextEncoder();
 
-export interface IdentityEnv {
+export interface IdentityEnv extends MailEnv {
   DB: D1Database;
-  RESEND_API_KEY?: string;
-  MAIL_FROM?: string;
   PUBLIC_BASE_URL?: string;
-  RESEND_API_BASE?: string;
 }
 
 export class IdentityError extends Error {
@@ -71,7 +68,7 @@ export function parseLocale(value:unknown):'en'|'es' {return value==='es'?'es':'
 
 /** Email requests deliberately have a uniform response, irrespective of membership. */
 export async function requestLoginLink(env: IdentityEnv, emailInput: string, ip: string|null, now=new Date(), locale:'en'|'es'='en'): Promise<void> {
-  if (!env.RESEND_API_KEY || !env.MAIL_FROM || !env.PUBLIC_BASE_URL) throw new IdentityError('MAIL_NOT_CONFIGURED',503);
+  if (!mailConfigured(env) || !env.PUBLIC_BASE_URL) throw new IdentityError('MAIL_NOT_CONFIGURED',503);
   const email=normalizeEmail(emailInput);
   const publicOrigin=new URL(env.PUBLIC_BASE_URL).origin;
   if ((!publicOrigin.startsWith('https://') && !publicOrigin.startsWith('http://localhost')) || new URL(publicOrigin).hostname.endsWith('.invalid')) throw new IdentityError('INVALID_BASE_URL',503);
@@ -91,9 +88,15 @@ export async function requestLoginLink(env: IdentityEnv, emailInput: string, ip:
   const url=new URL('/auth/verify',publicOrigin);url.searchParams.set('token',raw);
   const message=loginEmail(locale,url.toString());
   const sent=await sendMail(env,{to:email,...message});
-  if (!sent) {
+  if (!sent.accepted) {
     // Do not leave a valid unused token if the mail service failed to accept it.
     await env.DB.prepare(`DELETE FROM login_challenges WHERE id=? AND consumed_at IS NULL`).bind(id).run();
+    // A refused address (a suppressed one, say) gets the usual reply, so this route cannot be used to probe addresses.
+    if (sent.failure==='rejected') {
+      await env.DB.prepare(`INSERT OR IGNORE INTO incidents(id,kind,severity,dedupe_key,details_json,created_at) VALUES(?,'login_mail_rejected','warning',?,?,?)`)
+        .bind(crypto.randomUUID(),`login_mail_rejected:${email}:${requestedAt.slice(0,10)}`,JSON.stringify({email,provider:sent.provider,code:sent.code}),requestedAt).run();
+      return;
+    }
     throw new IdentityError('MAIL_DELIVERY_UNAVAILABLE',503);
   }
 }
