@@ -49,7 +49,7 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
       const data = await res.json();
       if (!res.ok) {
         const err = data as ApiError;
-        setSearchError(err?.error?.message || (es ? 'Error al consultar la búsqueda léxica.' : 'Lexical search failed.'));
+        setSearchError(err?.error?.message || (es ? 'No se pudo completar la búsqueda.' : 'The search could not be completed.'));
         setSearchResult(null);
       } else {
         setSearchResult(data as SearchResponse);
@@ -98,20 +98,20 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
     if (mode === 'llm_grounded') {
       return (
         <span className="badge badge-emerald">
-          {es ? 'Modo: Síntesis fundamentada en evidencia (llm_grounded)' : 'Mode: Evidence-Grounded Synthesis (llm_grounded)'}
+          {es ? 'Respuesta redactada a partir de perfiles publicados' : 'Answer written from published profiles'}
         </span>
       );
     }
     if (mode === 'retrieval_only') {
       return (
         <span className="badge badge-blue">
-          {es ? 'Modo: Recuperación directa de perfiles sin texto de IA (retrieval_only)' : 'Mode: Direct Profile Retrieval — No AI Text (retrieval_only)'}
+          {es ? 'Perfiles coincidentes, sin texto de IA' : 'Matching profiles, no AI text'}
         </span>
       );
     }
     return (
       <span className="badge badge-amber">
-        {es ? 'Modo: Abstención por falta de evidencia (abstained)' : 'Mode: Abstained — Insufficient Evidence (abstained)'}
+        {es ? 'Sin información suficiente para responder' : 'Not enough information to answer'}
       </span>
     );
   }
@@ -147,7 +147,7 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
       id="discovery-hub"
       className="surface-card"
       style={{ border: '1px solid var(--border-strong)', background: 'var(--bg-elevated)' }}
-      aria-label={es ? 'Buscador léxico y asistente fundamentado' : 'Lexical search and grounded assistant'}
+      aria-label={es ? 'Buscador y asistente' : 'Search and assistant'}
     >
       <div
         style={{
@@ -162,16 +162,13 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
         }}
       >
         <div>
-          <div className="eyebrow" style={{ marginBottom: '0.35rem' }}>
-            {es ? 'DESCUBRIMIENTO EMPRESARIAL VERIFICABLE' : 'VERIFIABLE B2B DISCOVERY ENGINE'}
-          </div>
           <h2 style={{ margin: 0, fontSize: '1.45rem' }}>
-            {es ? 'Buscador Léxico y Asistente con Citas' : 'Lexical Profile Search & Cited Directory Assistant'}
+            {es ? 'Encuentra una empresa por el problema que resuelve' : 'Find a company by the problem it solves'}
           </h2>
           <p className="muted" style={{ margin: '0.3rem 0 0 0' }}>
             {es
-              ? 'Consulta exclusivamente perfiles publicados y aprobados por sus titulares. Nunca inventa capacidades ni utiliza fuentes externas.'
-              : 'Queries strictly owner-approved, published profiles in THE1500. Never fabricates capabilities or consults external sources.'}
+              ? 'Solo consulta perfiles aprobados y publicados por sus titulares, nunca fuentes externas.'
+              : 'It only looks at profiles their owners approved and published, never at outside sources.'}
           </p>
         </div>
 
@@ -203,7 +200,7 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
               color: activeTab === 'search' ? '#070d17' : 'var(--text-secondary)',
             }}
           >
-            {es ? '1. Búsqueda Léxica (FTS5)' : '1. Lexical Search (FTS5)'}
+            {es ? 'Buscar' : 'Search'}
           </button>
           <button
             type="button"
@@ -221,7 +218,7 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
               color: activeTab === 'ask' ? '#070d17' : 'var(--text-secondary)',
             }}
           >
-            {es ? '2. Asistente con Citas' : '2. Grounded Assistant'}
+            {es ? 'Preguntar al asistente' : 'Ask the assistant'}
           </button>
         </div>
       </div>
@@ -229,12 +226,10 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
       {activeTab === 'search' ? (
         <div role="tabpanel">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
-            <span className="badge badge-blue mono">method: fts5_lexical</span>
-            <span className="badge badge-slate mono">semantic: false</span>
             <span className="muted" style={{ fontSize: '0.82rem' }}>
               {es
-                ? 'Coincidencia léxica exacta sobre problemas, soluciones, servicios, resumen e industria (no es búsqueda semántica ni IA).'
-                : 'Exact lexical matching across problems, solutions, services, summary, and industry (not semantic or AI search).'}
+                ? 'Busca por palabras en problemas, soluciones, servicios, resumen e industria. No interpreta sinónimos ni usa IA.'
+                : 'Searches for your words in problems, solutions, services, summaries and industry. It does not interpret synonyms or use AI.'}
             </span>
           </div>
 
@@ -259,13 +254,13 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
                     style={{ flex: '1 1 260px' }}
                   />
                   <button type="submit" className="btn-primary" disabled={searchLoading}>
-                    {searchLoading ? (es ? 'Buscando…' : 'Searching…') : es ? 'Ejecutar búsqueda léxica' : 'Run lexical search'}
+                    {searchLoading ? (es ? 'Buscando…' : 'Searching…') : es ? 'Buscar' : 'Search'}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label htmlFor="lexical-country">{es ? 'País (ISO-2 opcional)' : 'Country (optional ISO-2)'}</label>
+                <label htmlFor="lexical-country">{es ? 'País (opcional, código de 2 letras)' : 'Country (optional, 2-letter code)'}</label>
                 <input
                   id="lexical-country"
                   type="text"
@@ -289,7 +284,7 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
               </div>
 
               <div>
-                <label htmlFor="lexical-limit">{es ? 'Límite de resultados (1–12)' : 'Result limit (1–12)'}</label>
+                <label htmlFor="lexical-limit">{es ? 'Número de resultados' : 'Number of results'}</label>
                 <select
                   id="lexical-limit"
                   value={searchLimit}
@@ -336,21 +331,18 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
                   <strong>
                     {searchResult.count}{' '}
                     {es
-                      ? searchResult.count === 1 ? 'perfil publicado coincide con la consulta léxica' : 'perfiles publicados coinciden con la consulta léxica'
-                      : searchResult.count === 1 ? 'published profile matched lexical query' : 'published profiles matched lexical query'}
+                      ? searchResult.count === 1 ? 'perfil publicado coincide con' : 'perfiles publicados coinciden con'
+                      : searchResult.count === 1 ? 'published profile matches' : 'published profiles match'}
                   </strong>{' '}
                   <span className="mono muted">("{searchResult.query}")</span>
                 </div>
-                <span className="badge badge-slate mono">
-                  {searchResult.retrieval.method} · scope:{searchResult.retrieval.scope}
-                </span>
               </div>
 
               {searchResult.items.length === 0 ? (
                 <p className="muted">
                   {es
                     ? 'No se encontraron perfiles publicados con esos términos exactos.'
-                    : 'No published profiles matched those lexical terms.'}
+                    : 'No published profiles match those words.'}
                 </p>
               ) : (
                 <div className="grid-2">
@@ -372,9 +364,6 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
                           )}
                           {item.industry && <span className="badge badge-slate">{item.industry}</span>}
                           <span className="badge badge-blue mono">{item.country}</span>
-                          <span className="badge badge-emerald mono">
-                            {Math.round(item.coverage * 100)}% {es ? 'cobertura' : 'match'}
-                          </span>
                         </div>
                       </div>
 
@@ -394,9 +383,6 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
                             marginBottom: '0.65rem',
                           }}
                         >
-                          <span className="mono" style={{ color: 'var(--gold-primary)', fontWeight: 600 }}>
-                            [{item.evidence.field}]
-                          </span>{' '}
                           <span style={{ color: 'var(--text-primary)' }}>"{item.evidence.quote}"</span>
                         </div>
                       )}
@@ -429,7 +415,7 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
         <div role="tabpanel">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
             <span className="badge badge-gold">
-              {es ? 'Asistente fundamentado en perfiles publicados' : 'Evidence-Grounded Directory Assistant'}
+              {es ? 'Asistente con citas de perfiles publicados' : 'Assistant that cites published profiles'}
             </span>
             <span className="muted" style={{ fontSize: '0.82rem' }}>
               {es
@@ -501,7 +487,6 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.85rem' }}>
                 {renderModeBadge(askResult.mode)}
                 <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span className="badge badge-slate mono">retrieval: {askResult.retrieval.method}</span>
                   {askResult.degraded && (
                     <span className="badge badge-amber mono" title={es ? 'Razón de modo sin LLM' : 'Fallback reason'}>
                       {askResult.degraded}
@@ -547,7 +532,6 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
                           </a>
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <span className="badge badge-slate mono">v{cite.profileVersion}</span>
-                            <span className="badge badge-gold mono">{cite.quoteField}</span>
                             <a href={cite.jsonldUrl} className="mono" style={{ fontSize: '0.75rem', textDecoration: 'underline' }}>
                               JSON-LD
                             </a>
@@ -558,7 +542,7 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
                         </blockquote>
                         {cite.jsonldDigest && (
                           <div className="mono muted" style={{ fontSize: '0.7rem', marginTop: '0.35rem' }}>
-                            SHA-256 JSON-LD: {cite.jsonldDigest.slice(0, 24)}…
+                            {es ? 'Huella del perfil citado' : 'Cited profile fingerprint'}: {cite.jsonldDigest.slice(0, 12)}…
                           </div>
                         )}
                       </div>
@@ -571,7 +555,7 @@ export default function DiscoveryHub({ lang = 'en', initialQuery = '' }: Props) 
                 className="notice"
                 style={{ margin: 0, fontSize: '0.82rem', padding: '0.75rem 1rem' }}
               >
-                <strong>{es ? 'Limitaciones metodológicas:' : 'Methodological limitations:'}</strong> {askResult.limitations}
+                <strong>{es ? 'Límites de esta respuesta:' : 'Limits of this answer:'}</strong> {askResult.limitations}
               </div>
             </div>
           )}

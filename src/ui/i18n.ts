@@ -78,8 +78,8 @@ export function salesModeCopy(mode: SalesMode, locale: Locale): { badge: string;
         badge: es ? 'Archivo completo (1.500 / 1.500)' : 'Archive complete (1,500 / 1,500)',
         title: es ? 'Las 1.500 posiciones han sido consumidas' : 'All 1,500 positions have been allocated',
         description: es
-          ? 'No quedan posiciones disponibles para la venta. El directorio público, la búsqueda léxica y el asistente permanecen plenamente operativos.'
-          : 'No positions remain for sale. The public directory, lexical search, and grounded assistant remain fully operational.',
+          ? 'No quedan posiciones disponibles para la venta. El directorio público, el buscador y el asistente permanecen plenamente operativos.'
+          : 'No positions remain for sale. The public directory, search and assistant remain fully operational.',
         tone: 'slate',
       };
   }

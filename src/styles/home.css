@@ -1,0 +1,889 @@
+/* The Home is built around one thing: the register of 1,500 positions. Everything else stays quiet. */
+.home {
+  --cols: 60;
+  --cell-gap: 3px;
+  --cell-open: rgba(238, 198, 121, 0.42);
+  --cell-later: #141c2a;
+  --cell-taken: rgba(238, 198, 121, 0.5);
+  --cell-retired: #b4583f;
+  padding-top: 0;
+  max-width: 1320px;
+}
+
+.home h2 {
+  font-size: clamp(2.1rem, 4.2vw, 3.5rem);
+  line-height: 1.05;
+  margin-bottom: 0.9rem;
+}
+
+.home-block {
+  padding-block: clamp(4rem, 9vw, 7.5rem);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.home-lead {
+  max-width: 44rem;
+  margin-bottom: clamp(2rem, 4vw, 3.25rem);
+}
+
+.home-lead p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+.home-lead-split {
+  max-width: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+}
+
+.home-lead-split > div {
+  max-width: 44rem;
+}
+
+.home a:focus-visible,
+.home button:focus-visible,
+.home summary:focus-visible,
+.home pre:focus-visible,
+.home input:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+}
+
+.btn-lg {
+  padding: 0.95rem 1.7rem;
+  font-size: 1.02rem;
+}
+
+.demo-tag {
+  display: inline-block;
+  margin-inline-start: 0.6rem;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--border-gold);
+  border-radius: 3px;
+  color: var(--gold-primary);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  vertical-align: 0.12em;
+}
+
+/* Hero */
+.reg-hero {
+  padding-block: clamp(2rem, 4vw, 3.25rem) clamp(3rem, 6vw, 5rem);
+}
+
+.reg-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(1.5rem, 4vw, 4rem);
+  align-items: end;
+  margin-bottom: clamp(2rem, 3.5vw, 3rem);
+}
+
+.reg-title {
+  font-size: clamp(3rem, 6.2vw, 6rem);
+  line-height: 1;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+/* Two whole sentences: each keeps its own line. */
+.reg-title span {
+  display: block;
+  white-space: nowrap;
+}
+
+.reg-title span + span {
+  color: var(--gold-primary);
+}
+
+.reg-pitch p {
+  font-size: 1.08rem;
+  line-height: 1.55;
+  margin-bottom: 1.25rem;
+}
+
+.reg-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.reg-pitch .reg-status {
+  margin: 1rem 0 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.reg-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: clamp(1.5rem, 3vw, 2.75rem);
+  align-items: start;
+}
+
+/* The board */
+.board {
+  display: grid;
+  gap: 0.85rem;
+  cursor: crosshair;
+}
+
+.board-phase-label {
+  display: flex;
+  gap: 0.85rem;
+  align-items: baseline;
+  margin-bottom: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.board-phase-current .board-phase-label {
+  color: var(--text-primary);
+}
+
+.board-price {
+  margin-inline-start: auto;
+}
+
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: var(--cell-gap);
+  /* Room for the enlarged selected cell, which the reveal's mask would otherwise cut at the edge. */
+  padding: 10px;
+  margin: -10px;
+}
+
+.cell {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--cell-later);
+}
+
+.cell-p {
+  background: var(--gold-bright);
+  box-shadow: 0 0 7px rgba(247, 220, 161, 0.55);
+}
+
+.cell-o {
+  background: var(--cell-taken);
+}
+
+.cell-x {
+  background: linear-gradient(135deg, transparent 42%, var(--cell-retired) 42% 58%, transparent 58%), #1b2433;
+}
+
+.cell-r {
+  background: radial-gradient(circle, var(--gold-primary) 22%, transparent 26%), #1a2230;
+}
+
+.cell-a.is-open,
+.board-phase-current .cell-a {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--cell-open);
+}
+
+.board .cell {
+  transition: transform 0.12s ease;
+}
+
+.board .cell.is-selected {
+  position: relative;
+  z-index: 1;
+  transform: scale(1.9);
+  outline: 1px solid var(--text-primary);
+  outline-offset: 1px;
+}
+
+/* The single orchestrated moment: light sweeps the register, one phase after another.
+   It starts dim rather than hidden, so a paused animation never leaves the board blank. */
+@media (prefers-reduced-motion: no-preference) {
+  .board-grid {
+    mask-image: linear-gradient(90deg, #000 50%, rgba(0, 0, 0, 0.22) 60%);
+    mask-size: 200% 100%;
+    mask-repeat: no-repeat;
+    animation: board-reveal 1.1s cubic-bezier(0.3, 0.6, 0.2, 1) both;
+  }
+
+  .board-phase:nth-child(2) .board-grid {
+    animation-delay: 0.3s;
+  }
+
+  .board-phase:nth-child(3) .board-grid {
+    animation-delay: 0.55s;
+  }
+
+  .board-phase:nth-child(4) .board-grid {
+    animation-delay: 0.75s;
+  }
+}
+
+@keyframes board-reveal {
+  from {
+    mask-position: 100% 0;
+  }
+  to {
+    mask-position: 0 0;
+  }
+}
+
+/* The plate beside the board */
+.plate {
+  min-height: 19.5rem;
+  padding-block: 0.25rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.plate-number {
+  font-family: var(--font-display);
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--gold-primary);
+  font-variant-numeric: lining-nums;
+  margin-bottom: 0.85rem;
+}
+
+.home .plate-name {
+  font-size: 1.75rem;
+  line-height: 1.12;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.plate-demo {
+  font-size: 0.78rem;
+  color: var(--gold-primary);
+}
+
+.plate-meta {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  margin-bottom: 0.7rem;
+}
+
+.plate-text {
+  font-size: 0.96rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.plate-strong {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.plate-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+.plate-link {
+  font-weight: 600;
+}
+
+.plate-controls {
+  display: grid;
+  gap: 0.75rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.plate-steps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.plate-lookup {
+  display: grid;
+  grid-template-columns: 1fr 5.25rem auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.plate-lookup label {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.plate-lookup input {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 1rem 0 0;
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.legend li {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.legend .cell {
+  width: 12px;
+}
+
+.legend b {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* One profile, two readers */
+.readers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.reader {
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  min-width: 0;
+}
+
+.reader-machine {
+  background: var(--bg-input);
+  border-inline-start: 1px solid var(--border-strong);
+}
+
+.home .reader-tag {
+  font-size: 0.88rem;
+  color: var(--gold-primary);
+  margin-bottom: 1.25rem;
+}
+
+.reader-person h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
+}
+
+.reader-meta {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.reader dl {
+  margin: 1.25rem 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  font-size: 0.95rem;
+}
+
+.reader dt {
+  color: var(--text-muted);
+}
+
+.reader dd {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.reader-machine pre {
+  margin: 0;
+  max-height: 22rem;
+  overflow: auto;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.benefits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  margin-top: clamp(2.5rem, 5vw, 4rem);
+}
+
+.benefits h3,
+.promises h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.benefits p {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+/* Who is in the register */
+.roster {
+  list-style: none;
+  margin: 0 0 clamp(3rem, 6vw, 5rem);
+  padding: 0;
+  border-top: 1px solid var(--border-strong);
+}
+
+.roster li {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.roster a,
+.roster-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.95rem 0.25rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.roster a:hover {
+  background: var(--gold-dim);
+  color: var(--text-secondary);
+}
+
+.roster-number {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--gold-primary);
+}
+
+.roster-name {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.roster-retired .roster-row {
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+}
+
+.roster-retired .roster-number,
+.roster-retired .roster-name {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.empty-note {
+  padding: 1.5rem 0;
+  color: var(--text-secondary);
+}
+
+/* Inside the Home the search is a section of the page, not a card on it. */
+.discovery-wrap #discovery-hub {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.discovery-wrap #discovery-hub > div:first-child {
+  border-bottom: 0;
+}
+
+.discovery-wrap #discovery-hub h2 {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+}
+
+/* Steps: a real sequence, so the numbers carry meaning */
+.steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(1rem, 2vw, 1.75rem);
+}
+
+.steps li {
+  counter-increment: step;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-strong);
+}
+
+.steps li::before {
+  content: counter(step);
+  display: block;
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--gold-primary);
+  margin-bottom: 0.9rem;
+}
+
+.steps h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.steps p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* Phases: the price is the point */
+.phases {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border-strong);
+}
+
+.phase {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 4fr);
+  gap: 0.5rem clamp(1rem, 3vw, 2.5rem);
+  align-items: center;
+  padding-block: 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.phase-head {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.phase-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.phase-range {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.phase-state {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.phase-current .phase-state {
+  color: var(--gold-primary);
+  font-weight: 600;
+}
+
+.phase-price {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.6vw, 3rem);
+  line-height: 1;
+  color: var(--text-muted);
+  font-variant-numeric: lining-nums;
+}
+
+.phase-current .phase-price {
+  color: var(--gold-bright);
+}
+
+.phase-price small {
+  margin-inline-start: 0.4rem;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.phase-fill {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: end;
+  display: flex;
+  gap: 2px;
+  height: 8px;
+}
+
+.phase-fill span {
+  flex-basis: 0;
+  border-radius: 2px;
+}
+
+.fill-gone {
+  background: var(--gold-primary);
+}
+
+.fill-reserved {
+  background: rgba(238, 198, 121, 0.28);
+}
+
+.fill-open {
+  background: var(--cell-later);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.home .phase-note {
+  grid-column: 3;
+  grid-row: 2;
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* Promises */
+.promises {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(2rem, 6vw, 5rem);
+}
+
+.promises ul {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.promises li {
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Questions */
+.faq {
+  max-width: 52rem;
+  border-top: 1px solid var(--border-strong);
+}
+
+.faq details {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.faq summary {
+  padding: 1.1rem 0.25rem;
+  font-size: 1.08rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.faq details p {
+  padding: 0 0.25rem 1.25rem;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Closing */
+.closing {
+  padding-block: clamp(4.5rem, 10vw, 8rem);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.home .closing h2 {
+  font-size: clamp(2.6rem, 6.4vw, 5.5rem);
+  line-height: 1.02;
+  max-width: 16ch;
+  margin-bottom: 2rem;
+}
+
+.closing-signin {
+  margin: 1.25rem 0 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.closing-signin a {
+  margin-inline-start: 0.35rem;
+}
+
+.mobile-cta {
+  display: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .reg-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reg-side {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 2rem;
+  }
+
+  .plate {
+    grid-row: span 2;
+    min-height: 14rem;
+    border-bottom: 0;
+  }
+
+  .plate-controls {
+    padding-top: 0;
+  }
+
+  .steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 2rem;
+  }
+}
+
+@media (max-width: 820px) {
+  .home {
+    --cols: 40;
+    --cell-gap: 2px;
+  }
+
+  .reg-intro,
+  .readers,
+  .benefits,
+  .promises {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reg-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reg-title span {
+    white-space: normal;
+  }
+
+  .reg-cta a {
+    flex: 1;
+    padding-inline: 1rem;
+    white-space: nowrap;
+  }
+
+  .legend {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plate {
+    min-height: 15.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .plate-controls {
+    padding-top: 1rem;
+  }
+
+  .plate-number {
+    font-size: 3.25rem;
+  }
+
+  .reader-machine {
+    border-inline-start: 0;
+    border-top: 1px solid var(--border-strong);
+  }
+
+  .roster a {
+    grid-template-columns: 4.5rem auto minmax(0, 1fr);
+    column-gap: 0.75rem;
+    row-gap: 0.1rem;
+  }
+
+  .roster-name {
+    grid-column: 2 / -1;
+  }
+
+  .roster-sector {
+    grid-column: 2;
+    font-size: 0.9rem;
+  }
+
+  .roster-country {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  .roster li:nth-child(n + 5):not(.roster-retired) {
+    display: none;
+  }
+
+  .roster-retired .roster-row {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
+
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .steps li {
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr);
+    column-gap: 0.5rem;
+  }
+
+  .steps li::before {
+    grid-row: span 2;
+  }
+
+  .phase {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .phase-fill,
+  .home .phase-note {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .phase-fill {
+    margin-top: 0.5rem;
+  }
+
+  /* Both actions stay in reach on a long page. */
+  .home {
+    padding-bottom: 4.5rem;
+  }
+
+  .mobile-cta {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 40;
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
+    background: rgba(6, 11, 19, 0.94);
+    border-top: 1px solid var(--border-subtle);
+    transform: translateY(110%);
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0.2s;
+  }
+
+  /* Appears once the hero's own buttons have scrolled away. */
+  .mobile-cta.is-visible {
+    transform: none;
+    visibility: visible;
+  }
+
+  .mobile-cta a {
+    flex: 1;
+    white-space: nowrap;
+    padding-inline: 0.5rem;
+  }
+}

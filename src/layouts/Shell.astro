@@ -1,4 +1,8 @@
 ---
+import '@fontsource/libre-caslon-display/latin-400.css';
+import '@fontsource/libre-caslon-display/latin-ext-400.css';
+import '@fontsource-variable/hanken-grotesk/index.css';
+
 interface Props {
   lang?: 'en' | 'es';
   title: string;
@@ -39,8 +43,8 @@ const switchHref = computeAltPath(currentPath, es);
 const metaDesc =
   description ||
   (es
-    ? 'THE1500 — Un índice privado de 1.500 empresas con perfiles públicos estructurados y datos legibles por máquinas (JSON-LD).'
-    : 'THE1500 — A private index of 1,500 companies with structured public profiles and machine-readable JSON-LD.');
+    ? 'THE1500 — Un directorio público limitado a 1.500 empresas, con perfiles aprobados por sus titulares y legibles por personas y software.'
+    : 'THE1500 — A public directory limited to 1,500 companies, with owner-approved profiles that both people and software can read.');
 ---
 <!doctype html>
 <html lang={lang}>
@@ -79,7 +83,8 @@ const metaDesc =
         --radius-sm: 6px;
         --radius-md: 10px;
         --radius-lg: 14px;
-        --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --font-display: 'Libre Caslon Display', Georgia, 'Times New Roman', serif;
+        --font-sans: 'Hanken Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         color-scheme: dark;
       }
@@ -280,15 +285,21 @@ const metaDesc =
         letter-spacing: -0.032em;
       }
 
+      h1,
+      h2 {
+        font-family: var(--font-display);
+        font-weight: 400;
+        font-variant-numeric: lining-nums;
+        letter-spacing: -0.012em;
+      }
+
       h1 {
-        font-size: clamp(2.15rem, 4.6vw, 3.65rem);
-        font-weight: 700;
+        font-size: clamp(2.3rem, 4.8vw, 3.9rem);
         margin-bottom: 1rem;
       }
 
       h2 {
-        font-size: clamp(1.55rem, 2.8vw, 2.25rem);
-        font-weight: 650;
+        font-size: clamp(1.7rem, 3vw, 2.45rem);
         margin-bottom: 0.65rem;
       }
 
@@ -328,7 +339,14 @@ const metaDesc =
         box-shadow: 0 0 10px var(--gold-primary);
       }
 
+      /* Numbers line up without looking like code. Real code keeps a monospaced face. */
       .mono {
+        font-family: var(--font-sans);
+        font-variant-numeric: tabular-nums;
+      }
+
+      pre,
+      code {
         font-family: var(--font-mono);
       }
 
@@ -402,501 +420,6 @@ const metaDesc =
         padding: 0.45rem 0.9rem;
         font-size: 0.83rem;
         white-space: nowrap;
-      }
-
-      /* HERO IMMERSIVE & MOSAIC (Section 3, Components #4, #5, #15) */
-      .hero-immersive {
-        position: relative;
-        min-height: 86vh;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        padding: clamp(1rem, 2.5vw, 2rem) 0 2rem 0;
-        border-bottom: 1px solid var(--border-subtle);
-        overflow: hidden;
-      }
-
-      .hero-constellation-svg {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 0;
-        opacity: 0.85;
-      }
-
-      .hero-inner-grid {
-        position: relative;
-        z-index: 1;
-        display: grid;
-        grid-template-columns: 1.08fr 0.92fr;
-        gap: clamp(1.75rem, 3.5vw, 3.25rem);
-        align-items: center;
-        margin: auto 0;
-      }
-
-      .hero-headline {
-        font-size: clamp(2.35rem, 4.6vw, 3.85rem);
-        line-height: 1.06;
-        letter-spacing: -0.04em;
-        margin-bottom: 1rem;
-      }
-
-      .hero-subheadline {
-        font-size: clamp(1rem, 1.35vw, 1.14rem);
-        color: var(--text-secondary);
-        line-height: 1.65;
-        margin-bottom: 1.35rem;
-        max-width: 58ch;
-      }
-
-      /* Storytelling Rotator (Component #15) */
-      .story-rotator {
-        background: rgba(13, 23, 38, 0.9);
-        border: 1px solid var(--border-gold);
-        border-left: 3px solid var(--gold-primary);
-        border-radius: var(--radius-md);
-        padding: 0.9rem 1.15rem;
-        margin-bottom: 1.5rem;
-        max-width: 560px;
-      }
-
-      .story-rotator-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.35rem;
-      }
-
-      .story-step-counter {
-        font-size: 0.72rem;
-        color: var(--gold-primary);
-        font-weight: 600;
-      }
-
-      .story-dots {
-        display: flex;
-        gap: 0.35rem;
-      }
-
-      .story-dot {
-        width: 18px;
-        height: 4px;
-        border-radius: 999px;
-        border: none;
-        padding: 0;
-        background: rgba(255, 255, 255, 0.16);
-        cursor: pointer;
-        transition: background 0.2s ease, width 0.2s ease;
-      }
-
-      .story-dot.active {
-        background: var(--gold-primary);
-        width: 28px;
-      }
-
-      .story-rotator-text {
-        margin: 0;
-        font-size: 0.98rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        min-height: 1.6em;
-      }
-
-      .hero-cta-group {
-        display: flex;
-        align-items: center;
-        gap: 0.85rem;
-        flex-wrap: wrap;
-        margin-bottom: 1rem;
-      }
-
-      .hero-cta-tertiary {
-        font-size: 0.88rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        padding: 0.4rem 0.5rem;
-      }
-
-      .hero-cta-tertiary:hover {
-        color: var(--gold-primary);
-      }
-
-      .hero-microcopy {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        font-size: 0.8rem;
-        color: var(--text-muted);
-      }
-
-      .hero-dot-sep {
-        color: var(--gold-primary);
-      }
-
-      /* Interactive Mosaic Column & Slot Tiles (Component #5) */
-      /* Grid tracks otherwise grow to their widest child and push the page past a phone's width. */
-      .hero-copy-col,
-      .hero-mosaic-col {
-        min-width: 0;
-      }
-
-      .hero-mosaic-col {
-        background: linear-gradient(160deg, rgba(18, 32, 53, 0.86), rgba(9, 17, 30, 0.94));
-        border: 1px solid var(--border-strong);
-        border-radius: var(--radius-lg);
-        padding: 1.15rem;
-        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.48);
-      }
-
-      .mosaic-header-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.5rem;
-        padding-bottom: 0.8rem;
-        margin-bottom: 0.85rem;
-        border-bottom: 1px solid var(--border-subtle);
-      }
-
-      .mosaic-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 0.6rem;
-      }
-
-      @keyframes tileFloatSlow {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-2.5px); }
-      }
-
-      .slot-tile {
-        background: rgba(7, 13, 23, 0.78);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-sm);
-        padding: 0.65rem 0.7rem;
-        cursor: pointer;
-        transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
-      }
-
-      .hero-loaded:not(.hero-reduced-motion) .slot-float-1 {
-        animation: tileFloatSlow 6s ease-in-out infinite;
-      }
-      .hero-loaded:not(.hero-reduced-motion) .slot-float-2 {
-        animation: tileFloatSlow 7.5s ease-in-out 1.2s infinite;
-      }
-      .hero-loaded:not(.hero-reduced-motion) .slot-float-3 {
-        animation: tileFloatSlow 6.8s ease-in-out 2.4s infinite;
-      }
-
-      .slot-tile:hover,
-      .slot-tile:focus,
-      .slot-tile-active {
-        border-color: var(--gold-primary);
-        background: rgba(238, 198, 121, 0.08);
-        outline: none;
-      }
-
-      .slot-tile-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.25rem;
-        margin-bottom: 0.35rem;
-      }
-
-      .slot-tile-number {
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: var(--gold-primary);
-      }
-
-      .slot-tile-badge {
-        font-size: 0.62rem;
-        font-weight: 600;
-        padding: 0.08rem 0.38rem;
-        border-radius: 999px;
-        white-space: nowrap;
-      }
-
-      .slot-tile-name {
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-bottom: 0.2rem;
-      }
-
-      .slot-tile-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.68rem;
-        color: var(--text-muted);
-        white-space: nowrap;
-        overflow: hidden;
-      }
-
-      .mosaic-inspector {
-        margin-top: 0.85rem;
-        padding: 0.75rem 0.9rem;
-        border-radius: var(--radius-sm);
-        background: rgba(6, 11, 19, 0.9);
-        border: 1px solid var(--border-gold);
-        min-height: 54px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-      }
-
-      /* Lower Proof Strip / Stat Chips (Component #4) */
-      .hero-proof-strip {
-        position: relative;
-        z-index: 1;
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.85rem;
-        margin-top: 2rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.07);
-      }
-
-      .stat-chip {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        background: rgba(13, 23, 38, 0.75);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-      }
-
-      .stat-chip strong {
-        font-size: 1.35rem;
-        color: var(--gold-primary);
-        font-weight: 700;
-      }
-
-      .stat-chip span {
-        font-size: 0.82rem;
-        color: var(--text-secondary);
-        line-height: 1.3;
-      }
-
-      /* HOME SECTIONS & HEADING BLOCKS (Component #7) */
-      .home-section {
-        padding: clamp(2.75rem, 5vw, 4.5rem) 0;
-        border-bottom: 1px solid var(--border-subtle);
-      }
-
-      .home-section-solid {
-        background: var(--bg-solid);
-        margin-left: calc(-1 * clamp(1rem, 4vw, 2.5rem));
-        margin-right: calc(-1 * clamp(1rem, 4vw, 2.5rem));
-        padding-left: clamp(1rem, 4vw, 2.5rem);
-        padding-right: clamp(1rem, 4vw, 2.5rem);
-      }
-
-      .section-heading-block {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin-bottom: 2rem;
-      }
-
-      .section-subheading {
-        font-size: 1.05rem;
-        color: var(--text-secondary);
-        margin: 0;
-      }
-
-      /* LIVE DIRECTORY PREVIEW (Section 5, Components #6, #10) */
-      .mini-inventory-strip {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.85rem;
-        padding: 1rem 1.25rem;
-        background: linear-gradient(90deg, rgba(238, 198, 121, 0.08), rgba(13, 23, 38, 0.9));
-        border: 1px solid var(--border-gold);
-        border-radius: var(--radius-md);
-        margin-bottom: 1.5rem;
-      }
-
-      .mini-inv-item {
-        display: flex;
-        flex-direction: column;
-        gap: 0.2rem;
-      }
-
-      .mini-inv-label {
-        font-size: 0.76rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-
-      .directory-preview-layout {
-        display: grid;
-        grid-template-columns: 290px 1fr;
-        gap: 1.5rem;
-        align-items: start;
-      }
-
-      .preview-filters-panel {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-lg);
-        padding: 1.25rem;
-        position: sticky;
-        top: 5rem;
-      }
-
-      .preview-cards-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1rem;
-      }
-
-      .directory-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        padding: 1.2rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        transition: border-color 0.15s ease, transform 0.15s ease;
-      }
-
-      .directory-card:hover {
-        border-color: var(--border-gold);
-        transform: translateY(-2px);
-      }
-
-      .directory-card-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
-      }
-
-      .directory-card-title {
-        font-size: 1.12rem;
-        margin: 0 0 0.25rem 0;
-      }
-
-      .directory-card-title a {
-        color: var(--text-primary);
-      }
-
-      .directory-card-meta {
-        display: flex;
-        gap: 0.45rem;
-        font-size: 0.8rem;
-        color: var(--gold-primary);
-        margin-bottom: 0.65rem;
-      }
-
-      .directory-card-summary {
-        font-size: 0.88rem;
-        color: var(--text-secondary);
-        margin-bottom: 0.85rem;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-      }
-
-      .directory-card-quote {
-        padding: 0.5rem 0.7rem;
-        background: rgba(238, 198, 121, 0.06);
-        border-left: 2px solid var(--gold-primary);
-        border-radius: 4px;
-        font-size: 0.78rem;
-        color: var(--text-primary);
-        margin-bottom: 0.85rem;
-      }
-
-      .directory-card-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-top: 0.75rem;
-        border-top: 1px solid var(--border-subtle);
-      }
-
-      .directory-card-cta {
-        font-size: 0.84rem;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-      }
-
-      /* HOW IT WORKS 5-STEP TIMELINE (Section 6, Component #8) */
-      .steps-timeline {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 1rem;
-      }
-
-      .step-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        padding: 1.25rem;
-        position: relative;
-      }
-
-      .step-number-pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-family: var(--font-mono);
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--gold-primary);
-        background: var(--gold-dim);
-        border: 1px solid var(--border-gold);
-        padding: 0.2rem 0.55rem;
-        border-radius: 999px;
-        margin-bottom: 0.75rem;
-      }
-
-      /* SCARCITY & PRICING PHASES (Section 7, Components #9, #14) */
-      .scarcity-split {
-        display: grid;
-        grid-template-columns: 1fr 1.15fr;
-        gap: 1.75rem;
-        align-items: stretch;
-      }
-
-      .pricing-phases-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-      }
-
-      .pricing-phase-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        padding: 1.25rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-      }
-
-      .pricing-phase-card.active-phase {
-        background: linear-gradient(160deg, rgba(238, 198, 121, 0.1), rgba(13, 23, 38, 0.95));
-        border-color: var(--gold-primary);
-        box-shadow: 0 12px 30px rgba(238, 198, 121, 0.08);
       }
 
       /*Panels & Generic Cards */
@@ -1130,21 +653,6 @@ const metaDesc =
 
       /* Responsive Rules (Desktop vs Mobile) */
       @media (max-width: 1024px) {
-        .hero-inner-grid {
-          grid-template-columns: minmax(0, 1fr);
-        }
-        .steps-timeline {
-          grid-template-columns: repeat(2, 1fr);
-        }
-        .scarcity-split {
-          grid-template-columns: 1fr;
-        }
-        .directory-preview-layout {
-          grid-template-columns: 1fr;
-        }
-        .preview-filters-panel {
-          position: static;
-        }
         .grid-4 {
           grid-template-columns: repeat(2, 1fr);
         }
@@ -1189,35 +697,12 @@ const metaDesc =
           flex-wrap: wrap;
         }
 
-        .hero-immersive {
-          min-height: auto;
-          padding-top: 0.5rem;
-        }
-
-        .hero-cta-group {
-          flex-direction: column;
-          align-items: stretch;
-        }
-
-        .mosaic-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
         /* Long badges and tile labels wrap on a phone instead of widening the page. */
-        .badge,
-        .slot-tile-meta {
+        .badge {
           white-space: normal;
           max-width: 100%;
         }
 
-        .slot-tile {
-          min-width: 0;
-        }
-
-        .hero-proof-strip,
-        .mini-inventory-strip,
-        .steps-timeline,
-        .pricing-phases-grid,
         .grid-2,
         .grid-3,
         .grid-4,
@@ -1317,7 +802,7 @@ const metaDesc =
                 : 'A structured business index for the AI era.'}
             </p>
             <span class="badge badge-slate mono" style="font-size:0.7rem">
-              {es ? '1.500 POSICIONES VITALICIAS' : '1,500 LIFETIME POSITIONS'}
+              {es ? 'Máximo de 1.500 empresas' : 'A maximum of 1,500 companies'}
             </span>
           </div>
 
@@ -1365,15 +850,14 @@ const metaDesc =
               </a>
             </div>
             <div class="mono muted" style="font-size:0.74rem;line-height:1.5">
-              Schema.org @graph JSON-LD<br />
-              FTS5 Lexical Retrieval
+              {es ? 'Perfiles en formato Schema.org' : 'Profiles in Schema.org format'}
             </div>
           </div>
         </div>
 
         <div class="footer-bottom">
           <div>
-            © {new Date().getFullYear()} THE1500 · {es ? 'Entidad operadora en configuración' : 'Operating entity placeholder'} ·{' '}
+            © {new Date().getFullYear()} THE1500 · {es ? 'Entorno de pruebas' : 'Test environment'} ·{' '}
             {es ? 'Todos los derechos reservados.' : 'All rights reserved.'}
           </div>
           <div>

@@ -1,35 +1,11 @@
 ---
+import { env } from 'cloudflare:workers';
 import Shell from '../../layouts/Shell.astro';
 import LandingPageView from '../../components/LandingPageView.astro';
-import { env } from 'cloudflare:workers';
-import { getPublicStats } from '../../core/public';
-import { listPublishedCompanies, listRetiredPositions, type PublicCompanyCard } from '../../core/directory';
+import { loadHome } from '../../core/home';
 
-let stats = null;
-let businesses: PublicCompanyCard[] = [];
-let totalPublished = 0;
-let retiredItems: Array<{ position: number; label: string; labelEs: string }> = [];
-
-try {
-  const [s, dir, ret] = await Promise.all([
-    getPublicStats(env.DB),
-    listPublishedCompanies(env.DB, { page: 1, language: 'es' }),
-    listRetiredPositions(env.DB),
-  ]);
-  stats = s;
-  businesses = dir.items;
-  totalPublished = dir.total;
-  retiredItems = ret.items;
-} catch {
-  /* no fake data */
-}
+const data = await loadHome(env.DB, 'es');
 ---
-<Shell title="Directorio empresarial (1.500)" lang="es">
-  <LandingPageView
-    lang="es"
-    stats={stats}
-    businesses={businesses}
-    totalPublished={totalPublished}
-    retiredItems={retiredItems}
-  />
+<Shell title="1.500 empresas. Ni una más." lang="es">
+  <LandingPageView lang="es" data={data} />
 </Shell>

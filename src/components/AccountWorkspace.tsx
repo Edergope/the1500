@@ -854,8 +854,8 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
           </h2>
           <p className="muted">
             {es
-              ? 'Si el dominio de tu correo coincide con el sitio web corporativo declarado, la identidad queda como self_declared y podrás reservar posición inmediatamente.'
-              : 'If your sign-in email domain matches the declared corporate website, identity state is set to self_declared and you can reserve a position immediately.'}
+              ? 'Si el dominio de tu correo coincide con el sitio web corporativo declarado, tu empresa queda validada y podrás reservar posición inmediatamente.'
+              : 'If your sign-in email domain matches the declared corporate website, your company is validated and you can reserve a position immediately.'}
           </p>
 
           <form onSubmit={handleRegisterCompany} className="grid-2">
@@ -919,8 +919,8 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                 />
                 <span>
                   {es
-                    ? 'Declaro bajo mi responsabilidad que cuento con facultades suficientes para representar a esta empresa (declareAuthority).'
-                    : 'I declare that I hold sufficient authority to represent and bind this company (declareAuthority).'}
+                    ? 'Declaro bajo mi responsabilidad que cuento con facultades suficientes para representar a esta empresa.'
+                    : 'I declare that I hold sufficient authority to represent and bind this company.'}
                 </span>
               </label>
             </div>
@@ -992,7 +992,7 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                   {identityInfo && <span className={`badge badge-${identityInfo.tone}`}>{identityInfo.label}</span>}
                   {pubInfo && <span className={`badge badge-${pubInfo.tone}`}>{pubInfo.label}</span>}
-                  <span className="badge badge-slate mono">role: {companyStatus.role}</span>
+                  <span className="badge badge-slate">{companyStatus.role === 'owner' ? (es ? 'Titular' : 'Owner') : (es ? 'Editor' : 'Editor')}</span>
                 </div>
                 <h2 style={{ margin: 0 }}>{companyStatus.company.displayName}</h2>
                 <p className="muted" style={{ margin: '0.25rem 0 0 0' }}>
@@ -1525,7 +1525,7 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
                   {/* Provenance Summary */}
                   <div style={{ marginBottom: '1rem' }}>
                     <div className="muted" style={{ fontSize: '0.78rem', marginBottom: '0.4rem' }}>
-                      {es ? 'Trazabilidad y procedencia por campo (provenance):' : 'Field-level provenance breakdown:'}
+                      {es ? 'De dónde sale cada dato:' : 'Where each detail comes from:'}
                     </div>
                     <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
                       {Object.entries(activeProfile.canonical.provenance || {}).map(([field, meta]) => {

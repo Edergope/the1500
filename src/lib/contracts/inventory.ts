@@ -4,6 +4,8 @@ export type SalesMode = 'selling' | 'awaiting_founder_allocation' | 'premium_adm
 export interface PhaseSummary {
   phase:SlotPhase;firstPosition:number;lastPosition:number;priceUsdCents:number;
   remaining:number;status:'sold_out'|'current'|'upcoming';
+  /** Of remaining: positions kept for founders, by invitation, and those a company can buy. */
+  reservedByInvitation:number;forSale:number;
 }
 export interface InventorySummary {
   capacity: 1500;

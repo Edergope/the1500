@@ -103,7 +103,7 @@ try {
               {formatPosition(dto.position)}
             </div>
             <div class="mono muted" style="font-size:0.75rem">
-              Schema.org Organization
+              {es ? 'Perfil verificable' : 'Verifiable profile'}
             </div>
           </div>
         </div>
@@ -261,7 +261,7 @@ try {
             <div class="eyebrow" style="margin-bottom:0.2rem">
               {es ? 'DATOS LEGIBLES POR MÁQUINAS' : 'MACHINE-READABLE SEMANTIC RECORD'}
             </div>
-            <h2 style="font-size:1.25rem;margin:0">Schema.org JSON-LD (@graph)</h2>
+            <h2 style="font-size:1.25rem;margin:0">{es ? 'Datos estructurados (Schema.org)' : 'Structured data (Schema.org)'}</h2>
           </div>
           <a href={dto.jsonld} class="btn-secondary btn-sm mono">
             {es ? 'Consultar JSON-LD' : 'View machine-readable JSON-LD'}
