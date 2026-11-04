@@ -64,8 +64,8 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
           {stats.salesMode === 'premium_admission' && (
             <div className="notice" style="margin-top:0.85rem;margin-bottom:0">
               {es
-                ? 'Admisión Premium (posiciones 1351–1500): No hay checkout automático. Las empresas interesadas presentan su solicitud desde su portal de cuenta (POST /api/v1/me/company/premium-request). Enviar la solicitud no reserva posición y una reunión nunca es obligatoria.'
-                : 'Premium Admission (positions 1351–1500): Automatic checkout is not available. Interested companies apply from their account portal (POST /api/v1/me/company/premium-request). Applying holds no position and a meeting is never required.'}
+                ? 'Admisión Premium (posiciones 1351–1500): No hay checkout automático. Las empresas interesadas presentan su solicitud desde su portal de cuenta. Enviar la solicitud no reserva posición y una reunión nunca es obligatoria.'
+                : 'Premium Admission (positions 1351–1500): Automatic checkout is not available. Interested companies apply from their account portal. Applying holds no position and a meeting is never required.'}
             </div>
           )}
 
