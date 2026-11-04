@@ -29,3 +29,20 @@
 2. **Solo texto.** Cloudflare recomienda incluir también HTML por entregabilidad. Se decidirá con los resultados de la prueba real.
 3. **Cupo inicial sin cifra publicada**, y Sending sigue en beta.
 4. **Wrangler no pudo listar dominios de envío** (`Unauthorized`, código 2036), así que el estado real de la cuenta sigue sin comprobar.
+
+## Comprobación sin coste (2026-11-04)
+
+El propietario no autoriza por ahora Workers Paid. No se creó ni modificó nada en Cloudflare.
+
+| Comprobación | Resultado |
+|---|---|
+| Dominios con Email Routing en la cuenta | Ninguno (`wrangler email routing list`) |
+| Direcciones de destino verificadas | Ninguna (`wrangler email routing addresses list`) |
+| Dominios de Email Sending | Sin dato: la API responde `Unauthorized` (2036) |
+| Envío real hoy | **No es posible**: la dirección del remitente debe pertenecer a un dominio incorporado, y no hay ninguno utilizable |
+| Registro de `the1500.com` y `the1500.net` | Sin registro en Verisign (2026-11-04). No garantiza disponibilidad y no sustituye la revisión de marca (B02) |
+
+**La documentación de Cloudflare no es concluyente sobre el plan gratuito.** Por un lado: enviar a direcciones verificadas es gratis en todos los planes, "including when only Email Routing is configured". Por otro: la tabla de precios marca el envío saliente como "Not available" en Workers Free, y el remitente debe pertenecer a un dominio incorporado. Solo un envío real lo resuelve.
+
+Esa prueba gratuita, aunque pase, validaría el adaptador y el enlace de un solo uso hacia direcciones verificadas. No validaría el envío a clientes, que exige Workers Paid.
+
