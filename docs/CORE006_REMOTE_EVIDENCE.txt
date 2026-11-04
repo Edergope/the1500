@@ -1,0 +1,32 @@
+THE1500 CORE-006, staging run 2026-11-04T15:50:41.870Z
+Target: https://the1500-staging.admonpalmerafood.workers.dev, remote D1 the1500-staging, remote R2 the1500-staging-snapshots.
+Sign-in links seeded in D1 (no mail provider). Webhooks signed with a temporary test secret, sent to the real route. No real Stripe, LLM or email.
+
+PASS  Target is the deployed staging Worker  →  https://the1500-staging.admonpalmerafood.workers.dev, deployments on record: 3
+PASS  Migrations 0001-0007 on remote D1; 1,500 positions; stats served from it  →  available=1500, mode=selling
+PASS  Public pages respond in EN and ES on workers.dev
+PASS  Without a mail provider, sign-in reports 503 instead of pretending  →  MAIL_NOT_CONFIGURED
+PASS  55 concurrent sign-in verifications created real sessions  →  663 ms in total
+PASS  Links work once, expired links fail, session cookie is __Host-, HttpOnly, Secure
+PASS  55 companies registered concurrently from corporate email
+PASS  Another account cannot reach a company; no session 401; foreign origin 403; non-admin 403
+PASS  40 concurrent reservations on remote D1: all accepted, all distinct, ascending from 101  →  held=40, range 101-140, latency p50=901 ms, p95=1018 ms, max=1019 ms
+PASS  60 concurrent signed webhooks (duplicates included) gave exactly 20 assignments; forged signature rejected  →  positions 101-120, audit entries=20, 3482 ms
+PASS  Wrong amount goes to review and assigns nothing
+PASS  Late payment took nothing until a documented human decision; then only a free number  →  position=123
+PASS  Unapproved profile cannot be published; AI off is labelled deterministic, not AI  →  generation.mode=deterministic
+PASS  6 profiles published concurrently on remote D1, FTS5 included (regression A-13)
+PASS  HTML and JSON-LD public in EN and ES, staging marked noindex, no private data  →  /empresas/ocean-buyer-0-mw2aihna-8fbf3bd8
+PASS  Immutable JSON-LD copy present in remote R2
+PASS  Search finds by business problem; assistant cites a verifiable digest, labelled retrieval_only because no LLM key exists
+PASS  Founder: invited, accepted, awarded by administration in 1-100  →  position=1
+PASS  Reactivation: requested, approved, no term until notified, then exactly 15 days; form completes the case
+PASS  Withdrawal: gone from page, JSON-LD, search and assistant; number stays retired; request and decision on record  →  position 106: "Cupo retirado — No disponible"
+PASS  Legal request recorded by administration, first in the queue, with its term
+PASS  15 buyers racing for the last 5 paid numbers: exactly 5 win; no sale above 600, none in 1-100  →  refused with PAID_CAPACITY_PENDING_FOUNDERS
+PASS  Real Cloudflare cron expired a stale reservation with no HTTP traffic  →  after 127 s
+PASS  Data, publications and sessions survive a new Worker deployment  →  occupied=477, published=5, retired=1
+PASS  Sessions revoked server-side
+PASS  Payments stay closed on staging; integration report shows no provider configured and no secret value
+PASS  Premium: form opens only with its tier, no checkout, no position taken  →  salesMode=premium_admission
+PASS  Final integrity on remote D1  →  1,500 positions, no company with two, none outside its range

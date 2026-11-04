@@ -104,3 +104,7 @@ Migraciones sobre el motor real · 1.500 cupos y CHECK de tramos · secuencia po
 ## 7. Estado de los hallazgos
 
 Corregidos y cubiertos por pruebas: A-01, A-02, A-04 a A-11, A-13, B-01 a B-11. A-03: riesgo aceptado por el propietario; no requiere cambio. Parcial: A-12 (`IMAGES` eliminado; `SESSION` sigue autoprovisionándose, sin uso; bajo riesgo).
+
+## 8. Actualización CORE-006 (2026-11-04)
+
+Primer riesgo de §6 cerrado: las reservas, confirmaciones y publicaciones se ejercitaron en D1 remoto (`docs/CORE006_REMOTE_EVIDENCE.txt`). A-12 corregido: sesiones de Astro desactivadas, ya no se aprovisiona KV. Pregunta 64 resuelta: formulario en el portal. Sigue abierto el resto de §5 y §6.

@@ -1,0 +1,32 @@
+THE1500 CORE-006 local QA. 2026-11-04T15:52:24Z
+Ran 42 tests in 0.554s
+OK
+ok 1 - API_CONTRACT.md and the route files list exactly the same endpoints
+ok 2 - withdrawal: holder asks, administration decides, both on record
+ok 3 - reactivation: 15 calendar days from approval notified, once
+ok 4 - late card payments: human reconciliation with the facts
+ok 5 - Premium, Decision 64: portal form, human evaluation, no checkout
+ok 6 - integration status
+ok 7 - T01/T02 concurrency on the D1 engine
+ok 8 - T01 hard limit at the end of an automatic tier
+ok 9 - T02 two confirmations cannot take one position
+ok 10 - T03 founders consume real inventory inside tier 1
+ok 11 - T03 caps: 100 founders and 500 paid in tier 1
+ok 12 - T04 tier changes respect prices
+ok 13 - T05 and T14: expiry and archive
+ok 14 - checkout
+ok 15 - T06 webhooks
+ok 16 - T05 late payments (Decision 42)
+ok 17 - refunds and disputes (Decisions 17, 18, 27)
+ok 18 - T15 provider failure keeps state intact
+ok 19 - Premium stays human (Decision 64)
+ok 20 - semantic engine
+ok 21 - T08 approval gates publication
+ok 22 - T10 JSON-LD
+ok 23 - T09, T11, T12 discovery
+ok 24 - identity and tenancy
+ok 25 - T13 internationalization
+# tests 84
+# suites 24
+# pass 84
+# fail 0

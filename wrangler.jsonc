@@ -5,12 +5,13 @@
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "triggers": {"crons": ["*/5 * * * *"]},
-  "vars": {"PAYMENTS_ENABLED": "false", "AI_PROVIDER": "anthropic"},
+  "workers_dev": true,
+  "vars": {"PAYMENTS_ENABLED": "false", "AI_PROVIDER": "anthropic", "PUBLIC_BASE_URL": "https://the1500-staging.admonpalmerafood.workers.dev"},
   "r2_buckets": [{"binding": "SNAPSHOTS", "bucket_name": "the1500-staging-snapshots"}],
   "d1_databases": [{
     "binding": "DB",
     "database_name": "the1500-staging",
-    "database_id": "00000000-0000-0000-0000-000000000000",
+    "database_id": "05012b7a-5b93-41a5-8bb1-5b12905dc5e5",
     "migrations_dir": "db/migrations"
   }]
 }

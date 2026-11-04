@@ -70,7 +70,7 @@ Frontend rules:
 2. Show a countdown to `reservationExpiresAt` (20 minutes). The Stripe page can stay open up to about 31 minutes because Stripe's minimum is 30. A payment after the reservation ends is reconciled by staff and may be refunded, so warn about this.
 3. Show `amount.taxStatus`. While `not_determined`, this is sandbox only.
 4. `hold` carries no number. Show a position only from `GET /me/company`.
-5. `checkoutEnabled:false` or `stats.checkoutOpen:false`: disable buying.
+5. `stats.checkoutOpen` is about the sale (is this tier on sale), not about the payment provider. Disable buying when it is false. A hold response with `checkoutEnabled:false` means payments are off in this environment, as on staging today: say so and do not send the user to pay.
 
 ## 5. Semantic profile
 

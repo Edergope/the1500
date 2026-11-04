@@ -1,5 +1,7 @@
 # CORE-005 — Estado de entrega
 
+> Histórico. El estado vigente está en `CORE006_STATUS.md`.
+
 **Fecha:** 2026-11-03 · **Versión:** 0.5.0 · **Rama:** `feature/core-claude` (git local, sin remoto).
 **Evidencia:** `docs/CORE005_QA.txt`, `docs/CORE005_E2E_EVIDENCE.txt`. **Contrato:** `docs/API_CONTRACT.md`. **Auditoría:** `CORE005_AUDIT.md`.
 
