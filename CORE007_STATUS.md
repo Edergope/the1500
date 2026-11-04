@@ -50,3 +50,7 @@ Esa prueba gratuita, aunque pase, validaría el adaptador y el enlace de un solo
 
 THE1500 operará en una cuenta de Cloudflare independiente, confirmado por el propietario. Dominio preferido: `the1500.com`, sin comprar. Revisión: `docs/DOMAIN_REVIEW_2026-11-04.md`. Traslado preparado, sin ejecutar: `docs/STAGING_MIGRATION.md`. El staging actual se conserva hasta entonces.
 
+**Condiciones del propietario (2026-11-04).** Aprueba adquirir `the1500.com`, sujeto a confirmar disponibilidad y precio final al pagar. El propietario crea la cuenta independiente, activa 2FA y hace la compra. Sin Workers Paid ni servicios adicionales sin autorización. La migración se prepara solo cuando confirme la compra, y los recursos actuales se conservan hasta comprobar que todo funciona. La revisión marcaria sigue en paralelo: el dominio no se presenta como prueba de titularidad o registro de la marca. Antigravity continúa sin esperar la migración.
+
+**Estado:** a la espera de que el propietario confirme cuenta y dominio. No hay compra ni migración en curso.
+
