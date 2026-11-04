@@ -27,7 +27,7 @@ export interface CompanyStatusResponse {
   role:'owner'|'editor';
   company:{id:string;displayName:string;slug:string;country:string;industry:string|null;website:string|null;identityState:IdentityState;publicationStatus:PublicationStatus;publicationBlock:string|null;firstPublishedAt:string|null;correctionWindowEndsAt:string|null;guaranteeEndsAt:string|null};
   position:{position:number;status:'assigned'|'retired';phase:number;firstPublishedAt:string|null}|null;
-  onboarding:{status:OnboardingStatus;startedAt:string;formDueAt:string;extensionDueAt:string;reactivationDueAt:string;submittedAt:string|null;reactivationRequestedAt:string|null;reactivationApprovedAt:string|null;reactivationNotifiedAt:string|null;reactivationFormDueAt:string|null}|null;
+  onboarding:{status:OnboardingStatus;startedAt:string;formDueAt:string;extensionDueAt:string;reactivationDueAt:string;submittedAt:string|null;reactivationRequestedAt:string|null;reactivationApprovedAt:string|null;reactivationNotifiedAt:string|null;reactivationFormDueAt:string|null;finalNoticeSentAt:string|null;finalNoticeDueAt:string|null;finalNoticeResponseAt:string|null}|null;
   activeHold:{holdId:string;expiresAt:string}|null;
   profileVersions:Array<{version:number;approvedAt:string|null;publishedAt:string|null;reviewStatus:'not_required'|'pending'|'cleared'|'rejected'}>;
   founderInvitation:{invitationId:string;expiresAt:string}|null;
@@ -102,3 +102,7 @@ export interface LatePaymentFacts {attemptId:string;companyId:string;status:stri
   reservedPosition:{number:number;status:string|null;takenByAnotherCompany:boolean}|null;tierOpen:boolean;freeInTier:number;companyAlreadyHasPosition:number|null;assignable:boolean;allowedDecisions:Array<'assign'|'refund'>;}
 export interface IntegrationStatus {mail:{provider:string|null;configured:boolean;bindingPresent:boolean;keyPresent:boolean;from:string|null};stripe:{enabled:boolean;keyPresent:boolean;keyIsTestMode:boolean|null;webhookSecretPresent:boolean;gate:'open_test_mode'|'PAYMENTS_DISABLED'|'LIVE_PAYMENTS_NOT_AUTHORIZED'};
   ai:{configured:boolean;provider:string|null;model:string|null};publicBaseUrl:string|null;snapshotsBound:boolean;}
+export interface FinalNoticeResponseBody {companyId:string;message:string;}
+export interface AdminCase {companyId:string;companyName:string;origin:'paid'|'founder'|'premium';status:OnboardingStatus;startedAt:string;suspendedAt:string|null;reactivationDueAt:string;reactivationRequestedAt:string|null;reactivationFormDueAt:string|null;adminReviewAt:string|null;
+  finalNoticeRequestedAt:string|null;finalNoticeSentAt:string|null;finalNoticeChannel:string|null;finalNoticeDueAt:string|null;finalNoticeResponseAt:string|null;finalNoticeResponse:string|null;resolutionDueAt:string|null;resolvedAt:string|null;resolution:'continue'|'cancel'|null;}
+

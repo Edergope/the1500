@@ -71,3 +71,20 @@ export function premiumDecisionEmail(l:Locale,company:string,status:'in_review'|
   return l==='es'?{subject:'THE1500: tu solicitud Premium',text:`La solicitud Premium de ${company} ${es[status]}.`}:
     {subject:'THE1500: your Premium application',text:`The Premium application for ${company} ${en[status]}.`};
 }
+export function finalNoticeEmail(l:Locale,baseUrl:string):Mail {
+  return l==='es'?{subject:'THE1500: última notificación sobre tu expediente',
+    text:`Tu formulario sigue sin completarse. Tienes 7 días calendario desde este aviso para responder y pedir que continúe el trámite: ${baseUrl}/mi-cuenta\nSi no respondes, administración revisará tu caso de forma individual. El silencio no cancela por sí solo tu servicio ni te hace perder tu dinero.`}:
+    {subject:'THE1500: final notice about your case',
+    text:`Your form is still incomplete. You have 7 calendar days from this notice to reply and ask to continue: ${baseUrl}/mi-cuenta\nIf you do not reply, administration will review your case individually. Silence alone does not cancel your service or lose your money.`};
+}
+export function caseResolutionEmail(l:Locale,kind:'cancel_refund'|'cancel_founder',baseUrl:string):Mail {
+  const es={cancel_refund:'Administración decidió cancelar el servicio y ordenar el reembolso completo al medio de pago original.',cancel_founder:'Administración decidió revocar la adjudicación gratuita de tu cupo. No hay ningún cobro ni reembolso asociado.'};
+  const en={cancel_refund:'Administration decided to cancel the service and order a full refund to the original payment method.',cancel_founder:'Administration decided to revoke your free position award. No charge or refund is involved.'};
+  return l==='es'?{subject:'THE1500: decisión sobre tu expediente',text:`${es[kind]}\n${baseUrl}/mi-cuenta`}:{subject:'THE1500: decision on your case',text:`${en[kind]}\n${baseUrl}/mi-cuenta`};
+}
+export function chargebackRegularizationEmail(l:Locale,company:string,dueAt:string):Mail {
+  return l==='es'?{subject:'THE1500: pago por regularizar',
+    text:`La controversia sobre el pago de ${company} se resolvió a favor del comprador. Tienes 15 días calendario, hasta el ${dueAt}, para regularizar el pago. Vencido ese plazo, administración revisará el caso; la despublicación no es automática.`}:
+    {subject:'THE1500: payment to regularize',
+    text:`The dispute over the payment for ${company} was resolved in the buyer's favor. You have 15 calendar days, until ${dueAt}, to regularize the payment. After that, administration will review the case; unpublishing is not automatic.`};
+}

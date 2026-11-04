@@ -61,6 +61,8 @@ export const ERROR_MESSAGES:Record<string,{en:string;es:string}>={
   PAYMENT_STATE_CONFLICT:{en:'This payment cannot be changed from its current state.',es:'Este pago no puede modificarse desde su estado actual.'},
   PHASE_PENDING:{en:'No position is free right now. Reservations may expire; please retry shortly.',es:'No hay cupos libres en este momento. Las reservas pueden caducar; inténtalo pronto.'},
   POSITION_ALREADY_CONSUMED:{en:'This position is permanently consumed and cannot be released.',es:'Este cupo está consumido definitivamente y no puede liberarse.'},
+  FINAL_NOTICE_REQUIRED:{en:'The final notice must run its course before this case can be cancelled.',es:'La última notificación debe cumplir su plazo antes de poder cancelar este expediente.'},
+  REGULARIZATION_WINDOW_OPEN:{en:'The 15 days to regularize this payment have not ended.',es:'Aún no terminan los 15 días para regularizar este pago.'},
   PREMIUM_NOT_OPEN:{en:'Premium applications open when the Premium tier is the next one available.',es:'Las solicitudes Premium se abren cuando el tramo Premium es el siguiente disponible.'},
   PREMIUM_ADMISSION_REQUIRED:{en:'Premium positions require human admission; automatic checkout is not available.',es:'Los cupos Premium requieren admisión humana; no hay checkout automático.'},
   PROFILE_APPROVAL_CONFLICT:{en:'The profile changed during approval. Please review it again.',es:'El perfil cambió durante la aprobación. Revísalo de nuevo.'},

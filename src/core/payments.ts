@@ -2,8 +2,9 @@ import {IdentityError,sha256,type Principal} from './identity';
 import {assignFreeSlotInPhase,convertHold,getHold,getSalesState,InventoryError,releaseAssignmentStatements,releaseHold} from './inventory';
 import {adminEvent,requireEvidence} from './admin';
 import {expireStaleHolds} from './inventory';
-import {notifyOwners,openIncident} from './ops';
-import {latePaymentEmail,latePaymentResolvedEmail,purchaseConfirmedEmail} from '../lib/i18n/comms';
+import {addBusinessDays,notifyOwners,openIncident} from './ops';
+import {withdrawalPlan} from './profiles';
+import {chargebackRegularizationEmail,latePaymentEmail,latePaymentResolvedEmail,purchaseConfirmedEmail} from '../lib/i18n/comms';
 import {createCheckoutSession,createRefund,expireSession,paymentsGate,retrieveChargeTime,retrieveSession,StripeApiError,verifyStripeSignature,type StripeEnv,type StripeSession} from './stripe';
 
 /**
@@ -117,6 +118,7 @@ export async function applyPaidSession(db:D1Database,env:StripeEnv,session:Strip
   if (result.outcome==='assigned') {
     const company=await db.prepare(`SELECT display_name FROM companies WHERE id=?`).bind(attempt.company_id).first<{display_name:string}>();
     await notifyOwners(db,attempt.company_id,'purchase_confirmed',l=>purchaseConfirmedEmail(l,company?.display_name??'',result.slotNumber!,env.PUBLIC_BASE_URL||''),`purchase:${attempt.id}`,now);
+    await flagThirdPartyPayer(db,attempt,payerEmail,now);
     return {outcome:'assigned',attemptId:attempt.id,slotNumber:result.slotNumber};
   }
   if (result.outcome==='already_processed'&&attempt.status!=='expired'&&attempt.status!=='failed')
@@ -134,6 +136,27 @@ export async function applyPaidSession(db:D1Database,env:StripeEnv,session:Strip
     await notifyOwners(db,attempt.company_id,'late_payment',l=>latePaymentEmail(l,company?.display_name??''),`late:${attempt.id}`,now);
   }
   return {outcome:'late_review',attemptId:attempt.id};
+}
+/** Decision 45: the position belongs to the registered company either way; a different payer needs documented authorization. */
+async function flagThirdPartyPayer(db:D1Database,attempt:PurchaseAttempt,payerEmail:string|null,now:Date) {
+  if (!payerEmail) return;
+  const buyer=await db.prepare(`SELECT email FROM users WHERE id=?`).bind(attempt.user_id).first<{email:string}>();
+  if (!buyer||buyer.email.toLowerCase()===payerEmail.toLowerCase()) return;
+  await db.batch([
+    db.prepare(`UPDATE purchase_attempts SET payer_review='required',updated_at=? WHERE id=?`).bind(now.toISOString(),attempt.id),
+    openIncident(db,'third_party_payer_review','warning',{attemptId:attempt.id,companyId:attempt.company_id,dedupeKey:`third_party:${attempt.id}`},{payerEmail},now),
+  ]);
+}
+export async function authorizeThirdPartyPayer(db:D1Database,adminId:string,attemptId:string,reasonCode:unknown,evidence:unknown,now=new Date()) {
+  requireEvidence(reasonCode,evidence);
+  const at=now.toISOString(),ref=(evidence as string).trim();
+  const result=await db.batch([
+    db.prepare(`UPDATE purchase_attempts SET payer_review='authorized',payer_authorization_ref=?,payer_authorized_at=?,payer_authorized_by=?,updated_at=? WHERE id=? AND payer_review='required'`).bind(ref,at,adminId,at,attemptId),
+    adminEvent(db,adminId,'third_party_payer_authorized','payment',attemptId,reasonCode as string,ref,{},now),
+    db.prepare(`UPDATE incidents SET status='resolved',resolved_at=?,resolved_by=?,resolution_code=? WHERE attempt_id=? AND kind='third_party_payer_review' AND status='open'`).bind(at,adminId,reasonCode as string,attemptId),
+  ]);
+  if (result[0]?.meta?.changes!==1) throw new PaymentError('PAYMENT_STATE_CONFLICT');
+  return {attemptId,payerReview:'authorized',payerAuthorizedAt:at};
 }
 async function attemptByPaymentIntent(db:D1Database,id:string|null|undefined) {
   if (!id) return null;
@@ -204,12 +227,18 @@ async function applyEvent(db:D1Database,env:StripeEnv,event:StripeEvent,now:Date
       const attempt=await attemptByPaymentIntent(db,object.payment_intent as string);
       if (!attempt) return {outcome:'ignored'};
       const won=object.status==='won';
+      const published=!won&&await db.prepare(`SELECT 1 AS ok FROM slots WHERE company_id=? AND first_published_at IS NOT NULL`).bind(attempt.company_id).first();
+      const regularizationDue=published?new Date(now.getTime()+15*86_400_000).toISOString():null;
       await db.batch([
-        db.prepare(`UPDATE purchase_attempts SET status=?,updated_at=? WHERE id=? AND status='disputed'`).bind(won?'paid':'chargeback_lost',at,attempt.id),
+        db.prepare(`UPDATE purchase_attempts SET status=?,regularization_due_at=?,updated_at=? WHERE id=? AND status='disputed'`).bind(won?'paid':'chargeback_lost',regularizationDue,at,attempt.id),
         ...(won?[db.prepare(`UPDATE companies SET publication_block=NULL WHERE id=? AND publication_block='payment_dispute'`).bind(attempt.company_id)]:
           // Decision 28: 15 days to regularize, then a reasoned admin decision. Never automatic.
-          [openIncident(db,'chargeback_lost','critical',{attemptId:attempt.id,companyId:attempt.company_id,dedupeKey:`chargeback:${object.id}`},{disputeId:object.id},now)]),
+          [openIncident(db,'chargeback_lost','critical',{attemptId:attempt.id,companyId:attempt.company_id,dedupeKey:`chargeback:${object.id}`},{disputeId:object.id,regularizationDueAt:regularizationDue},now)]),
       ]);
+      if (regularizationDue) {
+        const company=await db.prepare(`SELECT display_name FROM companies WHERE id=?`).bind(attempt.company_id).first<{display_name:string}>();
+        await notifyOwners(db,attempt.company_id,'chargeback_regularization',l=>chargebackRegularizationEmail(l,company?.display_name??'',regularizationDue),`chargeback_regularization:${attempt.id}`,now);
+      }
       return {outcome:won?'dispute_won':'chargeback_lost',attemptId:attempt.id};
     }
     default: return {outcome:'ignored'};
@@ -298,8 +327,8 @@ export async function requestRefund(db:D1Database,env:StripeEnv,attemptId:string
   if (!attempt) throw new IdentityError('ATTEMPT_NOT_FOUND',404);
   const at=now.toISOString();
   // Decision 18: the position stays out of inventory while the refund is pending.
-  const moved=await db.prepare(`UPDATE purchase_attempts SET status='refund_pending',refund_reason=?,refund_requested_at=COALESCE(refund_requested_at,?),updated_at=?
-    WHERE id=? AND status IN('paid','late_review','amount_review','refund_pending')`).bind(reason,at,at,attemptId).run();
+  const moved=await db.prepare(`UPDATE purchase_attempts SET status='refund_pending',refund_reason=?,refund_requested_at=COALESCE(refund_requested_at,?),refund_order_due_at=COALESCE(refund_order_due_at,?),updated_at=?
+    WHERE id=? AND status IN('paid','late_review','amount_review','refund_pending')`).bind(reason,at,addBusinessDays(now,5).toISOString(),at,attemptId).run();
   if (moved.meta.changes!==1) throw new PaymentError('PAYMENT_STATE_CONFLICT');
   if (!attempt.provider_payment_intent) {
     await openIncident(db,'refund_needs_manual_action','critical',{attemptId,companyId:attempt.company_id,dedupeKey:`refund_manual:${attemptId}`},{},now).run();
@@ -309,7 +338,7 @@ export async function requestRefund(db:D1Database,env:StripeEnv,attemptId:string
   if (!gate.ok) throw new PaymentError(gate.code,gate.code==='PAYMENTS_DISABLED'?503:403);
   try {
     const refund=await createRefund(env,attempt.provider_payment_intent,attemptId);
-    await db.prepare(`UPDATE purchase_attempts SET provider_refund_id=?,updated_at=? WHERE id=?`).bind(refund.id,at,attemptId).run();
+    await db.prepare(`UPDATE purchase_attempts SET provider_refund_id=?,refund_method='original',refund_operation_ref=?,updated_at=? WHERE id=?`).bind(refund.id,refund.id,at,attemptId).run();
     if (refund.status==='succeeded') await finalizeRefund(db,{...attempt,status:'refund_pending'},now);
     const after=await db.prepare(`SELECT status FROM purchase_attempts WHERE id=?`).bind(attemptId).first<{status:string}>();
     return {attemptId,status:after?.status,providerRefundId:refund.id};
@@ -319,3 +348,46 @@ export async function requestRefund(db:D1Database,env:StripeEnv,attemptId:string
     throw new PaymentError('CHECKOUT_PROVIDER_UNAVAILABLE',503);
   }
 }
+/** Decision 25: only when the original method is impossible. Stores references to the validation, never financial data. */
+export async function recordAlternativeRefund(db:D1Database,adminId:string,attemptId:string,input:{impossibility:unknown;authorizationRef:unknown;beneficiaryValidationRef:unknown;operationRef:unknown;reasonCode:unknown},now=new Date()) {
+  requireEvidence(input.reasonCode,input.operationRef);
+  const fields=[input.impossibility,input.authorizationRef,input.beneficiaryValidationRef];
+  if (fields.some(f=>typeof f!=='string'||!f.trim()||f.length>400)) throw new IdentityError('INVALID_REQUEST',400);
+  const attempt=await db.prepare(`SELECT * FROM purchase_attempts WHERE id=?`).bind(attemptId).first<PurchaseAttempt>();
+  if (!attempt) throw new IdentityError('ATTEMPT_NOT_FOUND',404);
+  if (attempt.status!=='refund_pending') throw new PaymentError('PAYMENT_STATE_CONFLICT');
+  const operation=(input.operationRef as string).trim();
+  const exception={impossibility:(input.impossibility as string).trim(),authorizationRef:(input.authorizationRef as string).trim(),beneficiaryValidationRef:(input.beneficiaryValidationRef as string).trim()};
+  await db.batch([
+    db.prepare(`UPDATE purchase_attempts SET refund_method='alternative',refund_operation_ref=?,refund_exception_json=?,updated_at=? WHERE id=?`).bind(operation,JSON.stringify(exception),now.toISOString(),attemptId),
+    adminEvent(db,adminId,'refund_alternative','payment',attemptId,input.reasonCode as string,operation,exception,now),
+  ]);
+  await finalizeRefund(db,attempt,now);
+  return {attemptId,status:'refunded',refundMethod:'alternative'};
+}
+/**
+ * Decision 28. Regularizing can happen at any time; unpublishing only after the 15 days, as a reasoned decision. The position stays consumed.
+ */
+export async function resolveChargeback(db:D1Database,adminId:string,attemptId:string,input:{decision:unknown;reasonCode:unknown;evidence:unknown},now=new Date()) {
+  requireEvidence(input.reasonCode,input.evidence);
+  const attempt=await db.prepare(`SELECT company_id,regularization_due_at,chargeback_resolved_at FROM purchase_attempts WHERE id=? AND status='chargeback_lost'`).bind(attemptId).first<{company_id:string;regularization_due_at:string|null;chargeback_resolved_at:string|null}>();
+  if (!attempt||attempt.chargeback_resolved_at) throw new PaymentError('PAYMENT_STATE_CONFLICT');
+  const at=now.toISOString(),ref=(input.evidence as string).trim();
+  const close=(resolution:string)=>[
+    db.prepare(`UPDATE purchase_attempts SET chargeback_resolution=?,chargeback_resolved_at=?,chargeback_resolved_by=?,chargeback_evidence=?,updated_at=? WHERE id=?`).bind(resolution,at,adminId,ref,at,attemptId),
+    adminEvent(db,adminId,'chargeback_resolved','payment',attemptId,input.reasonCode as string,ref,{resolution},now),
+    db.prepare(`UPDATE incidents SET status='resolved',resolved_at=?,resolved_by=?,resolution_code=? WHERE attempt_id=? AND kind IN('chargeback_lost','chargeback_regularization_expired') AND status='open'`).bind(at,adminId,input.reasonCode as string,attemptId),
+  ];
+  if (input.decision==='regularized') {
+    await db.batch([...close('regularized'),db.prepare(`UPDATE companies SET publication_block=NULL WHERE id=? AND publication_block='payment_dispute'`).bind(attempt.company_id)]);
+    return {attemptId,chargebackResolution:'regularized'};
+  }
+  if (input.decision!=='unpublished'&&input.decision!=='kept') throw new IdentityError('INVALID_ACTION',400);
+  if (!attempt.regularization_due_at) throw new IdentityError('INVALID_ACTION',409);
+  if (attempt.regularization_due_at>at) throw new PaymentError('REGULARIZATION_WINDOW_OPEN');
+  if (input.decision==='kept') {await db.batch(close('kept'));return {attemptId,chargebackResolution:'kept'};}
+  const plan=await withdrawalPlan(db,attempt.company_id,attemptId,now);
+  await db.batch([...plan.statements,...close('unpublished')]);
+  return {attemptId,chargebackResolution:'unpublished',...plan.result};
+}
+

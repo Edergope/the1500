@@ -1,6 +1,6 @@
 {
   "name": "the1500",
-  "version": "0.6.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,6 +14,7 @@
     "test:core:runtime": "tsc -p tsconfig.core-runtime-test.json && node -e \"require('fs').writeFileSync('.core-js-tests/package.json', JSON.stringify({type:'commonjs'}))\" && node --test --test-concurrency=1 tests/integration/*.test.cjs",
     "test:local": "npm run test:db && npm run test:types:isolated && npm run test:core:runtime",
     "test:e2e": "astro build && node tests/e2e/journey.cjs",
+    "demo:seed:local": "node scripts/demo.cjs seed --target local",
     "test:remote": "node tests/remote/staging.cjs",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote"
   },

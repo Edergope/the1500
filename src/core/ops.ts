@@ -17,6 +17,17 @@ export function startReactivationClock(db:D1Database,companyId:string,notifiedAt
   return db.prepare(`UPDATE onboarding_cases SET status='reactivated',reactivation_notified_at=?,reactivation_form_due_at=? WHERE company_id=? AND status='reactivation_approved'`)
     .bind(notifiedAt.toISOString(),new Date(notifiedAt.getTime()+REACTIVATION_FORM_DAYS*86_400_000).toISOString(),companyId);
 }
+/** Decision 22: 7 calendar days to reply to the final notice, from its delivery. */
+export function startFinalNoticeClock(db:D1Database,companyId:string,recipient:string,channel:string,evidence:string,sentAt:Date) {
+  return db.prepare(`UPDATE onboarding_cases SET final_notice_sent_at=?,final_notice_due_at=?,final_notice_channel=?,final_notice_recipient=?,final_notice_evidence=? WHERE company_id=? AND status='admin_review' AND final_notice_requested_at IS NOT NULL AND final_notice_sent_at IS NULL`)
+    .bind(sentAt.toISOString(),new Date(sentAt.getTime()+7*86_400_000).toISOString(),channel,recipient,evidence,companyId);
+}
+/** Monday to Friday. Public holidays are not modelled: administration must allow for them when a term is tight. */
+export function addBusinessDays(from:Date,days:number) {
+  const date=new Date(from.getTime());let left=days;
+  while (left>0) {date.setUTCDate(date.getUTCDate()+1);if (date.getUTCDay()!==0&&date.getUTCDay()!==6) left--;}
+  return date;
+}
 /** Sends what is queued. Nothing is marked sent unless the provider accepted it. */
 export async function flushNotifications(db:D1Database,env:MailEnv,now=new Date(),limit=20):Promise<{sent:number;failed:number;skipped:boolean;blocked:boolean}> {
   if (!mailConfigured(env)) return {sent:0,failed:0,skipped:true,blocked:false};
@@ -28,6 +39,7 @@ export async function flushNotifications(db:D1Database,env:MailEnv,now=new Date(
     if (outcome.accepted) {
       sent++;await db.prepare(`UPDATE notifications SET status='sent',sent_at=?,attempts=attempts+1,provider=?,provider_message_id=?,failure_code=NULL WHERE id=?`).bind(now.toISOString(),outcome.provider,outcome.messageId,n.id).run();
       if (n.kind==='reactivation_approved'&&n.company_id) await startReactivationClock(db,n.company_id,now).run();
+      if (n.kind==='onboarding_final_notice'&&n.company_id) await startFinalNoticeClock(db,n.company_id,n.recipient,'email',outcome.messageId??outcome.provider,now).run();
     } else if (outcome.failure==='blocked') {
       // Quota or sender problem: the whole queue waits, and no message uses up its attempts meanwhile.
       blocked=true;
@@ -82,13 +94,36 @@ export async function sweepOnboarding(db:D1Database,baseUrl:string,now=new Date(
   const lapsed=await db.prepare(`SELECT company_id FROM onboarding_cases WHERE status='reactivated' AND reactivation_form_due_at<=?`).bind(at).all<{company_id:string}>();
   for (const c of lapsed.results) {
     await db.batch([
-      db.prepare(`UPDATE onboarding_cases SET status='admin_review',admin_review_at=? WHERE company_id=? AND status='reactivated'`).bind(at,c.company_id),
+      // A new review, so any earlier decision to continue no longer closes it.
+      db.prepare(`UPDATE onboarding_cases SET status='admin_review',admin_review_at=?,resolved_at=NULL,resolved_by=NULL,resolution=NULL,resolution_due_at=NULL WHERE company_id=? AND status='reactivated'`).bind(at,c.company_id),
       openIncident(db,'onboarding_reactivation_lapsed','warning',{companyId:c.company_id,dedupeKey:`onboarding_reactivation_lapsed:${c.company_id}:${at}`},{note:'Individual review. The position and the money are not lost automatically.'},now),
     ]);
     await notifyOwners(db,c.company_id,'onboarding_reactivation_lapsed',l=>reactivationEmail(l,'lapsed',baseUrl),`onboarding_reactivation_lapsed:${c.company_id}:${at}`,now);
     moved.reactivationLapsed++;
   }
   return moved;
+}
+/** Deadlines that only raise visibility: every decision behind them stays human (Decisions 22-24, 28). */
+export async function sweepCaseDeadlines(db:D1Database,now=new Date()) {
+  const at=now.toISOString();
+  const expired=await db.prepare(`SELECT company_id,final_notice_due_at FROM onboarding_cases WHERE status='admin_review' AND final_notice_due_at<=? AND final_notice_response_at IS NULL AND resolution_due_at IS NULL AND resolved_at IS NULL`).bind(at).all<{company_id:string;final_notice_due_at:string}>();
+  for (const c of expired.results) {
+    const due=addBusinessDays(new Date(c.final_notice_due_at),5).toISOString();
+    await db.batch([
+      db.prepare(`UPDATE onboarding_cases SET resolution_due_at=? WHERE company_id=? AND resolution_due_at IS NULL`).bind(due,c.company_id),
+      openIncident(db,'onboarding_final_notice_expired','warning',{companyId:c.company_id,dedupeKey:`final_notice_expired:${c.company_id}:${c.final_notice_due_at}`},{resolutionDueAt:due},now),
+    ]);
+  }
+  const overdue=await db.prepare(`SELECT company_id,resolution_due_at FROM onboarding_cases WHERE resolution_due_at<=? AND resolved_at IS NULL`).bind(at).all<{company_id:string;resolution_due_at:string}>();
+  const refunds=await db.prepare(`SELECT id,company_id,refund_order_due_at FROM purchase_attempts WHERE status='refund_pending' AND provider_refund_id IS NULL AND refund_order_due_at<=?`).bind(at).all<{id:string;company_id:string;refund_order_due_at:string}>();
+  const regularization=await db.prepare(`SELECT id,company_id,regularization_due_at FROM purchase_attempts WHERE status='chargeback_lost' AND regularization_due_at<=? AND chargeback_resolved_at IS NULL`).bind(at).all<{id:string;company_id:string;regularization_due_at:string}>();
+  const alerts=[
+    ...overdue.results.map(c=>openIncident(db,'onboarding_resolution_overdue','critical',{companyId:c.company_id,dedupeKey:`resolution_overdue:${c.company_id}:${c.resolution_due_at}`},{resolutionDueAt:c.resolution_due_at},now)),
+    ...refunds.results.map(r=>openIncident(db,'refund_order_overdue','critical',{companyId:r.company_id,attemptId:r.id,dedupeKey:`refund_overdue:${r.id}`},{refundOrderDueAt:r.refund_order_due_at},now)),
+    ...regularization.results.map(r=>openIncident(db,'chargeback_regularization_expired','critical',{companyId:r.company_id,attemptId:r.id,dedupeKey:`regularization_expired:${r.id}`},{regularizationDueAt:r.regularization_due_at},now)),
+  ];
+  if (alerts.length) await db.batch(alerts);
+  return {finalNoticesExpired:expired.results.length,resolutionsOverdue:overdue.results.length,refundOrdersOverdue:refunds.results.length,regularizationsExpired:regularization.results.length};
 }
 /** Legal terms are set case by case by administration; a term that passes with the request open must be visible. */
 export async function sweepLegalRequests(db:D1Database,now=new Date()) {
@@ -102,8 +137,9 @@ export async function maintenanceSweep(db:D1Database,env:MailEnv&{PUBLIC_BASE_UR
   await expireStaleHolds(db,now);
   const onboarding=await sweepOnboarding(db,env.PUBLIC_BASE_URL||'',now);
   const legal=await sweepLegalRequests(db,now);
+  const cases=await sweepCaseDeadlines(db,now);
   const notifications=await flushNotifications(db,env,now);
-  return {onboarding,legal,notifications};
+  return {onboarding,legal,cases,notifications};
 }
 /** Fixed-window limiter stored in D1; the upsert is atomic. */
 export async function hitRateLimit(db:D1Database,key:string,limit:number,windowSeconds:number,now=new Date()):Promise<boolean> {

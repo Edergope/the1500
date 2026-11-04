@@ -281,7 +281,7 @@ export async function resolveIncident(db:D1Database,adminId:string,id:string,rea
 export async function listPayments(db:D1Database,status:string|null,limit=50) {
   clampLimit(limit);
   const rows=await db.prepare(`SELECT a.id,a.company_id AS companyId,c.display_name AS companyName,a.phase,a.assigned_slot_number AS position,a.provider,a.provider_session_id AS providerSessionId,a.provider_payment_intent AS providerPaymentIntent,
-    a.amount_usd_cents AS amountUsdCents,a.total_minor AS totalMinor,a.charged_currency AS currency,a.status,a.hold_expires_at AS holdExpiresAt,a.checkout_expires_at AS checkoutExpiresAt,a.paid_at AS paidAt,a.payer_email AS payerEmail,a.refund_reason AS refundReason,a.refund_requested_at AS refundRequestedAt,a.refund_confirmed_at AS refundConfirmedAt,a.created_at AS createdAt
+    a.amount_usd_cents AS amountUsdCents,a.total_minor AS totalMinor,a.charged_currency AS currency,a.status,a.hold_expires_at AS holdExpiresAt,a.checkout_expires_at AS checkoutExpiresAt,a.paid_at AS paidAt,a.payer_email AS payerEmail,a.payer_review AS payerReview,a.refund_reason AS refundReason,a.refund_requested_at AS refundRequestedAt,a.refund_order_due_at AS refundOrderDueAt,a.refund_method AS refundMethod,a.refund_operation_ref AS refundOperationRef,a.refund_confirmed_at AS refundConfirmedAt,a.regularization_due_at AS regularizationDueAt,a.chargeback_resolution AS chargebackResolution,a.created_at AS createdAt
     FROM purchase_attempts a JOIN companies c ON c.id=a.company_id WHERE (? IS NULL OR a.status=?) ORDER BY a.created_at DESC LIMIT ?`).bind(status,status,limit).all();
   return {payments:rows.results};
 }

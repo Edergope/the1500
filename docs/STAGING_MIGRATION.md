@@ -1,6 +1,6 @@
 # Traslado de staging a una cuenta independiente
 
-**Estado: preparado, sin ejecutar.** Requiere la cuenta nueva y el dominio. La cuenta actual, con los recursos `palmera-*`, solo se toca en el paso 8, y únicamente para retirar los tres recursos `the1500-staging` de la tabla.
+**Estado: preparado, sin ejecutar.** Desde 2026-11-04 el desarrollo continúa en la cuenta disponible, por instrucción del propietario; este traslado queda para cuando se compre el dominio. Los datos de staging son de demostración y no hace falta conservarlos. Requiere la cuenta nueva y el dominio. La cuenta actual, con los recursos `palmera-*`, solo se toca en el paso 8, y únicamente para retirar los tres recursos `the1500-staging` de la tabla.
 
 Staging tiene la base de datos y R2 limpios, así que no hay datos que exportar. GitHub y el frontend no cambian: el contrato es de mismo origen.
 

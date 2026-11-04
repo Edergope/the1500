@@ -50,7 +50,7 @@ function seedAttempts(buyers){
   const start=one(`SELECT COUNT(*) n,SUM(status='available') free,SUM(number BETWEEN 1 AND 100) founders,SUM(number BETWEEN 101 AND 600) paid FROM slots`);
   assert.deepEqual(start,{n:1500,free:1500,founders:100,paid:500});
   const stats=await api('GET','/api/v1/public/stats');assert.equal(stats.data.salesMode,'selling');assert.equal(stats.data.currentPriceUsdCents,10000);
-  step('Migrations 0001-0007 on remote D1; 1,500 positions; stats served from it',`available=${stats.data.available}, mode=${stats.data.salesMode}`);
+  step('All migrations on remote D1; 1,500 positions; stats served from it',`available=${stats.data.available}, mode=${stats.data.salesMode}`);
   for(const p of ['/','/unirse','/empresas','/es/','/es/unirse','/login'])assert.equal((await fetch(BASE+p)).status,200,p);
   step('Public pages respond in EN and ES on workers.dev');
   // ---- Authentication
@@ -65,6 +65,7 @@ function seedAttempts(buyers){
   const cookieOf=v=>{const c=v.headers.get('set-cookie');assert.match(c,/^__Host-the1500_session=.*HttpOnly; Secure; SameSite=Lax/);return c.split(';')[0];};
   const buyers=verified.map((v,i)=>({i,email:emails[i],cookie:cookieOf(v)}));
   step(`${N} concurrent sign-in verifications created real sessions`,`${Date.now()-t0} ms in total`);
+  const confirmPage=await fetch(`${BASE}/auth/verify?token=${rows[0].token}`);assert.equal(confirmPage.headers.get('referrer-policy'),'same-origin');
   assert.equal((await verify(rows[0].token)).status,401);
   const expired=seedChallenges([`late@late-${RUN}.example`])[0];
   sql(`UPDATE login_challenges SET requested_at='2020-01-01T00:00:00.000Z',expires_at='2020-01-01T00:15:00.000Z' WHERE email=${q(expired.email)}`);
@@ -179,6 +180,19 @@ function seedAttempts(buyers){
   assert.equal((await api('PUT','/api/v1/me/company/profile',{cookie:rb.cookie,body:{companyId:rb.companyId,...form('r')}})).status,201);
   assert.equal(one(`SELECT status FROM onboarding_cases WHERE company_id=${q(rb.companyId)}`).status,'completed');
   step('Reactivation: requested, approved, no term until notified, then exactly 15 days; form completes the case');
+  // ---- Final notice and case resolution
+  const fn=paying[11];
+  sql(`UPDATE onboarding_cases SET status='admin_review',admin_review_at=${q(new Date().toISOString())} WHERE company_id=${q(fn.companyId)}`);
+  assert.equal((await api('POST','/api/v1/admin/onboarding/resolve',{cookie:admin.cookie,body:{companyId:fn.companyId,decision:'cancel',reasonCode:'silence',evidenceReference:'remote-case-8'}})).data.error.code,'FINAL_NOTICE_REQUIRED');
+  assert.equal((await api('POST','/api/v1/admin/onboarding/final-notice',{cookie:fn.cookie,body:{companyId:fn.companyId,reasonCode:'day45',evidenceReference:'x'}})).status,403);
+  assert.equal((await api('POST','/api/v1/admin/onboarding/final-notice',{cookie:admin.cookie,body:{companyId:fn.companyId,reasonCode:'day45',evidenceReference:'remote-case-9'}})).data.status,'queued');
+  const other=await api('POST','/api/v1/admin/onboarding/final-notice',{cookie:admin.cookie,body:{companyId:fn.companyId,channel:'certified_mail',recipient:'Registered address',reasonCode:'mail',evidenceReference:'remote-case-10'}});
+  assert.equal(new Date(other.data.finalNoticeDueAt)-new Date(other.data.finalNoticeSentAt),7*86400000);
+  assert.equal((await api('POST','/api/v1/me/company/final-notice-response',{cookie:fn.cookie,body:{companyId:fn.companyId,message:'We want to continue'}})).status,200);
+  const queue=await api('GET','/api/v1/admin/onboarding',{cookie:admin.cookie});assert.equal(queue.data.cases[0].finalNoticeResponse,'We want to continue');
+  const cont=await api('POST','/api/v1/admin/onboarding/resolve',{cookie:admin.cookie,body:{companyId:fn.companyId,decision:'continue',reasonCode:'answered',evidenceReference:'remote-case-11'}});
+  assert.equal(cont.data.status,'reactivation_approved',JSON.stringify(cont.data));
+  step('Final notice: silence cannot cancel, 7 days from notice, answer recorded, administration decides to continue');
   // ---- Withdrawal
   const reqW=await api('POST','/api/v1/me/company/requests',{cookie:b1.cookie,body:{companyId:b1.companyId,kind:'withdrawal',reason:'Closing the business line'}});assert.equal(reqW.status,201);
   assert.equal((await api('POST','/api/v1/admin/withdrawals/execute',{cookie:b1.cookie,body:{companyId:b1.companyId,requestId:reqW.data.requestId,reasonCode:'owner_request',evidenceReference:'x'}})).status,403);
@@ -249,6 +263,6 @@ function seedAttempts(buyers){
   assert.deepEqual(f,{n:1500,retired:1,dup:0,fHigh:0,pLow:0});
   step('Final integrity on remote D1',`1,500 positions, no company with two, none outside its range`);
   console.log(`\n${log.length} steps passed on remote D1, R2 and the deployed Worker. Mail delivery, the Stripe API and LLM providers were NOT involved.`);
-  fs.writeFileSync(path.join(ROOT,'docs/CORE006_REMOTE_EVIDENCE.txt'),`THE1500 CORE-006, staging run ${new Date().toISOString()}\nTarget: ${BASE}, remote D1 the1500-staging, remote R2 the1500-staging-snapshots.\nSign-in links seeded in D1 (no mail provider). Webhooks signed with a temporary test secret, sent to the real route. No real Stripe, LLM or email.\n\n${log.join('\n')}\n`);
+  fs.writeFileSync(path.join(ROOT,'docs/CORE008_REMOTE_EVIDENCE.txt'),`THE1500 CORE-008, staging run ${new Date().toISOString()}\nTarget: ${BASE}, remote D1 the1500-staging, remote R2 the1500-staging-snapshots.\nSign-in links seeded in D1 (no mail provider). Webhooks signed with a temporary test secret, sent to the real route. No real Stripe, LLM or email.\n\n${log.join('\n')}\n`);
   fs.writeFileSync(process.env.STAGING_CLEANUP_FILE||'/dev/null',JSON.stringify({r2:pubs.flatMap((p,i)=>[`profiles/${paying[i].companyId}/v${p.pub.version}/en.jsonld`,`profiles/${paying[i].companyId}/v${p.pub.version}/es.jsonld`])}));
 })().catch(e=>{console.error('\nREMOTE TEST FAILED:',e);process.exitCode=1;});

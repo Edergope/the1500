@@ -27,9 +27,15 @@ npx wrangler deploy --config dist/server/wrangler.json
 npm run db:migrate:remote
 ```
 
-## Primer administrador
+## Datos de demostración y acceso sin correo
 
-Tras iniciar sesión por primera vez, con correo ya configurado: `docs/CORE004_IMPLEMENTATION.md` §3, añadiendo `--remote` al comando.
+Mientras no haya proveedor de correo, quien tenga acceso a Cloudflare puede sembrar datos y obtener un enlace de un solo uso, válido 15 minutos:
+
+```bash
+node scripts/demo.cjs link admin@demo-the1500.example --target staging
+```
+
+El administrador de demostración solo existe en staging. Para crear un administrador real: `docs/CORE004_IMPLEMENTATION.md` §3, añadiendo `--remote` al comando.
 
 ## Pruebas remotas
 
@@ -38,7 +44,7 @@ Tras iniciar sesión por primera vez, con correo ya configurado: `docs/CORE004_I
 Devolver D1 a su estado limpio después de una ejecución:
 
 ```bash
-npx wrangler d1 time-travel restore DB --bookmark=00000009-00000002-00005119-86ea2fb0121e43b3c923188270100d53
+npx wrangler d1 time-travel restore DB --bookmark=0000001c-00000002-00005119-c308f4550e210473e6708e17fd735d50
 ```
 
-Ese marcador corresponde a la base recién migrada (0001–0008) y caduca con la ventana de Time Travel. Con migraciones nuevas: restaurar y luego migrar, o tomar otro marcador con `wrangler d1 time-travel info DB --json`.
+Ese marcador corresponde a la base recién migrada (0001–0009) y caduca con la ventana de Time Travel. Con migraciones nuevas: restaurar y luego migrar, o tomar otro marcador con `wrangler d1 time-travel info DB --json`.

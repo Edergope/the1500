@@ -1,9 +1,11 @@
-# THE1500 API Contract v1.1 (CORE-006)
+# THE1500 API Contract v1.2 (CORE-008)
 
 **Owner:** Claude (core). **Consumer:** Antigravity. **Types to import:** `src/lib/contracts/api.ts`.
 **Verified by:** `tests/integration/*`, `tests/e2e/journey.cjs`. A test fails if a route exists without being listed here, or the reverse.
 Business rules live on the server. The frontend never computes price, position, availability or permission.
 
+> **Changes in v1.2:** additive. Final notice and case resolution, refund deadline and alternative method, chargeback regularization, third-party payer review.
+>
 > **Changes in v1.1:** reactivation is now requested and then decided by administration (new onboarding states). Premium has a portal form. `legalBasis` on requests. Late payments need a documented human decision. `requestId` is required to execute a withdrawal.
 >
 > **Breaking changes from v0.2:** `hold.slotNumber` removed (a number is assigned on confirmation, Decision 30). `PUT /me/company/profile` body changed (`description`, `consent` required). Founder accept requires `acceptTerms`, `termsVersion` and no longer assigns a position: an admin awards it. JSON-LD is now `@graph`.
@@ -48,6 +50,7 @@ Branch on `code`. Show `message`. Status: 400 invalid · 401 no session · 403 n
 | POST `/me/company/members` | owner | `{companyId,email,action:"add"\|"remove"}` | `{companyId,email,role}` · `MEMBER_NOT_REGISTERED` |
 | POST `/me/company/requests` | owner | `{companyId,kind:"withdrawal"\|"cancellation",reason,legalBasis?:"data_protection"\|"illicit_content"}` | 201 `{requestId,kind,status,legalBasis,requestedAt,structuringStartedAt}` · `REQUEST_ALREADY_OPEN`. Administration decides and executes it. `legalBasis` only on withdrawals. |
 | POST `/me/company/reactivate` | owner | `{companyId}` | `{companyId,status:"reactivation_requested",reactivationRequestedAt}`. Valid until day 45 · `INVALID_ACTION`. Does not reopen the form: see §8. |
+| POST `/me/company/final-notice-response` | owner | `{companyId,message}` | `{companyId,finalNoticeResponseAt}` · `INVALID_ACTION`. Available once `onboarding.finalNoticeSentAt` is set. `message` 3–1000 chars. |
 | POST `/me/company/premium-request` | owner | `{companyId,message,contactPreference?:"email"\|"meeting"\|"no_preference"}` | 201 `{requestId,companyId,status:"received",contactPreference,createdAt}` · `PREMIUM_NOT_OPEN`, `REQUEST_ALREADY_OPEN`, `COMPANY_ALREADY_ASSIGNED`. `message` 10–2000 chars. |
 | GET `/me/founder-invitations` | user | | `{invitations:[{invitationId,companyId,companyName,expiresAt}]}` |
 | POST `/me/founder-invitations/accept` | owner | `{invitationId,acceptTerms:true,termsVersion}` | `{invitationId,companyId,status:"accepted",acceptedAt}`. **No position yet**: show "pending award" until `GET /me/company` returns `position`. · `TERMS_REQUIRED`, `INVITATION_EXPIRED` |
@@ -134,6 +137,9 @@ Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or A
 | POST `/admin/requests/resolve` | `{requestId,decision:"rejected"\|"completed",reasonCode,evidenceReference}` | Documented decision. `completed` only for cancellations: a withdrawal completes by executing it |
 | POST `/admin/requests/legal-deadline` | `{requestId,legalDueAt,reasonCode,evidenceReference}` | Administration sets the applicable term. Passing it with the request open raises a critical incident |
 | POST `/admin/withdrawals/execute` | `{companyId,requestId,reasonCode,evidenceReference}` | Definitive and irreversible. Closes every open withdrawal request of that company |
+| GET `/admin/onboarding` | `status` (default `admin_review`), `limit` | Cases with final notice and resolution dates, most urgent first |
+| POST `/admin/onboarding/final-notice` | `{companyId,reasonCode,evidenceReference}` queues the email. Adding `{channel,recipient}` records a notice given by other means | 7 calendar days from delivery · `INVALID_ACTION` |
+| POST `/admin/onboarding/resolve` | `{companyId,decision:"continue"\|"cancel",reasonCode,evidenceReference}` | `continue` grants 15 days from the notice. `cancel` orders a full refund, or revokes a founder · `FINAL_NOTICE_REQUIRED`, `POSITION_ALREADY_CONSUMED` |
 | POST `/admin/onboarding/reactivation` | `{companyId,decision:"approved"\|"rejected"\|"notified_by_other_means",reasonCode,evidenceReference}` | Decides a request or a case in review. Returns `{companyId,status,reactivationApprovedAt,reactivationNotifiedAt,reactivationFormDueAt}` |
 | GET `/admin/incidents` | `status,limit` | Open incidents |
 | POST `/admin/incidents/resolve` | `{incidentId,reasonCode,evidenceReference}` | Close with reason |
@@ -141,6 +147,9 @@ Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or A
 | POST `/admin/payments/reconcile` | `{attemptId}` | Compare with Stripe and apply |
 | GET, POST `/admin/payments/resolve-late` | GET `attemptId`. POST `{attemptId,decision:"assign"\|"refund",reasonCode,evidenceReference}` | GET returns `LatePaymentFacts`. POST is the documented human decision. `assign` takes only a free number in the same tier and price, or returns `refundRequired:true` |
 | POST `/admin/payments/refund` | `{attemptId,reason}` | Position returns only after confirmed refund, and never if published |
+| POST `/admin/payments/refund-alternative` | `{attemptId,impossibility,authorizationRef,beneficiaryValidationRef,operationRef,reasonCode}` | Only when the original method is impossible. References only: never send bank or card data |
+| POST `/admin/payments/chargeback-resolve` | `{attemptId,decision:"regularized"\|"unpublished"\|"kept",reasonCode,evidenceReference}` | `unpublished` and `kept` only after `regularizationDueAt` · `REGULARIZATION_WINDOW_OPEN` |
+| POST `/admin/payments/payer-authorization` | `{attemptId,reasonCode,evidenceReference}` | Documents a payer other than the account holder (`payerReview:"required"`) |
 | GET, POST `/admin/premium/requests` | POST `{requestId,status:"in_review"\|"accepted"\|"rejected",reasonCode,evidenceReference}` | Applications from the portal form. Email or meeting notes go in the evidence reference |
 | POST `/admin/premium/assign` | `{requestId,reasonCode,evidenceReference}` | Accepted request, tier 4 open, funds evidence |
 | GET `/admin/integrations` | | Which mail provider is selected, and whether mail, Stripe (test mode) and AI are configured. Presence and mode only, never a value |
@@ -166,6 +175,8 @@ Onboarding: active → extended (day 15) → suspended (day 30) → admin_review
                                   └→ admin_review (rejected)                             └→ admin_review (form not sent in 15 days)
           completed on form submission. admin_review can return to reactivation_approved only by a new human approval.
 ```
+
+Final notice on screen: when `finalNoticeSentAt` is set and `finalNoticeResponseAt` is empty, show the reply form and the date `finalNoticeDueAt`. Say that silence alone does not cancel the service or lose the money.
 
 Reactivation on screen: while `reactivation_requested`, say the request is being reviewed and keep the form closed. From `reactivation_approved` the form opens. Once `reactivated`, count down to `reactivationFormDueAt`: 15 calendar days from the notice, no automatic extension. Failing to submit never means losing the position or the money: say it goes to individual review.
 

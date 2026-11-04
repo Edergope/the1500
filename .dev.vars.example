@@ -1,0 +1,5 @@
+# Local development only. Copy to .dev.vars. Mail goes to the local simulator; nothing leaves your machine.
+PUBLIC_BASE_URL=http://localhost:4321
+MAIL_PROVIDER=cloudflare
+MAIL_FROM="THE1500 <signin@the1500.test>"
+PAYMENTS_ENABLED=false

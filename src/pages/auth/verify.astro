@@ -3,7 +3,9 @@
 const token=Astro.url.searchParams.get('token')||'';
 const valid=/^[a-f0-9]{64}$/.test(token);
 Astro.response.headers.set('Cache-Control','no-store');
-Astro.response.headers.set('Referrer-Policy','no-referrer');
+// Not no-referrer: browsers then send "Origin: null" on this form's POST, and the origin check refuses it.
+// same-origin still keeps the token in this URL away from any other site.
+Astro.response.headers.set('Referrer-Policy','same-origin');
 Astro.response.headers.set('X-Robots-Tag','noindex, nofollow');
 ---
 <html lang="en"><head><meta charset="utf-8" /><meta name="robots" content="noindex,nofollow" />

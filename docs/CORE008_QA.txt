@@ -1,0 +1,39 @@
+THE1500 CORE-008 local QA. 2026-11-04T17:49:08Z
+Ran 42 tests in 0.611s
+OK
+ok 1 - API_CONTRACT.md and the route files list exactly the same endpoints
+ok 2 - withdrawal: holder asks, administration decides, both on record
+ok 3 - reactivation: 15 calendar days from approval notified, once
+ok 4 - late card payments: human reconciliation with the facts
+ok 5 - Premium, Decision 64: portal form, human evaluation, no checkout
+ok 6 - integration status
+ok 7 - final notice and resolution (Decisions 22, 23)
+ok 8 - refund order deadline and alternative method (Decisions 24, 25)
+ok 9 - lost chargeback on a published profile (Decision 28)
+ok 10 - third-party payer (Decision 45)
+ok 11 - T01/T02 concurrency on the D1 engine
+ok 12 - T01 hard limit at the end of an automatic tier
+ok 13 - T02 two confirmations cannot take one position
+ok 14 - T03 founders consume real inventory inside tier 1
+ok 15 - T03 caps: 100 founders and 500 paid in tier 1
+ok 16 - T04 tier changes respect prices
+ok 17 - T05 and T14: expiry and archive
+ok 18 - provider selection
+ok 19 - Cloudflare adapter
+ok 20 - flows through the adapter
+ok 21 - checkout
+ok 22 - T06 webhooks
+ok 23 - T05 late payments (Decision 42)
+ok 24 - refunds and disputes (Decisions 17, 18, 27)
+ok 25 - T15 provider failure keeps state intact
+ok 26 - Premium stays human (Decision 64)
+ok 27 - semantic engine
+ok 28 - T08 approval gates publication
+ok 29 - T10 JSON-LD
+ok 30 - T09, T11, T12 discovery
+ok 31 - identity and tenancy
+ok 32 - T13 internationalization
+# tests 105
+# suites 31
+# pass 105
+# fail 0

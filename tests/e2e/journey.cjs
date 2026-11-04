@@ -32,7 +32,7 @@ async function login(email,locale='en'){
   const r=await api('POST','/api/v1/auth/request-link',{body:{email,locale}});assert.equal(r.status,202);
   const mail=up.state.emails.slice(n).find(m=>m.to[0]===email);assert.ok(mail,'email sent to '+email);
   const token=mail.text.match(/token=([a-f0-9]{64})/)[1];
-  const page=await fetch(`${BASE}/auth/verify?token=${token}`);assert.equal(page.status,200);
+  const page=await fetch(`${BASE}/auth/verify?token=${token}`);assert.equal(page.status,200);assert.equal(page.headers.get('referrer-policy'),'same-origin','no-referrer makes browsers send Origin: null');
   const v=await fetch(`${BASE}/api/v1/auth/verify`,{method:'POST',redirect:'manual',headers:{Origin:BASE,'content-type':'application/x-www-form-urlencoded'},body:`token=${token}`});
   assert.equal(v.status,303);assert.equal(v.headers.get('location'),'/mi-cuenta');
   const c=v.headers.get('set-cookie');assert.match(c,/__Host-the1500_session=.*HttpOnly; Secure; SameSite=Lax/);
