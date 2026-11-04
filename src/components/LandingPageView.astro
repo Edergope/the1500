@@ -1,0 +1,577 @@
+---
+import type { InventorySummary, Locale, PublicCompanyCard } from '../lib/contracts/api';
+import HeroMosaic from './HeroMosaic';
+import LiveDirectoryPreview from './LiveDirectoryPreview';
+import DiscoveryHub from './DiscoveryHub';
+import { formatUsdCents } from '../ui/i18n';
+
+interface RetiredItem {
+  position: number;
+  label: string;
+  labelEs: string;
+}
+
+interface Props {
+  lang: Locale;
+  stats: InventorySummary | null;
+  businesses: PublicCompanyCard[];
+  totalPublished: number;
+  retiredItems: RetiredItem[];
+}
+
+const { lang, stats, businesses, retiredItems } = Astro.props;
+const es = lang === 'es';
+
+// Compute dynamic scarcity & phase metrics from real server stats
+const filledPositions = stats ? stats.occupied : 0;
+const availableNow = stats ? stats.available : 1500;
+const currentPhaseNum = stats?.currentPhase ?? 1;
+const activePhaseObj = stats?.phases?.find((p) => p.phase === currentPhaseNum) || stats?.phases?.[0] || null;
+const nextPhaseObj = stats?.phases?.find((p) => p.phase === currentPhaseNum + 1) || null;
+const progressPct = stats ? Math.min(100, Math.round(((stats.occupied + stats.held) / 1500) * 1000) / 10) : 0;
+
+// Visual Inventory State using salesMode, checkoutOpen, and stats.phases
+function computeInventoryVisualState(s: InventorySummary | null) {
+  if (!s) return { label: es ? 'En vivo' : 'Live', tone: 'emerald' };
+  if (s.salesMode === 'closed_archive') {
+    return { label: es ? 'Directorio agotado' : 'Directory sold out', tone: 'slate' };
+  }
+  if (s.salesMode === 'premium_admission') {
+    const p4 = s.phases?.find((p) => p.phase === 4);
+    if (p4 && (p4.status === 'sold_out' || p4.remaining <= 0)) {
+      return { label: es ? 'Directorio agotado' : 'Directory sold out', tone: 'slate' };
+    }
+    return { label: es ? 'Admisión Premium' : 'Premium admission', tone: 'gold' };
+  }
+  if (s.salesMode === 'awaiting_founder_allocation' || !s.checkoutOpen) {
+    return { label: es ? 'En transición · Ventas en pausa' : 'In transition · Sales paused', tone: 'amber' };
+  }
+  if (activePhaseObj && activePhaseObj.remaining <= 50) {
+    return { label: es ? 'Próximo a agotar fase' : 'Near sellout', tone: 'amber' };
+  }
+  return { label: es ? 'Venta abierta' : 'Open sale', tone: 'emerald' };
+}
+
+const invState = computeInventoryVisualState(stats);
+---
+<main style="padding-top:0">
+  <!-- SECTION 3: HERO INMERSIVO CON MOSAICO INTERACTIVO -->
+  <HeroMosaic
+    client:load
+    lang={lang}
+    stats={stats}
+    businesses={businesses}
+    retiredItems={retiredItems}
+  />
+
+  <!-- SECTION 4: WHY THIS MATTERS -->
+  <section
+    id="why-this-matters"
+    class="home-section home-section-solid"
+    aria-label={es ? 'Por qué importa esto' : 'Why this matters'}
+  >
+    <div class="section-heading-block">
+      <div>
+        <div class="eyebrow">{es ? 'EL CAMBIO DE PARADIGMA' : 'THE SHIFT IN DISCOVERY'}</div>
+        <h2>{es ? 'Por qué importa esto' : 'Why this matters'}</h2>
+        <p class="section-subheading">
+          {es
+            ? 'La búsqueda está cambiando. La visibilidad empresarial está cambiando con ella.'
+            : 'Search is changing. Company visibility is changing with it.'}
+        </p>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <!-- Card 1 -->
+      <article class="surface-card" style="margin:0">
+        <span class="badge badge-slate mono" style="margin-bottom:0.85rem">01</span>
+        <h3>
+          {es
+            ? 'Las empresas sin estructura pasan desapercibidas'
+            : 'Unstructured companies get overlooked'}
+        </h3>
+        <p style="margin:0;font-size:0.94rem">
+          {es
+            ? 'Si la información de tu empresa está dispersa, es genérica o resulta difícil de interpretar, los sistemas tienen menos contexto para comprender qué haces realmente.'
+            : 'If your business information is scattered, generic, or difficult to interpret, systems have less context to understand what you really do.'}
+        </p>
+      </article>
+
+      <!-- Card 2 -->
+      <article class="surface-card" style="margin:0">
+        <span class="badge badge-gold mono" style="margin-bottom:0.85rem">02</span>
+        <h3>
+          {es
+            ? 'Los perfiles estructurados crean claridad'
+            : 'Structured profiles create clarity'}
+        </h3>
+        <p style="margin:0;font-size:0.94rem">
+          {es
+            ? 'THE1500 organiza la información de tu empresa en un perfil público, revisable y estructurado, diseñado para el descubrimiento moderno.'
+            : 'THE1500 organizes your company into a public, reviewable, structured profile designed for modern discovery.'}
+        </p>
+      </article>
+
+      <!-- Card 3 -->
+      <article class="surface-card" style="margin:0">
+        <span class="badge badge-blue mono" style="margin-bottom:0.85rem">03</span>
+        <h3>
+          {es ? 'Esto no es SEO tradicional' : 'This is not traditional SEO'}
+        </h3>
+        <p style="margin:0;font-size:0.94rem">
+          {es
+            ? 'THE1500 trata sobre presencia empresarial semántica: una forma más clara de presentar quién eres, qué problemas resuelves y cómo deberían encontrarte.'
+            : 'THE1500 is about semantic business presence: a clearer way to present who you are, what you solve, and how you should be found.'}
+        </p>
+      </article>
+    </div>
+
+    <p class="muted" style="margin:1.25rem 0 0 0;font-size:0.84rem">
+      {es
+        ? 'No garantizamos la inclusión ni la recomendación dentro de plataformas de inteligencia artificial externas.'
+        : 'We do not guarantee inclusion or recommendation inside external AI platforms.'}
+    </p>
+  </section>
+
+  <!-- SECTION 5: LIVE DIRECTORY PREVIEW -->
+  <LiveDirectoryPreview
+    client:load
+    lang={lang}
+    stats={stats}
+    initialBusinesses={businesses}
+    retiredItems={retiredItems}
+  />
+
+  <!-- Interactive Lexical Search & Grounded Assistant (Real API Proof) -->
+  <div style="margin:2rem 0">
+    <DiscoveryHub client:load lang={lang} />
+  </div>
+
+  <!-- SECTION 6: HOW IT WORKS -->
+  <section
+    id="how-it-works"
+    class="home-section"
+    aria-label={es ? 'Cómo funciona THE1500' : 'How THE1500 works'}
+  >
+    <div class="section-heading-block">
+      <div>
+        <div class="eyebrow">{es ? 'PROCESO EN 5 PASOS' : '5-STEP WORKFLOW'}</div>
+        <h2>{es ? 'Cómo funciona THE1500' : 'How THE1500 works'}</h2>
+        <p class="section-subheading">
+          {es
+            ? 'Un flujo estructurado y verificable desde la adjudicación del cupo hasta la publicación con JSON-LD.'
+            : 'A clear, verifiable workflow from position allocation to structured JSON-LD publication.'}
+        </p>
+      </div>
+      <a class="button" href={es ? '/es/unirse' : '/unirse'}>
+        {es ? 'Unirse a THE1500' : 'Join THE1500'}
+      </a>
+    </div>
+
+    <div class="steps-timeline">
+      <!-- Step 1 -->
+      <article class="step-card">
+        <span class="step-number-pill">STEP 01</span>
+        <h3>{es ? 'Únete o recibe una invitación' : 'Join or get invited'}</h3>
+        <p class="muted" style="margin:0;font-size:0.88rem">
+          {es
+            ? 'Asegura una de las 1.500 posiciones a través de la fase activa o mediante una invitación de fundador.'
+            : 'Secure one of the 1,500 positions through the active phase or through a founder invitation.'}
+        </p>
+      </article>
+
+      <!-- Step 2 -->
+      <article class="step-card">
+        <span class="step-number-pill">STEP 02</span>
+        <h3>{es ? 'Completa el perfil de tu empresa' : 'Complete your company profile'}</h3>
+        <p class="muted" style="margin:0;font-size:0.88rem">
+          {es
+            ? 'Proporciona la información de tu negocio, posicionamiento, servicios y los problemas específicos que resuelves.'
+            : 'Provide your business information, positioning, services, and the problems you solve.'}
+        </p>
+      </article>
+
+      <!-- Step 3 -->
+      <article class="step-card">
+        <span class="step-number-pill">STEP 03</span>
+        <h3>{es ? 'Revisa tu perfil estructurado' : 'Review your structured profile'}</h3>
+        <p class="muted" style="margin:0;font-size:0.88rem">
+          {es
+            ? 'THE1500 prepara un perfil público estructurado para tu aprobación explícita antes de su publicación.'
+            : 'THE1500 prepares a structured public profile for your approval before publication.'}
+        </p>
+      </article>
+
+      <!-- Step 4 -->
+      <article class="step-card">
+        <span class="step-number-pill">STEP 04</span>
+        <h3>{es ? 'Publica tu presencia pública' : 'Publish your public presence'}</h3>
+        <p class="muted" style="margin:0;font-size:0.88rem">
+          {es
+            ? 'Tu empresa recibe una página de perfil público y una representación estructurada en formato JSON-LD.'
+            : 'Your company receives a public profile page and a structured JSON-LD representation.'}
+        </p>
+      </article>
+
+      <!-- Step 5 -->
+      <article class="step-card">
+        <span class="step-number-pill">STEP 05</span>
+        <h3>{es ? 'Hazte descubrible dentro de THE1500' : 'Become discoverable inside THE1500'}</h3>
+        <p class="muted" style="margin:0;font-size:0.88rem">
+          {es
+            ? 'Tu perfil publicado pasa a ser consultable en el directorio y utilizable por el asistente interno con citas.'
+            : 'Your published profile becomes searchable inside the directory and usable by the internal assistant.'}
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <!-- SECTION 7: SCARCITY / CURRENT PHASE -->
+  <section
+    id="pricing-phases"
+    class="home-section home-section-solid"
+    aria-label={es ? 'Escasez y fase actual' : 'Scarcity and current phase'}
+  >
+    <div class="section-heading-block">
+      <div>
+        <div class="eyebrow">{es ? 'ESCASEZ VERIFICABLE' : 'VERIFIABLE SCARCITY'}</div>
+        <h2>{es ? 'Limitado por diseño' : 'Limited by design'}</h2>
+        <p class="section-subheading">
+          {es
+            ? 'THE1500 solo admitirá exactamente a 1.500 empresas.'
+            : 'THE1500 will only admit 1,500 companies.'}
+        </p>
+      </div>
+      <span class={`badge badge-${invState.tone} mono`} style="font-size:0.8rem;padding:0.35rem 0.8rem">
+        ● {invState.label}
+      </span>
+    </div>
+
+    <div class="scarcity-split">
+      <!-- Left Side: Large Visual Progress Block (Component #14) -->
+      <div class="surface-card surface-card-gold" style="margin:0;display:flex;flex-direction:column;justify-content:space-between">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem">
+            <span class="mono muted" style="font-size:0.78rem">
+              {es ? 'PROGRESO DE CAPACIDAD DEL ÍNDICE' : 'INDEX CAPACITY PROGRESS'}
+            </span>
+            <span class="mono" style="font-size:1.35rem;font-weight:800;color:var(--gold-primary)">
+              {filledPositions} / 1,500
+            </span>
+          </div>
+
+          <div
+            style="height:10px;width:100%;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;margin-bottom:1.5rem;border:1px solid var(--border-subtle)"
+            role="progressbar"
+            aria-valuenow={filledPositions}
+            aria-valuemin={0}
+            aria-valuemax={1500}
+          >
+            <div
+              style={`height:100%;width:${Math.max(progressPct, filledPositions > 0 ? 1.8 : 0)}%;background:linear-gradient(90deg, var(--gold-primary), var(--emerald));border-radius:999px`}
+            />
+          </div>
+
+          <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);gap:0.85rem">
+            <div class="stat-tile">
+              <strong>1,500</strong>
+              <span>{es ? 'Posiciones totales' : 'Total positions'}</span>
+            </div>
+            <div class="stat-tile">
+              <strong>{filledPositions}</strong>
+              <span>{es ? 'Posiciones ocupadas' : 'Filled positions'}</span>
+            </div>
+            <div class="stat-tile">
+              <strong>{availableNow}</strong>
+              <span>{es ? 'Disponibles ahora' : 'Available now'}</span>
+            </div>
+            <div class="stat-tile">
+              <strong>
+                {stats?.currentPhase ? `${es ? 'Fase' : 'Phase'} ${stats.currentPhase}` : '—'}
+              </strong>
+              <span>
+                {es ? 'Siguiente precio:' : 'Next phase price:'}{' '}
+                {nextPhaseObj ? formatUsdCents(nextPhaseObj.priceUsdCents, lang) : '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border-subtle)">
+          <p class="muted" style="margin:0 0 1rem 0;font-size:0.86rem">
+            {es
+              ? 'A medida que cada fase se completa, se activa automáticamente el siguiente precio. Precios base antes de impuestos.'
+              : 'As each phase fills, the next price becomes active. Base prices before applicable tax.'}
+          </p>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <a class="button" href={es ? '/es/unirse' : '/unirse'}>
+              {es ? 'Unirse a THE1500' : 'Join THE1500'}
+            </a>
+            <a class="btn-secondary" href={es ? '/es/unirse' : '/unirse'}>
+              {es ? 'Ver disponibilidad actual' : 'See current availability'}
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side: 4 Phase Cards driven by backend stats.phases + salesMode + checkoutOpen -->
+      <div class="pricing-phases-grid">
+        {(stats?.phases || []).map((phase) => {
+          const archiveClosed = stats?.salesMode === 'closed_archive';
+          const isCurrent = phase.status === 'current';
+          const isSoldOut = phase.status === 'sold_out' || archiveClosed || phase.remaining <= 0;
+          const isPremium = phase.phase === 4;
+          const isOpenSale = Boolean(!isPremium && !isSoldOut && isCurrent && stats?.salesMode === 'selling' && stats?.checkoutOpen);
+          const isTransition = Boolean(!isPremium && !isSoldOut && isCurrent && (!stats?.checkoutOpen || stats?.salesMode === 'awaiting_founder_allocation'));
+          const isPremiumOpen = Boolean(isPremium && !isSoldOut && isCurrent && stats?.salesMode === 'premium_admission');
+
+          let badgeLabel = es ? 'Fase futura' : 'Future phase';
+          let badgeClass = 'badge-slate';
+          let footerNote = '';
+
+          if (isSoldOut) {
+            badgeLabel = es ? 'Agotada' : 'Sold out';
+            badgeClass = 'badge-slate';
+            footerNote = archiveClosed
+              ? es
+                ? 'Directorio completo (0 posiciones disponibles)'
+                : 'Directory sold out (0 positions remaining)'
+              : es
+                ? 'Fase agotada (0 posiciones disponibles)'
+                : 'Phase sold out (0 positions remaining)';
+          } else if (isPremium) {
+            if (isPremiumOpen) {
+              badgeLabel = es ? 'Admisión Premium' : 'Premium admission';
+              badgeClass = 'badge-gold';
+              footerNote = es
+                ? `Admisión humana abierta · ${phase.remaining} disponibles (sin checkout automático)`
+                : `Human admission open · ${phase.remaining} remaining (no auto-checkout)`;
+            } else {
+              badgeLabel = es ? 'Fase futura' : 'Future phase';
+              badgeClass = 'badge-slate';
+              footerNote = es
+                ? `Fase futura · Admisión humana (${phase.remaining} cupos, sin checkout automático)`
+                : `Future phase · Human admission (${phase.remaining} positions, no auto-checkout)`;
+            }
+          } else if (isOpenSale) {
+            badgeLabel = es ? 'Venta abierta' : 'Open sale';
+            badgeClass = 'badge-gold';
+            footerNote =
+              phase.phase === 1
+                ? es
+                  ? `100 invitaciones del programa en esta fase · ${phase.remaining} disponibles`
+                  : `100 program invitations inside this phase · ${phase.remaining} remaining`
+                : es
+                  ? `Venta abierta · ${phase.remaining} posiciones disponibles`
+                  : `Open sale · ${phase.remaining} positions remaining`;
+          } else if (isTransition) {
+            badgeLabel = es ? 'En transición' : 'In transition';
+            badgeClass = 'badge-amber';
+            footerNote = es
+              ? `Ventas en pausa · En transición (${phase.remaining} posiciones pendientes)`
+              : `Sales paused · In transition (${phase.remaining} positions pending)`;
+          } else {
+            badgeLabel = es ? 'Fase futura' : 'Future phase';
+            badgeClass = 'badge-slate';
+            footerNote = es
+              ? `Fase futura · ${phase.remaining} posiciones (abre al completarse Fase ${phase.phase - 1})`
+              : `Future phase · ${phase.remaining} positions (opens after Phase ${phase.phase - 1} completes)`;
+          }
+
+          return (
+            <div class={`pricing-phase-card ${isCurrent && !isSoldOut ? 'active-phase' : ''}`}>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                  <span class="mono" style="font-weight:700;font-size:0.95rem">
+                    {es ? `Fase ${phase.phase}` : `Phase ${phase.phase}`}
+                  </span>
+                  <span class={`badge ${badgeClass}`}>{badgeLabel}</span>
+                </div>
+                <div class="mono muted" style="font-size:0.82rem;margin-bottom:0.65rem">
+                  {es
+                    ? `Posiciones ${phase.firstPosition}–${phase.lastPosition}`
+                    : `Positions ${phase.firstPosition}–${phase.lastPosition}`}
+                </div>
+                <div
+                  class="mono"
+                  style={`font-size:1.85rem;font-weight:800;color:${
+                    isCurrent && !isSoldOut ? 'var(--gold-primary)' : 'var(--text-primary)'
+                  };margin-bottom:0.5rem`}
+                >
+                  {formatUsdCents(phase.priceUsdCents, lang)}
+                </div>
+              </div>
+              <div class="muted" style="font-size:0.8rem;padding-top:0.65rem;border-top:1px solid var(--border-subtle)">
+                {footerNote}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 8: TRUST / PRODUCT PROOF -->
+  <section
+    id="trust-proof"
+    class="home-section"
+    aria-label={es ? 'Confianza y prueba de producto' : 'Trust and product proof'}
+  >
+    <div class="section-heading-block">
+      <div>
+        <div class="eyebrow">{es ? 'INFRAESTRUCTURA VERIFICABLE' : 'VERIFIABLE INFRASTRUCTURE'}</div>
+        <h2>
+          {es
+            ? 'Construido como un producto real, no solo una promesa'
+            : 'Built as a real product, not just a promise'}
+        </h2>
+      </div>
+    </div>
+
+    <div class="grid-4">
+      <!-- Proof Card 1 -->
+      <article class="surface-card" style="margin:0;padding:1.35rem">
+        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">PROOF 01</span>
+        <h3>{es ? 'Perfil público de empresa' : 'Public company profile'}</h3>
+        <p class="muted" style="margin:0;font-size:0.88rem">
+          {es
+            ? 'Cada empresa aprobada recibe una página de perfil público estructurada.'
+            : 'Every approved company receives a public profile page.'}
+        </p>
+      </article>
+
+      <!-- Proof Card 2 -->
+      <article class="surface-card" style="margin:0;padding:1.35rem">
+        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">PROOF 02</span>
+        <h3>{es ? 'Salida estructurada' : 'Structured output'}</h3>
+        <p class="muted" style="margin:0;font-size:0.88rem">
+          {es
+            ? 'Los perfiles se publican con datos semánticos estructurados y exportación en JSON-LD.'
+            : 'Profiles are published with structured semantic data and JSON-LD export.'}
+        </p>
+      </article>
+
+      <!-- Proof Card 3 -->
+      <article class="surface-card" style="margin:0;padding:1.35rem">
+        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">PROOF 03</span>
+        <h3>{es ? 'Revisión antes de publicar' : 'Review before publication'}</h3>
+        <p class="muted" style="margin:0;font-size:0.88rem">
+          {es
+            ? 'Las empresas revisan y aprueban expresamente su perfil antes de que sea público.'
+            : 'Companies review and approve their profile before it goes live.'}
+        </p>
+      </article>
+
+      <!-- Proof Card 4 -->
+      <article class="surface-card" style="margin:0;padding:1.35rem">
+        <span class="badge badge-gold mono" style="margin-bottom:0.75rem">PROOF 04</span>
+        <h3>{es ? 'Publicación garantizada' : 'Guaranteed publication'}</h3>
+        <p class="muted" style="margin:0;font-size:0.88rem">
+          {es
+            ? 'Los perfiles publicados están garantizados durante 12 meses bajo las condiciones aplicables.'
+            : 'Published profiles are guaranteed for 12 months under the applicable conditions.'}
+        </p>
+      </article>
+    </div>
+
+    <p class="muted" style="margin:1.25rem 0 0 0;font-size:0.84rem">
+      {es
+        ? 'La conservación durante 10 años es un objetivo técnico, no una garantía contractual.'
+        : '10-year conservation is a technical objective, not a contractual guarantee.'}
+    </p>
+
+    <!-- FAQ Section (#faq) -->
+    <div id="faq" style="margin-top:3rem;padding-top:2.5rem;border-top:1px solid var(--border-subtle)">
+      <div class="eyebrow">{es ? 'PREGUNTAS FRECUENTES' : 'FREQUENTLY ASKED QUESTIONS'}</div>
+      <h3 style="font-size:1.5rem;margin-bottom:1.25rem">FAQ</h3>
+      <div class="grid-2">
+        <div class="stat-tile">
+          <h4 style="margin:0 0 0.4rem 0;font-size:1rem">
+            {es
+              ? '¿THE1500 garantiza aparecer en las respuestas de ChatGPT, Gemini o Claude?'
+              : 'Does THE1500 guarantee rankings or recommendations in ChatGPT, Gemini, or Claude?'}
+          </h4>
+          <p class="muted" style="margin:0;font-size:0.86rem">
+            {es
+              ? 'No. Ninguna plataforma puede garantizar las respuestas de modelos externos. THE1500 entrega una página pública estructurada, JSON-LD exportable y presencia en el buscador léxico y asistente del propio directorio.'
+              : 'No. No third party can guarantee external LLM outputs. THE1500 provides a structured public profile, exportable JSON-LD, and inclusion in our own lexical search and grounded assistant.'}
+          </p>
+        </div>
+        <div class="stat-tile">
+          <h4 style="margin:0 0 0.4rem 0;font-size:1rem">
+            {es
+              ? '¿Cuándo se asigna el número de posición?'
+              : 'When is my company’s position number assigned?'}
+          </h4>
+          <p class="muted" style="margin:0;font-size:0.86rem">
+            {es
+              ? 'El número de posición se adjudica únicamente tras confirmarse la asignación definitiva. Una reserva temporal de 20 minutos bloquea capacidad pero no asigna número.'
+              : 'Your position number is allocated strictly upon confirmed assignment. A 20-minute reservation holds capacity without exposing a number.'}
+          </p>
+        </div>
+        <div class="stat-tile">
+          <h4 style="margin:0 0 0.4rem 0;font-size:1rem">
+            {es
+              ? '¿Qué sucede si una empresa publicada decide retirar su ficha?'
+              : 'What happens if a published company withdraws its profile?'}
+          </h4>
+          <p class="muted" style="margin:0;font-size:0.86rem">
+            {es
+              ? 'Su identidad se elimina de todas las superficies públicas y la posición queda permanentemente retirada ("Cupo retirado — No disponible"). Nunca vuelve a ponerse a la venta.'
+              : 'Its identity is removed from all public surfaces and the position is permanently retired ("Position retired — Not available"). It never returns to sale.'}
+          </p>
+        </div>
+        <div class="stat-tile">
+          <h4 style="margin:0 0 0.4rem 0;font-size:1rem">
+            {es
+              ? '¿Se publica algún texto sin mi aprobación?'
+              : 'Is any profile text published without my approval?'}
+          </h4>
+          <p class="muted" style="margin:0;font-size:0.86rem">
+            {es
+              ? 'Jamás. La inactividad nunca equivale a aprobación. El representante debe aprobar explícitamente el contentDigest antes de publicar.'
+              : 'Never. Inactivity never counts as approval. An authorized representative must explicitly approve the exact contentDigest before publication.'}
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 9: FINAL CTA SECTION -->
+  <section
+    class="surface-card surface-card-gold"
+    style="margin:3rem 0 1rem 0;padding:clamp(2rem,4.5vw,3.5rem);text-align:center"
+    aria-label={es ? 'Llamado a la acción final' : 'Final call to action'}
+  >
+    <div class="eyebrow" style="justify-content:center">
+      {es ? 'CAPACIDAD ESTRICTAMENTE LIMITADA' : 'STRICTLY LIMITED CAPACITY'}
+    </div>
+    <h2 style="font-size:clamp(1.85rem,3.6vw,2.85rem);max-width:26ch;margin:0 auto 0.75rem auto">
+      {es
+        ? 'Únete a las 1.500 empresas que construyen visibilidad estructurada.'
+        : 'Join the 1,500 companies building structured visibility.'}
+    </h2>
+    <p style="margin:0 auto 1.75rem auto;font-size:1.05rem;max-width:54ch">
+      {es
+        ? 'Reclama tu lugar en un directorio empresarial limitado diseñado para la era de la IA.'
+        : 'Claim your place in a limited business directory designed for the AI era.'}
+    </p>
+
+    <div style="display:flex;justify-content:center;align-items:center;gap:0.85rem;flex-wrap:wrap;margin-bottom:1.1rem">
+      <a class="button" href={es ? '/es/unirse' : '/unirse'} style="padding:0.85rem 1.75rem;font-size:0.96rem">
+        {es ? 'Unirse a THE1500' : 'Join THE1500'}
+      </a>
+      <a class="btn-secondary" href={es ? '/es/empresas' : '/empresas'} style="padding:0.85rem 1.75rem;font-size:0.96rem">
+        {es ? 'Ver Directorio' : 'View Directory'}
+      </a>
+    </div>
+
+    <div class="muted" style="font-size:0.85rem">
+      {es ? '¿Ya estás registrado?' : 'Already registered?'}{' '}
+      <a href={es ? '/es/login' : '/login'} style="font-weight:600;text-decoration:underline">
+        {es ? 'Iniciar sesión' : 'Sign in'}
+      </a>
+    </div>
+  </section>
+</main>

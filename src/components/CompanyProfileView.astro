@@ -1,0 +1,322 @@
+---
+import type { Locale, PublicProfile } from '../lib/contracts/api';
+import { formatDate, formatPosition, provenanceLabel } from '../ui/i18n';
+
+interface Props {
+  lang: Locale;
+  dto: PublicProfile | null;
+  translated?: boolean;
+  rawJsonLd?: string;
+}
+
+const { lang, dto, translated = true, rawJsonLd = '{}' } = Astro.props;
+const es = lang === 'es';
+const isDemo = dto ? dto.name.toLowerCase().startsWith('demo ') : false;
+
+let prettyJsonLd = rawJsonLd;
+try {
+  prettyJsonLd = JSON.stringify(JSON.parse(rawJsonLd), null, 2);
+} catch {
+  prettyJsonLd = rawJsonLd;
+}
+---
+<main>
+  {dto ? (
+    <article>
+      <!-- Breadcrumb & Top Bar -->
+      <div
+        style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem"
+      >
+        <a
+          href={es ? '/es/empresas' : '/empresas'}
+          class="btn-secondary btn-sm"
+        >
+          ← {es ? 'Volver al directorio' : 'Back to directory'}
+        </a>
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+          <span class="badge badge-emerald">
+            {es ? 'Perfil aprobado y publicado' : 'Owner-approved & published'}
+          </span>
+          <span class="badge badge-slate mono">v{dto.version}</span>
+          <a href={dto.jsonld} class="badge badge-gold mono" style="text-decoration:none">
+            {es ? 'Descargar JSON-LD' : 'View machine-readable JSON-LD'}
+          </a>
+        </div>
+      </div>
+
+      <!-- Header Card -->
+      <section class="surface-card surface-card-gold" style="margin-top:0">
+        <div
+          style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border-subtle)"
+        >
+          <div style="flex:1 1 500px">
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.65rem">
+              <span class="badge badge-gold mono" style="font-size:0.86rem;padding:0.3rem 0.75rem">
+                {es ? 'Posición' : 'Position'} {formatPosition(dto.position)} / 1500
+              </span>
+              {isDemo && (
+                <span class="badge badge-amber mono" title={es ? 'Empresa de demostración' : 'Demonstration company'}>
+                  DEMO
+                </span>
+              )}
+              {dto.industry && <span class="badge badge-slate">{dto.industry}</span>}
+              <span class="badge badge-blue mono">{dto.country}</span>
+              {dto.foundedYear && (
+                <span class="badge badge-slate mono">
+                  {es ? `Fundada en ${dto.foundedYear}` : `Est. ${dto.foundedYear}`}
+                </span>
+              )}
+            </div>
+
+            <h1 style="margin:0 0 0.5rem 0;font-size:clamp(1.85rem,4vw,2.85rem)">{dto.name}</h1>
+
+            <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-size:0.88rem;color:var(--text-secondary)">
+              {dto.website && (
+                <a
+                  href={dto.website.startsWith('http') ? dto.website : `https://${dto.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="mono"
+                >
+                  {dto.website} ↗
+                </a>
+              )}
+              <span>
+                {es ? 'Publicado:' : 'Published:'} <strong>{formatDate(dto.publishedAt, lang)}</strong>
+              </span>
+              {dto.serviceCountries && dto.serviceCountries.length > 0 && (
+                <span>
+                  {es ? 'Cobertura:' : 'Service countries:'}{' '}
+                  <strong class="mono">{dto.serviceCountries.join(', ')}</strong>
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div
+            style="padding:1rem 1.25rem;border-radius:var(--radius-md);background:var(--bg-surface);border:1px solid var(--border-subtle);text-align:right;min-width:190px"
+          >
+            <div class="mono muted" style="font-size:0.72rem">
+              {es ? 'NÚMERO DE POSICIÓN' : 'REGISTRY POSITION'}
+            </div>
+            <div class="mono" style="font-size:2rem;font-weight:800;color:var(--gold-primary)">
+              {formatPosition(dto.position)}
+            </div>
+            <div class="mono muted" style="font-size:0.75rem">
+              Schema.org Organization
+            </div>
+          </div>
+        </div>
+
+        {es && !translated && (
+          <div class="notice" style="margin-top:1rem;margin-bottom:0">
+            <small>Descripción disponible únicamente en inglés.</small>
+          </div>
+        )}
+
+        <div style="margin-top:1.25rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem">
+            <h2 style="font-size:1.05rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--gold-primary);margin:0">
+              {es ? 'Resumen ejecutivo autorizado' : 'Authorized executive summary'}
+            </h2>
+            {dto.provenance && (dto.provenance.descriptionEn || dto.provenance.descriptionEs || dto.provenance.descriptionOriginal) && (
+              <span class="badge badge-blue mono" style="font-size:0.72rem">
+                {
+                  provenanceLabel(
+                    (es ? dto.provenance.descriptionEs : dto.provenance.descriptionEn) ||
+                      dto.provenance.descriptionOriginal ||
+                      'owner_declared',
+                    lang
+                  ).label
+                }
+              </span>
+            )}
+          </div>
+          <p style="font-size:1.06rem;color:var(--text-primary);line-height:1.7;margin:0">
+            {dto.summary}
+          </p>
+        </div>
+      </section>
+
+      <!-- Structured Capabilities & Audiences -->
+      <div class="grid-2">
+        {dto.services && dto.services.length > 0 && (
+          <section class="surface-card" style="margin:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem">
+              <h2 style="font-size:1.2rem;margin:0">
+                {es ? 'Servicios estructurados' : 'Structured services'}
+              </h2>
+              {dto.provenance?.services && (
+                <span class="badge badge-slate mono" style="font-size:0.7rem">
+                  {provenanceLabel(dto.provenance.services, lang).label}
+                </span>
+              )}
+            </div>
+            <ul style="padding-left:1.15rem;margin:0;display:grid;gap:0.5rem;color:var(--text-primary)">
+              {dto.services.map((service) => (
+                <li>{service}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {dto.audiences && dto.audiences.length > 0 && (
+          <section class="surface-card" style="margin:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem">
+              <h2 style="font-size:1.2rem;margin:0">
+                {es ? 'Audiencias y clientes objetivo' : 'Target B2B audiences'}
+              </h2>
+              {dto.provenance?.audiences && (
+                <span class="badge badge-slate mono" style="font-size:0.7rem">
+                  {provenanceLabel(dto.provenance.audiences, lang).label}
+                </span>
+              )}
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+              {dto.audiences.map((aud) => (
+                <span class="badge badge-blue" style="font-size:0.84rem;padding:0.35rem 0.75rem">
+                  {aud}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      <!-- Problem -> Solution Matrix -->
+      {dto.problemSolutions && dto.problemSolutions.length > 0 && (
+        <section class="surface-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem">
+            <div>
+              <div class="eyebrow" style="margin-bottom:0.25rem">
+                {es ? 'MATRIZ DE PROBLEMAS Y SOLUCIONES' : 'PROBLEM — SOLUTION ARCHITECTURE'}
+              </div>
+              <h2 style="font-size:1.3rem;margin:0">
+                {es ? 'Problemas de negocio que resuelve' : 'Business problems solved'}
+              </h2>
+            </div>
+            {dto.provenance?.problemSolutions && (
+              <span class="badge badge-slate mono" style="font-size:0.72rem">
+                {provenanceLabel(dto.provenance.problemSolutions, lang).label}
+              </span>
+            )}
+          </div>
+
+          <ul style="list-style:none;padding:0;margin:0;display:grid;gap:0.85rem">
+            {dto.problemSolutions.map((ps) => (
+              <li
+                style="padding:1rem 1.15rem;border-radius:var(--radius-md);background:var(--bg-elevated);border:1px solid var(--border-subtle)"
+              >
+                <div style="font-weight:600;color:var(--gold-primary);margin-bottom:0.3rem">
+                  {es ? 'Problema:' : 'Problem:'} {ps.problem}: {ps.solution}
+                </div>
+                <div style="font-size:0.9rem;color:var(--text-secondary)">
+                  <strong style="color:var(--emerald)">{es ? 'Solución aplicada:' : 'Applied solution:'}</strong>{' '}
+                  {ps.solution}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <!-- Owner-Declared Certifications & Advantages (when opted in) -->
+      {((dto.ownerDeclared?.certifications && dto.ownerDeclared.certifications.length > 0) ||
+        (dto.ownerDeclared?.advantages && dto.ownerDeclared.advantages.length > 0)) && (
+        <div class="grid-2">
+          {dto.ownerDeclared.certifications.length > 0 && (
+            <section class="surface-card" style="margin:0">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+                <h3 style="margin:0">{es ? 'Certificaciones declaradas' : 'Owner-declared certifications'}</h3>
+                <span class="badge badge-gold">{es ? 'Declarado por titular' : 'Owner-declared'}</span>
+              </div>
+              <ul style="padding-left:1.1rem;margin:0">
+                {dto.ownerDeclared.certifications.map((c) => (
+                  <li>{c}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {dto.ownerDeclared.advantages.length > 0 && (
+            <section class="surface-card" style="margin:0">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+                <h3 style="margin:0">{es ? 'Ventajas competitivas declaradas' : 'Owner-declared advantages'}</h3>
+                <span class="badge badge-gold">{es ? 'Declarado por titular' : 'Owner-declared'}</span>
+              </div>
+              <ul style="padding-left:1.1rem;margin:0">
+                {dto.ownerDeclared.advantages.map((a) => (
+                  <li>{a}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      )}
+
+      <!-- Provenance & Machine-Readable JSON-LD Inspector -->
+      <section class="surface-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem">
+          <div>
+            <div class="eyebrow" style="margin-bottom:0.2rem">
+              {es ? 'DATOS LEGIBLES POR MÁQUINAS' : 'MACHINE-READABLE SEMANTIC RECORD'}
+            </div>
+            <h2 style="font-size:1.25rem;margin:0">Schema.org JSON-LD (@graph)</h2>
+          </div>
+          <a href={dto.jsonld} class="btn-secondary btn-sm mono">
+            {es ? 'Consultar JSON-LD' : 'View machine-readable JSON-LD'} ({dto.jsonld})
+          </a>
+        </div>
+
+        {dto.provenance && Object.keys(dto.provenance).length > 0 && (
+          <div style="margin-bottom:1rem">
+            <div class="muted" style="font-size:0.8rem;margin-bottom:0.4rem">
+              {es ? 'Procedencia verificada por campo:' : 'Field provenance metadata:'}
+            </div>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+              {Object.entries(dto.provenance).map(([field, pType]) => {
+                const info = provenanceLabel(pType, lang);
+                return (
+                  <span class={`badge badge-${info.tone} mono`} style="font-size:0.72rem">
+                    {field}: {info.label}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <details style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:0.75rem 1rem">
+          <summary style="cursor:pointer;font-family:var(--font-mono);font-size:0.82rem;color:var(--gold-primary)">
+            {es ? 'Inspeccionar documento JSON-LD incrustado' : 'Inspect embedded JSON-LD document'}
+          </summary>
+          <pre
+            class="mono"
+            style="margin:0.85rem 0 0 0;font-size:0.76rem;color:var(--text-secondary);overflow-x:auto;line-height:1.5"
+          >{prettyJsonLd}</pre>
+        </details>
+
+        <p class="muted" style="margin:1rem 0 0 0;font-size:0.82rem">
+          <small>
+            {es
+              ? 'Información declarada y aprobada por la empresa. THE1500 no certifica todas sus afirmaciones.'
+              : 'Information declared and approved by the business. THE1500 does not certify all claims.'}
+          </small>
+        </p>
+      </section>
+    </article>
+  ) : (
+    <section class="surface-card" style="text-align:center;padding:3rem 1.5rem">
+      <div class="eyebrow" style="justify-content:center">404 · PROFILE_NOT_FOUND</div>
+      <h1>{es ? 'Empresa no encontrada' : 'Company not found'}</h1>
+      <p style="margin:0 auto 1.5rem auto">
+        {es
+          ? 'Este perfil empresarial no existe, aún no ha sido publicado por su titular o su posición fue retirada.'
+          : 'This business profile does not exist, has not yet been published by its owner, or its position was withdrawn.'}
+      </p>
+      <a href={es ? '/es/empresas' : '/empresas'} class="button">
+        {es ? 'Explorar el directorio' : 'Explore the directory'}
+      </a>
+    </section>
+  )}
+</main>

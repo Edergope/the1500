@@ -1,13 +1,16 @@
 ---
 import Shell from '../../layouts/Shell.astro';
+import JoinPageView from '../../components/JoinPageView.astro';
+import { env } from 'cloudflare:workers';
+import { getPublicStats } from '../../core/public';
+
+let stats = null;
+try {
+  stats = await getPublicStats(env.DB);
+} catch {
+  /* no fake data */
+}
 ---
-<Shell title="Unirse" lang="es">
-  <main>
-    <div class="eyebrow">1.500 posiciones. Un directorio global.</div>
-    <h1>Tu empresa existe. ¿La inteligencia artificial puede entender lo que hace?</h1>
-    <p>THE1500 convierte información empresarial autorizada en un perfil semántico público con descripción aprobada, servicios estructurados y JSON-LD exportable.</p>
-    <div class="panel"><h2>Qué recibe tu empresa</h2><p>Una ficha revisada y aprobada por su titular, una página pública, datos legibles por máquinas y presencia en la búsqueda y el asistente del propio directorio.</p><p class="muted">12 meses de publicación contractual desde la primera publicación, según términos. Conservación por 10 años: objetivo técnico, no garantía contractual.</p></div>
-    <div class="panel"><h2>Inventario limitado</h2><p>Posiciones 1–600: US$100 (100 fundadores gratuitos por invitación); 601–1050: US$400; 1051–1350: US$1.000; 1351–1500: US$5.066, admisión Premium manual.</p><p class="notice">El registro y los cobros no están habilitados en esta base inicial. Aquí no se adjudican posiciones ni se procesa dinero.</p></div>
-    <p>THE1500 no garantiza que ChatGPT, Gemini, Claude, buscadores u otras plataformas externas indexen, recomienden o citen a ninguna empresa.</p>
-  </main>
+<Shell title="Unirse y Tramos de Membresía" lang="es">
+  <JoinPageView lang="es" stats={stats} />
 </Shell>

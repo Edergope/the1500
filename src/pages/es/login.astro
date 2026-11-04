@@ -1,0 +1,13 @@
+---
+import Shell from '../../layouts/Shell.astro';
+import AuthPortal from '../../components/AuthPortal';
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+const requiredRedirect = Astro.url.searchParams.get('required') === '1';
+---
+<Shell title="Iniciar sesión — THE1500" lang="es" forceNoIndex={true}>
+  <main>
+    <AuthPortal client:load lang="es" requiredRedirect={requiredRedirect} />
+  </main>
+</Shell>

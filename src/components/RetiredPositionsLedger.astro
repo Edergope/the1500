@@ -1,0 +1,36 @@
+---
+import type { Locale } from '../lib/contracts/api';
+import { formatPosition } from '../ui/i18n';
+
+interface RetiredItem {
+  position: number;
+  label: string;
+  labelEs: string;
+}
+
+interface Props {
+  items: RetiredItem[];
+  lang?: Locale;
+}
+
+const { items, lang = 'en' } = Astro.props;
+const es = lang === 'es';
+---
+{items && items.length > 0 && (
+  <section class="surface-card" aria-label={es ? 'Cupos retirados' : 'Retired positions'}>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.65rem">
+      {items.map((item) => (
+        <div
+          style="display:flex;align-items:center;justify-content:space-between;gap:0.65rem;padding:0.65rem 0.9rem;border-radius:var(--radius-sm);background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.22)"
+        >
+          <span class="mono" style="font-weight:700;color:var(--red)">
+            {formatPosition(item.position)}
+          </span>
+          <span style="font-size:0.82rem;color:var(--text-secondary)">
+            {es ? item.labelEs : item.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  </section>
+)}
