@@ -5,6 +5,7 @@ import State from './State.astro';
 import { copy, formatNumber, formatUsd, stateLabel, type AdminLang } from './copy';
 import { getControlOverview, type ControlOverview } from '../../core/admin-console';
 import { integrationStatus } from '../../core/admin';
+import { runtimeEnv } from '../../core/integrations';
 
 interface Props { lang: AdminLang; }
 const { lang } = Astro.props;
@@ -13,7 +14,8 @@ const n = (value: number) => formatNumber(lang, value);
 const base = lang === 'es' ? '/es/admin' : '/admin';
 let data: ControlOverview | null = null;
 try { data = await getControlOverview(env.DB); } catch (e) { console.error('admin_overview_unavailable', e instanceof Error ? e.message : String(e)); }
-const integrations = integrationStatus(env);
+// What requests run with: the Worker configuration plus whatever the panel governs (profile generation for AI).
+const integrations = integrationStatus({ ...(await runtimeEnv(env, { stripe: true, mail: true, ai: 'profile_generation' })), SNAPSHOTS: env.SNAPSHOTS });
 const s = data?.stats;
 const assigned = s ? s.occupied - s.retired : 0;
 const share = (value: number) => `${(value / 1500) * 100}%`;
@@ -88,7 +90,7 @@ const attention = data ? [
             <div><dt>{t.stripe}</dt><dd class="ad-dd-text"><State lang={lang} value={integrations.stripe.enabled ? 'active' : 'pending'} label={integrations.stripe.keyPresent ? `${integrations.stripe.enabled ? t.enabled : t.disabled} · ${integrations.stripe.keyIsTestMode ? t.testKey : t.liveKey}` : t.notConfigured} /></dd></div>
             <div><dt>{t.ai}</dt><dd class="ad-dd-text"><State lang={lang} value={integrations.ai.configured ? 'active' : 'pending'} label={integrations.ai.configured ? `${integrations.ai.provider ?? ''} ${integrations.ai.model ?? ''}`.trim() : t.notConfigured} /></dd></div>
           </dl>
-          <p class="ad-note">{t.readOnly}</p>
+          <p class="ad-note"><a href={`${base}/integraciones`}>{t.manageIntegrations}</a></p>
         </section>
       </div>
     </>

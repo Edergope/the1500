@@ -167,7 +167,7 @@ PAY-002 necesita los secretos de ADMIN-002 para registrar credenciales de prueba
 |---|---|---|
 | Ninguna | ADMIN-001 | El esquema actual basta |
 | `0011` | ADMIN-001 (rendimiento) | Cinco índices: `companies(created_at)`, `memberships(company_id)`, perfiles por fecha, `admin_events` por fecha y por acción. Preparada en `db/pending/`; se aplica después de 0010 |
-| `0012` | ADMIN-002 | `provider_credentials`, `provider_settings`, `ai_function_config`, reautenticación en `sessions` |
+| `0012` | ADMIN-002 | `provider_credentials`, `provider_settings`, `ai_function_config`, `integration_choices`, `reauth_challenges` y `sessions.reauthenticated_at`. Preparada en `db/pending/` y probada en local; detalle en `docs/ADMIN002_INTEGRATIONS.md` |
 | `0013` | PAY-002 | Ampliar `purchase_attempts.provider` (hoy admite `stripe`, `bank`, `manual`), moneda local, tasa, vigencia y mercado |
 
 La migración 0013 reconstruye una tabla con `CHECK`, así que se prueba primero sobre una copia. No se elimina ningún dato.

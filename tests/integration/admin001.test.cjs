@@ -38,7 +38,7 @@ describe('authorization in the core',()=>{
     const fs=require('node:fs');const dir=path.join(ROOT,'src/components/admin');
     const all=fs.readdirSync(dir).map(f=>fs.readFileSync(path.join(dir,f),'utf8')).join('\n');
     for(const route of ['premium/assign','founder-award','payments/resolve-late'])assert.equal(all.includes(route),false,route);
-    assert.deepEqual([...new Set(all.match(/\/api\/v1\/admin\/[a-z/-]+/g))].sort(),['/api/v1/admin/company-action','/api/v1/admin/profiles/detail','/api/v1/admin/profiles/review','/api/v1/admin/review-company']);
+    assert.deepEqual([...new Set(all.match(/\/api\/v1\/admin\/[a-z/-]+/g))].sort(),['/api/v1/admin/company-action','/api/v1/admin/integrations/','/api/v1/admin/profiles/detail','/api/v1/admin/profiles/review','/api/v1/admin/reauth/confirm','/api/v1/admin/reauth/request','/api/v1/admin/review-company']);
   });
 });
 describe('the superadministrator procedure',()=>{

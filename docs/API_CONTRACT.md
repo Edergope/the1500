@@ -156,6 +156,17 @@ Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or A
 | GET, POST `/admin/premium/requests` | POST `{requestId,status:"in_review"\|"accepted"\|"rejected",reasonCode,evidenceReference}` | Applications from the portal form. Email or meeting notes go in the evidence reference |
 | POST `/admin/premium/assign` | `{requestId,reasonCode,evidenceReference}` | Accepted request, tier 4 open, funds evidence |
 | GET `/admin/integrations` | | Which mail provider is selected, and whether mail, Stripe (test mode) and AI are configured. Presence and mode only, never a value |
+| GET `/admin/integrations/state` | | ADMIN-002. Every provider: adapter availability, settings, credentials by name with last 4 characters and version, last check, source (panel or Worker), AI function models, history. Never a value |
+| POST `/admin/integrations/credential` | `provider,name,value,reasonCode,evidenceReference?` | Seals and stores a credential, retiring the previous one. Requires re-authentication in the last 15 minutes. Live Stripe keys refused |
+| POST `/admin/integrations/credential-disable` | `provider,name,reasonCode,evidenceReference?` | Disables a credential; a required one switches its provider off. Re-authentication |
+| POST `/admin/integrations/enable` | `provider,enabled,reasonCode,evidenceReference?` | Needs an adapter, all required credentials and a passed check of those values. Mercado Pago refuses until PAY-002. Re-authentication |
+| POST `/admin/integrations/settings` | `provider,settings,reasonCode,evidenceReference?` | Anthropic `{model}`, Mercado Pago `{country}` (currency follows), mail `{from}`. Re-authentication |
+| POST `/admin/integrations/ai-function` | `function,provider,model,reasonCode,evidenceReference?` | Model for `profile_generation` or `assistant`. Re-authentication |
+| POST `/admin/integrations/mail-select` | `provider,reasonCode,evidenceReference?` | Only after a test message accepted in the last 24 hours. Re-authentication |
+| POST `/admin/integrations/test` | `provider` | Explicit read-only check against Anthropic, Stripe or Mercado Pago; stores the result code |
+| POST `/admin/integrations/mail-test` | `provider` | One message to the administrator's own address. Reports "accepted", never "delivered" |
+| POST `/admin/reauth/request` | `locale` | Emails a one-time link, valid 15 minutes. At most 3 per 15 minutes |
+| POST `/admin/reauth/confirm` | `token` | Confirms the link in the session that sends it; the link's owner must be the signed-in administrator |
 | GET, POST `/admin/seller` | POST `{sellerEntityId,legalName,country,reasonCode,evidenceReference}` | Seller is configuration. Does not enable live payments. |
 
 Admin bootstrap is by SQL on verified user IDs only: `docs/CORE004_IMPLEMENTATION.md` §3.

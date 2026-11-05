@@ -3,3 +3,6 @@ PUBLIC_BASE_URL=http://localhost:4321
 MAIL_PROVIDER=cloudflare
 MAIL_FROM="THE1500 <signin@the1500.test>"
 PAYMENTS_ENABLED=false
+
+# ADMIN-002: 32 random bytes in base64 (openssl rand -base64 32). Local only; never reuse it elsewhere.
+SECRETS_MASTER_KEY=

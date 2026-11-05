@@ -31,6 +31,8 @@ async function call<T>(env:StripeEnv,method:'GET'|'POST',path:string,body?:Recor
   if (!response.ok) throw new StripeApiError(response.status,data.error?.code,data.error?.message||`stripe ${response.status}`);
   return data as T;
 }
+/** Read-only calls for the panel's connection check. */
+export const stripeGet=<T>(env:StripeEnv,path:string)=>call<T>(env,'GET',path);
 export interface StripeSession {id:string;url:string|null;status:string;payment_status:string;amount_total:number|null;currency:string|null;
   payment_intent:string|null;metadata:Record<string,string>|null;livemode:boolean;expires_at:number;customer_details?:{email?:string|null}|null;}
 export function createCheckoutSession(env:StripeEnv,params:{attemptId:string;companyId:string;description:string;amountMinor:number;expiresAt:number;customerEmail:string;locale:'en'|'es';baseUrl:string},idempotencyKey:string) {

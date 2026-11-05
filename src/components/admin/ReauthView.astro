@@ -1,0 +1,25 @@
+---
+import AdminLayout from './AdminLayout.astro';
+import ActionButton from './ActionButton.astro';
+import ActionDialog from './ActionDialog.astro';
+import { type AdminLang } from './copy';
+import { integrationsCopy } from './integrations-copy';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const i = integrationsCopy(lang);
+const back = `${lang === 'es' ? '/es' : ''}/admin/integraciones`;
+// Opening the link changes nothing: a mail scanner that fetches it confirms nobody. The button does, in this session.
+const token = Astro.url.searchParams.get('token') ?? '';
+const valid = /^[0-9a-f]{64}$/.test(token);
+---
+<AdminLayout lang={lang} title={i.reauthTitle} active="integrations">
+  <a class="ad-back" href={back}>{i.back}</a>
+  <header class="ad-head"><h1>{i.reauthTitle}</h1></header>
+  <section class="ad-panel ad-int-reauth">
+    {valid
+      ? <><p>{i.reauthText}</p><div class="ad-actions"><ActionButton lang={lang} plain primary label={i.reauthConfirm} endpoint="/api/v1/admin/reauth/confirm" payload={{ token }} summary={i.reauthText} redirect={back} /></div></>
+      : <p class="ad-dim">{i.reauthMissing}</p>}
+  </section>
+  <ActionDialog lang={lang} />
+</AdminLayout>

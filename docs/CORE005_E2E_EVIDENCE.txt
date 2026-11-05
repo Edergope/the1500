@@ -1,4 +1,4 @@
-THE1500 CORE-005 acceptance journey. 2026-11-05T22:00:22.299Z
+THE1500 CORE-005 acceptance journey. 2026-11-05T23:49:57.949Z
 Worker: built output on workerd via wrangler dev; D1/R2: local persisted.
 Email, LLM, Stripe: local stand-ins (tests/support/upstreams.cjs). NOT real providers, NOT remote Cloudflare.
 
@@ -9,7 +9,7 @@ PASS  Public pages respond in EN and ES
 PASS  Home is the wall of 1,500; only the open phase and its price are public; no technical jargon
 PASS  Magic link works once; raw token not reusable
 PASS  Spanish sign-in stays in Spanish; stale link returns to sign-in; signed-in visitor skips the form
-PASS  1. Company registered by verified corporate email  →  ocean-line-llc-44a1f0fb
+PASS  1. Company registered by verified corporate email  →  ocean-line-llc-18e2a794
 PASS  T07 another user cannot touch a company; no session 401; foreign origin 403; non-admin 403
 PASS  T13 API errors localized  →  en: Please sign in. / es: Inicia sesión.
 PASS  T06 forged webhook rejected over HTTP; nothing assigned

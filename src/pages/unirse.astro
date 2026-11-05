@@ -1,10 +1,11 @@
 ---
 import { env } from 'cloudflare:workers';
+import { runtimeEnv } from '../core/integrations';
 import Shell from '../layouts/Shell.astro';
 import JoinPageView from '../components/JoinPageView.astro';
 import { loadJoin } from '../core/join';
 
-const data = await loadJoin(env.DB, env, 'en');
+const data = await loadJoin(env.DB, await runtimeEnv(env, { stripe: true }), 'en');
 ---
 <Shell title="Join THE1500" lang="en" hideJoin>
   <JoinPageView lang="en" data={data} />

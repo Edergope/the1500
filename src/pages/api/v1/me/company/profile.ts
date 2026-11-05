@@ -1,5 +1,6 @@
 import type {APIRoute} from 'astro';
 import {env} from 'cloudflare:workers';
+import {runtimeEnv} from '../../../../../core/integrations';
 import {apiError,authenticatedPrincipal,IdentityError,json,readJsonObject,requireMember,requireSameOrigin} from '../../../../../core/identity';
 import {getOwnerProfile,parseDeclaration,submitDeclaration} from '../../../../../core/profiles';
 export const PUT:APIRoute=async({request})=>{
@@ -8,7 +9,7 @@ export const PUT:APIRoute=async({request})=>{
     const payload=await readJsonObject(request,20000);
     if (typeof payload.companyId!=='string') throw new IdentityError('INVALID_COMPANY');
     await requireMember(env.DB,user.id,payload.companyId);
-    return json(201,await submitDeclaration(env.DB,env,payload.companyId,user.id,parseDeclaration(payload)));
+    return json(201,await submitDeclaration(env.DB,await runtimeEnv(env,{ai:'profile_generation'}),payload.companyId,user.id,parseDeclaration(payload)));
   } catch(e){return apiError(e);}
 };
 export const GET:APIRoute=async({request})=>{

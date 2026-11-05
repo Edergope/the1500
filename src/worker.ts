@@ -1,6 +1,7 @@
 import {handle} from '@astrojs/cloudflare/handler';
 import {maintenanceSweep} from './core/ops';
 import {sweepPayments} from './core/payments';
+import {runtimeEnv} from './core/integrations';
 
 /** Astro serves requests. The cron keeps time-driven state honest even with no traffic. */
 export default {
@@ -12,8 +13,9 @@ export default {
   async scheduled(_controller:ScheduledController,env:Env,context:ExecutionContext) {
     const now=new Date();
     context.waitUntil((async()=>{
-      await sweepPayments(env.DB,env,now);
-      await maintenanceSweep(env.DB,env,now);
+      const current=await runtimeEnv(env,{stripe:true,mail:true});
+      await sweepPayments(env.DB,current,now);
+      await maintenanceSweep(env.DB,current,now);
     })());
   },
 };

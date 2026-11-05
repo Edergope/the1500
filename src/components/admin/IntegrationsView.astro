@@ -1,0 +1,223 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import ActionButton from './ActionButton.astro';
+import ActionDialog from './ActionDialog.astro';
+import { copy, formatDate, type AdminLang } from './copy';
+import { integrationsCopy } from './integrations-copy';
+import { getIntegrationsView } from '../../core/integrations';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const t = copy(lang);
+const i = integrationsCopy(lang);
+let view: Awaited<ReturnType<typeof getIntegrationsView>> | null = null;
+try { view = await getIntegrationsView(env, Astro.request); } catch (e) { console.error('admin_integrations_unavailable', e instanceof Error ? e.message : String(e)); }
+const api = (action: string) => `/api/v1/admin/integrations/${action}`;
+const ready = view?.migration === 'applied';
+const sealing = view?.masterKey === 'ready';
+const p = (id: string) => view!.providers.find((x) => x.id === id)!;
+const name = (id: string) => (i as unknown as Record<string, string>)[id] ?? id;
+const sourceLabel = (s: string) => (s === 'panel' ? i.sourcePanel : s === 'worker' ? i.sourceWorker : i.sourceNone);
+const checkLabel = (code: string | null | undefined) => (code ? i.codes[code] ?? code : '—');
+const adminEmail = Astro.locals.admin?.email ?? '';
+const groups = [
+  { title: i.ai, ids: ['anthropic', 'openai', 'gemini'] },
+  { title: i.payments, ids: ['stripe', 'mercadopago'] },
+  { title: i.mail, ids: ['cloudflare_email', 'resend'] },
+];
+---
+<AdminLayout lang={lang} title={i.title} active="integrations">
+  <header class="ad-head">
+    <h1>{i.title}</h1>
+    <p class="ad-sub">{i.intro}</p>
+  </header>
+  {!view ? <p class="ad-empty">{t.noData}</p> : (
+    <>
+      <section class="ad-int-status" aria-label={i.title}>
+        <div><small>{i.migration}</small><State lang={lang} value={ready ? 'active' : 'pending'} label={ready ? i.migrationApplied : i.migrationPending} /></div>
+        <div><small>{i.masterKey}</small><State lang={lang} value={sealing ? 'active' : 'failed'} label={sealing ? i.masterReady : view.masterKey === 'invalid' ? i.masterInvalid : i.masterMissing} /></div>
+        <div>
+          <small>{i.reauth}</small>
+          {view.reauth.fresh
+            ? <State lang={lang} value="active" label={`${i.reauthFresh} ${formatDate(lang, view.reauth.until)}`} />
+            : <span class="ad-int-inline"><State lang={lang} value="pending" label={i.reauthNone} />{ready && <ActionButton lang={lang} plain label={i.reauthAsk} endpoint="/api/v1/admin/reauth/request" payload={{ locale: lang }} summary={i.reauthAskSummary} success={i.reauthSent} />}</span>}
+        </div>
+      </section>
+      {!ready && <p class="ad-empty ad-int-pending">{i.migrationPendingText}</p>}
+
+      {groups.map((group) => (
+        <section class="ad-int-group" aria-labelledby={`g-${group.ids[0]}`}>
+          <h2 id={`g-${group.ids[0]}`}>{group.title}</h2>
+          {group.ids[0] === 'anthropic' && <p class="ad-note ad-int-rule">{i.aiRule}</p>}
+          {group.ids[0] === 'cloudflare_email' && <p class="ad-note ad-int-rule">{i.mailRule} {i.acceptedNote}</p>}
+          <div class="ad-int-grid">
+            {group.ids.map((id) => {
+              const x = p(id);
+              const isMail = x.kind === 'mail';
+              // Until the panel chooses, mail goes through the Worker's provider, and that is what is shown.
+              const inUse = isMail && (view!.mail.selected ? view!.mail.selected === id : (view!.mail.workerProvider === 'cloudflare' ? id === 'cloudflare_email' : id === 'resend'));
+              if (!x.adapter && !x.acceptsCredentials) return (
+                <article class="ad-int is-off" id={`p-${id}`}>
+                  <header class="ad-int-head"><h3>{name(id)}</h3><State lang={lang} value="plain" label={i.notAvailable} /></header>
+                  <p class="ad-int-text">{i.notAvailableText}</p>
+                </article>
+              );
+              return (
+                <article class:list={['ad-int', (x.enabled || inUse) && 'is-on']} id={`p-${id}`}>
+                  <header class="ad-int-head">
+                    <h3>{name(id)}</h3>
+                    {isMail
+                      ? <State lang={lang} value={inUse ? 'active' : 'plain'} label={inUse ? i.selected : i.notSelected} />
+                      : id === 'mercadopago'
+                        ? <State lang={lang} value="pending" label={i.mpPending} />
+                        : <State lang={lang} value={x.enabled ? 'active' : 'plain'} label={x.enabled ? i.on : i.off} />}
+                  </header>
+                  {id === 'mercadopago' && <p class="ad-int-text">{i.mpPendingText}</p>}
+                  <dl class="ad-rows ad-rows-tight ad-rows-text">
+                    <div><dt>{i.source}</dt><dd>{sourceLabel(isMail && !view!.mail.selected && inUse ? 'worker' : x.source)}</dd></div>
+                    {x.environment === 'test' && <div><dt>{i.environment}</dt><dd>{i.testMode}</dd></div>}
+                    {id === 'stripe' && <div><dt>{i.gate}</dt><dd><State lang={lang} value={view!.stripe.gate === 'open_test_mode' ? 'active' : 'plain'} label={view!.stripe.gate === 'open_test_mode' ? i.gateOpen : i.gateClosed} /></dd></div>}
+                    {id === 'anthropic' && <div><dt>{i.defaultModel}</dt><dd>{x.settings.model ?? '—'}</dd></div>}
+                    {id === 'mercadopago' && <div><dt>{i.country}</dt><dd>{x.settings.country ? `${x.settings.country} · ${i.currency} ${x.settings.currency}` : '—'}</dd></div>}
+                    {isMail && <div><dt>{i.sender}</dt><dd>{x.settings.from ?? (view!.mail.workerFrom ? `${view!.mail.workerFrom} (${i.worker})` : '—')}</dd></div>}
+                    {id === 'cloudflare_email' && <div><dt>{i.binding}</dt><dd><State lang={lang} value={view!.mail.bindingPresent ? 'active' : 'failed'} label={view!.mail.bindingPresent ? i.bindingPresent : i.bindingMissing} /></dd></div>}
+                    {x.credentials.map((c) => (
+                      <div><dt>{i.credential[c.name]}{!c.required && <small> ({i.optional})</small>}</dt>
+                        <dd>{c.present ? <span>{i.registered} · {i.ending} <code>{c.last4}</code> · {i.version} {c.version} · {formatDate(lang, c.createdAt)}</span> : <span class="ad-dim">{i.notRegistered}</span>}</dd></div>
+                    ))}
+                    <div><dt>{i.lastCheck}</dt>
+                      <dd>{x.lastCheck
+                        ? <span><State lang={lang} value={x.lastCheck.ok ? 'active' : 'failed'} label={checkLabel(x.lastCheck.code)} /> <small>{formatDate(lang, x.lastCheck.at)}</small>
+                            {Array.isArray(x.lastCheck.detail?.missing) && <small class="ad-int-detail">{i.missingEvents}: {(x.lastCheck.detail!.missing as string[]).join(', ')}</small>}</span>
+                        : <span class="ad-dim">{i.never}</span>}</dd></div>
+                  </dl>
+
+                  {id === 'stripe' && (
+                    <div class="ad-int-block">
+                      <h4>{i.webhook}</h4>
+                      <p class="ad-int-text"><small>{i.webhookUrl}</small><br /><code>{view!.stripe.webhookUrl ?? '—'}</code></p>
+                      <p class="ad-int-text"><small>{i.webhookEvents}</small><br /><code>{view!.stripe.events.join(', ')}</code></p>
+                      <p class="ad-note">{i.webhookNote} {i.liveRefused}</p>
+                    </div>
+                  )}
+                  {id === 'mercadopago' && <p class="ad-note">{i.mpWebhook}</p>}
+
+                  {ready && (
+                    <div class="ad-int-forms">
+                      {x.acceptsCredentials && sealing && x.credentials.map((c) => (
+                        <form class="ad-int-form" id={`f-${id}-${c.name}`} data-admin-form method="post" action="#" autocomplete="off">
+                          <label>{i.credential[c.name]} · {i.newValue}
+                            <input type="password" name="value" required minlength="8" maxlength="400" autocomplete="new-password" spellcheck="false" />
+                          </label>
+                          <span class="ad-actions">
+                            <ActionButton lang={lang} form={`f-${id}-${c.name}`} label={c.present ? i.replace : i.save} endpoint={api('credential')} payload={{ provider: id, name: c.name }} summary={i.confirmSave(i.credential[c.name], name(id))} />
+                            {c.present && <ActionButton lang={lang} danger label={i.disableKey} endpoint={api('credential-disable')} payload={{ provider: id, name: c.name }} summary={i.confirmDisableKey(i.credential[c.name], name(id))} />}
+                          </span>
+                        </form>
+                      ))}
+                      {id === 'anthropic' && (
+                        <form class="ad-int-form" id="f-anthropic-model" data-admin-form method="post" action="#">
+                          <label>{i.defaultModel}
+                            <select name="model" required>{view!.models.map((m) => <option value={m} selected={x.settings.model === m}>{m}</option>)}</select>
+                          </label>
+                          <span class="ad-actions"><ActionButton lang={lang} form="f-anthropic-model" nest="settings" label={i.saveModel} endpoint={api('settings')} payload={{ provider: id }} summary={i.confirmSettings(name(id))} /></span>
+                        </form>
+                      )}
+                      {id === 'mercadopago' && (
+                        <form class="ad-int-form" id="f-mercadopago-country" data-admin-form method="post" action="#">
+                          <label>{i.country}
+                            <select name="country" required>
+                              <option value="" selected={!x.settings.country}>—</option>
+                              {Object.entries(view!.mercadopago.countries).map(([code, c]) => <option value={code} selected={x.settings.country === code}>{code} · {c.currency}</option>)}
+                            </select>
+                          </label>
+                          <span class="ad-actions"><ActionButton lang={lang} form="f-mercadopago-country" nest="settings" label={i.saveCountry} endpoint={api('settings')} payload={{ provider: id }} summary={i.confirmSettings(name(id))} /></span>
+                        </form>
+                      )}
+                      {isMail && (
+                        <form class="ad-int-form" id={`f-${id}-from`} data-admin-form method="post" action="#">
+                          <label>{i.sender}
+                            <input type="text" name="from" required maxlength="160" value={x.settings.from ?? view!.mail.workerFrom ?? ''} autocomplete="off" spellcheck="false" />
+                          </label>
+                          <span class="ad-actions"><ActionButton lang={lang} form={`f-${id}-from`} nest="settings" label={i.saveSender} endpoint={api('settings')} payload={{ provider: id }} summary={i.confirmSettings(name(id))} /></span>
+                        </form>
+                      )}
+                    </div>
+                  )}
+
+                  {ready && (
+                    <div class="ad-actions ad-int-actions">
+                      {isMail
+                        ? <>
+                            <ActionButton lang={lang} plain label={i.testMail} endpoint={api('mail-test')} payload={{ provider: id }} summary={i.confirmTest(name(id), adminEmail)} />
+                            {(!inUse || !view!.mail.selected) && x.lastCheck?.ok && <ActionButton lang={lang} primary label={i.useThis} endpoint={api('mail-select')} payload={{ provider: id }} summary={i.confirmSelect(name(id))} />}
+                          </>
+                        : <>
+                            {sealing && x.complete && <ActionButton lang={lang} plain label={i.check} endpoint={api('test')} payload={{ provider: id }} summary={i.confirmCheck(name(id))} />}
+                            {/* Switching on is offered once every required value exists; the server also asks for a passed check. */}
+                            {x.canEnable && (x.enabled || x.complete) && (x.enabled
+                              ? <ActionButton lang={lang} danger label={id === 'stripe' ? i.sandboxOff : i.disable} endpoint={api('enable')} payload={{ provider: id, enabled: false }} summary={i.confirmDisable(name(id))} />
+                              : <ActionButton lang={lang} primary label={id === 'stripe' ? i.sandboxOn : i.enable} endpoint={api('enable')} payload={{ provider: id, enabled: true }} summary={i.confirmEnable(name(id))} />)}
+                          </>}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+          {group.ids[0] === 'anthropic' && (
+            <div class="ad-panel ad-int-functions">
+              <h2>{i.functions}</h2>
+              <div class="ad-table-wrap">
+                <table class="ad-table">
+                  <thead><tr><th>{i.what}</th><th>{i.provider}</th><th>{i.model}</th><th>{i.source}</th>{ready && <th><span class="ad-sr">{t.actions}</span></th>}</tr></thead>
+                  <tbody>
+                    {view!.ai.map((f) => (
+                      <tr>
+                        <td>{i.fn[f.function]}</td><td>{f.provider ? name(f.provider) : '—'}</td><td><code>{f.model ?? '—'}</code></td><td>{i.functionSource[f.source]}</td>
+                        {ready && (
+                          <td>
+                            <form class="ad-int-row-form" id={`f-fn-${f.function}`} data-admin-form method="post" action="#">
+                              <select name="model" aria-label={`${i.model}: ${i.fn[f.function]}`}>{view!.models.map((m) => <option value={m} selected={f.model === m}>{m}</option>)}</select>
+                              <ActionButton lang={lang} form={`f-fn-${f.function}`} label={i.save} endpoint={api('ai-function')} payload={{ function: f.function, provider: 'anthropic' }} summary={i.confirmFunction(i.fn[f.function])} />
+                            </form>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </section>
+      ))}
+
+      <section class="ad-panel ad-panel-wide">
+        <h2>{i.history}</h2>
+        {view.history.length === 0 ? <p class="ad-dim">{i.noHistory}</p> : (
+          <div class="ad-table-wrap">
+            <table class="ad-table">
+              <thead><tr><th>{i.when}</th><th>{i.what}</th><th>{i.provider}</th><th>{i.who}</th><th>{i.reason}</th><th>{i.detail}</th></tr></thead>
+              <tbody>
+                {view.history.map((e) => (
+                  <tr>
+                    <td class="ad-nowrap ad-num">{formatDate(lang, e.at as string)}</td>
+                    <td>{i.actions[e.action as string] ?? e.action}</td>
+                    <td>{e.subject === 'reauth' ? '—' : name(e.subject as string)}</td>
+                    <td>{e.actor}</td>
+                    <td>{e.reasonCode ?? '—'}{e.evidence && <small class="ad-int-detail">{e.evidence}</small>}</td>
+                    <td><small>{e.details?.code ? checkLabel(e.details.code as string) : e.details?.credential ? `${i.credential[e.details.credential as string]}${e.details.version ? ` · ${i.version} ${e.details.version}` : ''}` : e.details?.function ? i.fn[e.details.function as string] : ''}</small></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      <ActionDialog lang={lang} />
+    </>
+  )}
+</AdminLayout>

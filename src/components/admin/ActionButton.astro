@@ -1,6 +1,16 @@
 ---
 import { copy, type AdminLang } from './copy';
-interface Props { lang: AdminLang; label: string; endpoint: string; payload: Record<string, unknown>; summary: string; danger?: boolean; }
-const { lang, label, endpoint, payload, summary, danger } = Astro.props;
+interface Props {
+  lang: AdminLang; label: string; endpoint: string; payload: Record<string, unknown>; summary: string; danger?: boolean; primary?: boolean;
+  /** No reason or evidence asked: for checks and requests that change nothing on record by themselves. */
+  plain?: boolean;
+  /** The id of a form whose fields join the payload, under `nest` when given. */
+  form?: string; nest?: string;
+  /** Shown in the dialog on success instead of reloading. */
+  success?: string;
+  redirect?: string;
+}
+const { lang, label, endpoint, payload, summary, danger, primary, plain, form, nest, success, redirect } = Astro.props;
 ---
-<button type="button" class:list={['ad-btn', danger && 'ad-btn-danger']} data-admin-action data-endpoint={endpoint} data-payload={JSON.stringify(payload)} data-summary={summary} data-failed={copy(lang).failed}>{label}</button>
+<button type="button" class:list={['ad-btn', danger && 'ad-btn-danger', primary && 'ad-btn-primary']} data-admin-action data-endpoint={endpoint} data-payload={JSON.stringify(payload)} data-summary={summary} data-failed={copy(lang).failed}
+  data-plain={plain ? '' : undefined} data-form={form} data-nest={nest} data-success={success} data-redirect={redirect}>{label}</button>

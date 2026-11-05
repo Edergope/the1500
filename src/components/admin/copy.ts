@@ -1,7 +1,7 @@
 export type AdminLang='en'|'es';
 const dictionary={
   en:{
-    control:'Control center',overview:'Overview',companies:'Companies',profiles:'Profiles & JSON',audit:'Audit',account:'My account',publicSite:'Public site',language:'Español',
+    control:'Control center',overview:'Overview',integrationsNav:'Integrations',companies:'Companies',profiles:'Profiles & JSON',audit:'Audit',account:'My account',publicSite:'Public site',language:'Español',
     environment:'Environment',local:'Local',staging:'Staging',noCharges:'No real charges',signedInAs:'Signed in as',
     business:'The register',positions:'Positions',assigned:'Assigned',held:'Reserved',available:'Open',retired:'Retired',capacity:'of 1,500',
     salesState:'Sales state',phase:'Tier',price:'Current price',checkout:'Checkout',open:'Open',closed:'Closed',none:'None',
@@ -9,7 +9,7 @@ const dictionary={
     demoNotice:'Demo companies are counted separately. An owner address ending in .example identifies them.',
     profilesGenerated:'Versions generated',withProfile:'Companies with a profile',reviewPending:'Awaiting administrator review',ownerPending:'Awaiting owner approval',
     payments:'Payments',attempts:'Purchase attempts',confirmed:'Confirmed',refunded:'Refunded',inPaymentReview:'In review',attention:'Needs attention',incidents:'Open incidents',requests:'Open requests',founders:'Active founders',
-    integrations:'Integrations',readOnly:'Read only until the integrations sprint.',mail:'Email',stripe:'Stripe',ai:'AI',configured:'Configured',notConfigured:'Not configured',enabled:'Enabled',disabled:'Disabled',testKey:'Test key',liveKey:'Live key',
+    integrations:'Integrations',manageIntegrations:'Manage integrations',mail:'Email',stripe:'Stripe',ai:'AI',configured:'Configured',notConfigured:'Not configured',enabled:'Enabled',disabled:'Disabled',testKey:'Test key',liveKey:'Live key',
     provider:'Provider',model:'Model',noData:'No data could be read. Nothing here is estimated.',
     search:'Search',name:'Name or website',email:'Owner email',country:'Country',sector:'Sector',identity:'Identity',publication:'Publication',position:'Position',any:'Any',apply:'Apply',clear:'Clear',
     company:'Company',owner:'Owner',state:'State',created:'Registered',results:'results',noResults:'No companies match these filters.',previous:'Previous',next:'Next',demoBadge:'Demo',
@@ -30,7 +30,7 @@ const dictionary={
     checks:{canonical_structure:'Canonical JSON has the expected structure',jsonld_en_structure:'English JSON-LD has the expected structure',jsonld_es_structure:'Spanish JSON-LD has the expected structure',approval_matches_content:'Content is what the owner approved',published_after_approval:'Published after owner approval',snapshot_matches_jsonld:'Public JSON-LD matches the publication record'} as Record<string,string>,
   },
   es:{
-    control:'Centro de control',overview:'Resumen',companies:'Empresas',profiles:'Perfiles y JSON',audit:'Auditoría',account:'Mi cuenta',publicSite:'Sitio público',language:'English',
+    control:'Centro de control',overview:'Resumen',integrationsNav:'Integraciones',companies:'Empresas',profiles:'Perfiles y JSON',audit:'Auditoría',account:'Mi cuenta',publicSite:'Sitio público',language:'English',
     environment:'Entorno',local:'Local',staging:'Staging',noCharges:'Sin cobros reales',signedInAs:'Sesión de',
     business:'El registro',positions:'Posiciones',assigned:'Asignadas',held:'Reservadas',available:'Abiertas',retired:'Retiradas',capacity:'de 1.500',
     salesState:'Estado de venta',phase:'Tramo',price:'Precio vigente',checkout:'Compra',open:'Abierta',closed:'Cerrada',none:'Ninguno',
@@ -38,7 +38,7 @@ const dictionary={
     demoNotice:'Las empresas de demostración se cuentan aparte. Las identifica el correo del titular terminado en .example.',
     profilesGenerated:'Versiones generadas',withProfile:'Empresas con perfil',reviewPending:'Pendientes de revisión administrativa',ownerPending:'Pendientes de aprobación del titular',
     payments:'Pagos',attempts:'Intentos de compra',confirmed:'Confirmados',refunded:'Reembolsados',inPaymentReview:'En revisión',attention:'Requiere atención',incidents:'Incidencias abiertas',requests:'Solicitudes abiertas',founders:'Fundadores activos',
-    integrations:'Integraciones',readOnly:'Solo lectura hasta el sprint de integraciones.',mail:'Correo',stripe:'Stripe',ai:'IA',configured:'Configurado',notConfigured:'Sin configurar',enabled:'Habilitado',disabled:'Deshabilitado',testKey:'Clave de prueba',liveKey:'Clave real',
+    integrations:'Integraciones',manageIntegrations:'Gestionar integraciones',mail:'Correo',stripe:'Stripe',ai:'IA',configured:'Configurado',notConfigured:'Sin configurar',enabled:'Habilitado',disabled:'Deshabilitado',testKey:'Clave de prueba',liveKey:'Clave real',
     provider:'Proveedor',model:'Modelo',noData:'No se pudieron leer los datos. Aquí nada es estimado.',
     search:'Buscar',name:'Nombre o sitio web',email:'Correo del titular',country:'País',sector:'Sector',identity:'Identidad',publication:'Publicación',position:'Posición',any:'Cualquiera',apply:'Aplicar',clear:'Limpiar',
     company:'Empresa',owner:'Titular',state:'Estado',created:'Registro',results:'resultados',noResults:'Ninguna empresa coincide con estos filtros.',previous:'Anterior',next:'Siguiente',demoBadge:'Demo',

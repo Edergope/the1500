@@ -18,6 +18,10 @@ declare namespace Cloudflare {
     AI_API_KEY?: string;
     AI_MODEL?: string;
     AI_BASE_URL?: string;
+    /** ADMIN-002: 32 random bytes, base64. Seals the credentials kept in D1. Never in D1, never in the repository. */
+    SECRETS_MASTER_KEY?: string;
+    SECRETS_MASTER_KEY_VERSION?: string;
+    MERCADOPAGO_API_BASE?: string;
   }
 }
 interface Env extends Cloudflare.Env {}
