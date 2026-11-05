@@ -4,7 +4,7 @@ import AdminLayout from './AdminLayout.astro';
 import State from './State.astro';
 import Pager from './Pager.astro';
 import { copy, formatDate, formatPosition, stateLabel, type AdminLang } from './copy';
-import { searchCompanies, type CompanyRow } from '../../core/admin-console';
+import { searchCompanies, type CompanyRow, type ListPage } from '../../core/admin-console';
 
 interface Props { lang: AdminLang; }
 const { lang } = Astro.props;
@@ -22,8 +22,8 @@ const filters = {
   position: Number.isSafeInteger(rawPosition) && rawPosition >= 1 && rawPosition <= 1500 ? rawPosition : undefined,
   limit: LIMIT, offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0,
 };
-let rows: CompanyRow[] = []; let total = 0; let failed = false;
-try { const r = await searchCompanies(env.DB, filters); rows = r.companies; total = r.total; } catch (e) { failed = true; console.error('admin_companies_unavailable', e instanceof Error ? e.message : String(e)); }
+let rows: CompanyRow[] = []; let list: ListPage | null = null; let failed = false;
+try { const r = await searchCompanies(env.DB, filters); rows = r.companies; list = r; } catch (e) { failed = true; console.error('admin_companies_unavailable', e instanceof Error ? e.message : String(e)); }
 const identities = ['pending_review', 'self_declared', 'admin_verified', 'rejected'];
 const publications = ['draft', 'generated', 'owner_approved', 'published', 'withdrawn'];
 ---
@@ -60,5 +60,5 @@ const publications = ['draft', 'generated', 'owner_approved', 'published', 'with
       </table>
     </div>
   )}
-  {!failed && <Pager lang={lang} total={total} limit={LIMIT} offset={filters.offset} />}
+  {list && <Pager lang={lang} total={list.total} hasMore={list.hasMore} count={rows.length} limit={LIMIT} offset={filters.offset} />}
 </AdminLayout>

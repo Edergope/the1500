@@ -44,7 +44,7 @@ Todas pasan por `adminGet` o `adminPost` (`src/core/http.ts`): sesión del servi
 | Documentos e integridad de cada versión | ADMIN-001 | `getProfileDossier` |
 | Consulta de auditoría | ADMIN-001 | `listAuditEvents` |
 | Métricas de negocio | ADMIN-001 | `getControlOverview` |
-| Alta inicial del administrador | ADMIN-001 | `scripts/admin-bootstrap.cjs` |
+| Alta del superadministrador y retirada del demo | ADMIN-001 | `scripts/superadmin.cjs`, procedimiento en `docs/ADMIN_STAGED_DEPLOY.md` |
 | Reautenticación reciente | ADMIN-002 | Sección 4 |
 | Secretos, proveedores, pruebas de conexión | ADMIN-002 | Sección 6 |
 | Mercado Pago y orquestador | PAY-002 | Sección 7 |
@@ -54,9 +54,9 @@ Todas pasan por `adminGet` o `adminPost` (`src/core/http.ts`): sesión del servi
 
 - **Autoridad:** `platform_admins`, sin cambios. Ningún correo escrito en el frontend ni campo de perfil concede permisos.
 - **Guarda única de páginas:** el middleware protege `/admin` y `/es/admin` antes de renderizar. Sin sesión redirige al login. Con sesión sin permiso responde 404, para no revelar que el panel existe. Las respuestas llevan `no-store` y `noindex`.
-- **Alta inicial:** `scripts/admin-bootstrap.cjs`. Exige un usuario que ya haya completado un inicio de sesión verificado, se niega si ya hay un administrador activo y registra quién autorizó. En remoto exige `--target staging` y una confirmación explícita. **Ninguna cuenta se da de alta en remoto sin tu autorización.**
-- **Pendiente antes de producción:** staging tiene un administrador de demostración (`admin@demo-the1500.example`) que debe revocarse.
-- **Reautenticación (ADMIN-002):** las operaciones críticas exigirán un enlace de correo reciente, de un solo uso, con vigencia de 15 minutos. Requiere una columna en `sessions`, de ahí la migración 0011.
+- **Alta inicial:** `scripts/superadmin.cjs`, en línea de comandos y sin ruta web. Exige un inicio de sesión real de la última hora, el identificador de usuario comprobado antes, el correo repetido y quién autorizó. Se niega si ya hay un administrador activo que no sea de demostración. El procedimiento completo está en `docs/ADMIN_STAGED_DEPLOY.md`. **Ninguna cuenta se da de alta en remoto sin tu autorización.**
+- **Pendiente antes de producción:** staging tiene un administrador de demostración (`admin@demo-the1500.example`). `superadmin.cjs revoke-demo` lo revoca y `verify` comprueba que solo queda el propietario.
+- **Reautenticación (ADMIN-002):** las operaciones críticas exigirán un enlace de correo reciente, de un solo uso, con vigencia de 15 minutos. Requiere una columna en `sessions`, de ahí la migración 0012.
 - **Roles futuros:** añadir una columna `role` a `platform_admins`, con `superadmin` por defecto. No se implementa multiusuario ahora.
 
 ## 5. Módulos del panel
@@ -150,9 +150,11 @@ PERF-001 desplegado y validado en staging  (presupuesto de D1 disponible)
         │
 ADMIN-001 (sin migraciones; local)  ── revisión del propietario
         │
-ADMIN-002 (secretos, IA, correo)  ── migración 0011
+Migración 0011 (solo índices del panel)
         │
-PAY-002 (contrato, Mercado Pago en pruebas)  ── migración 0012
+ADMIN-002 (secretos, IA, correo)  ── migración 0012
+        │
+PAY-002 (contrato, Mercado Pago en pruebas)  ── migración 0013
         │
 ADMIN-003 (QA integral)
 ```
@@ -164,10 +166,11 @@ PAY-002 necesita los secretos de ADMIN-002 para registrar credenciales de prueba
 | Migración | Sprint | Contenido |
 |---|---|---|
 | Ninguna | ADMIN-001 | El esquema actual basta |
-| `0011` | ADMIN-002 | `provider_credentials`, `provider_settings`, `ai_function_config`, reautenticación en `sessions`, índices de `admin_events` y `companies(created_at)` |
-| `0012` | PAY-002 | Ampliar `purchase_attempts.provider` (hoy admite `stripe`, `bank`, `manual`), moneda local, tasa, vigencia y mercado |
+| `0011` | ADMIN-001 (rendimiento) | Cinco índices: `companies(created_at)`, `memberships(company_id)`, perfiles por fecha, `admin_events` por fecha y por acción. Preparada en `db/pending/`; se aplica después de 0010 |
+| `0012` | ADMIN-002 | `provider_credentials`, `provider_settings`, `ai_function_config`, reautenticación en `sessions` |
+| `0013` | PAY-002 | Ampliar `purchase_attempts.provider` (hoy admite `stripe`, `bank`, `manual`), moneda local, tasa, vigencia y mercado |
 
-La migración 0012 reconstruye una tabla con `CHECK`, así que se prueba primero sobre una copia. No se elimina ningún dato.
+La migración 0013 reconstruye una tabla con `CHECK`, así que se prueba primero sobre una copia. No se elimina ningún dato.
 
 ## 10. Riesgos y pruebas de seguridad
 
@@ -187,16 +190,4 @@ La migración 0012 reconstruye una tabla con `CHECK`, así que se prueba primero
 
 ADMIN-003 repetirá estas pruebas sobre todos los recorridos del administrador.
 
-**Filas por página del panel con 1.500 empresas** (medido en local con `tests/perf/admin.cjs`; una apertura, sin sondeos):
-
-| Página | Filas |
-|---|---:|
-| Resumen | 3.008 |
-| Empresas, sin filtro | 7.701 |
-| Empresas, con filtro | 2.145 a 3.008 |
-| Ficha de empresa | 15 |
-| Perfiles, sin filtro | 6.151 |
-| Detalle de perfil | 6 |
-| Auditoría | 5 |
-
-Los listados sin filtro cuestan por ordenar sin índice. Las aperturas de un solo administrador son una fracción mínima del presupuesto: 7.701 filas son el 0,15 % de 5.000.000. La migración 0011 añadirá ese índice.
+**Filas por página del panel con 1.500 empresas:** la medición vigente está en `docs/ADMIN_STAGED_DEPLOY.md`, sección 3. La primera medición de este documento omitía a los titulares de las empresas y subestimaba el filtro por correo; queda sustituida.

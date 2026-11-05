@@ -13,7 +13,22 @@ export const isDemoAddress=(email:string|null|undefined)=>!!email&&/\.example$/i
 const page=(limit:number,offset:number,max=100)=>{
   if (!Number.isSafeInteger(limit)||limit<1||limit>max||!Number.isSafeInteger(offset)||offset<0) throw new AdminError('INVALID_LIMIT',400);
 };
+/**
+ * LIMIT and OFFSET go into the SQL as numbers, after page() has checked them. Bound as parameters, SQLite does not
+ * know the page is small and scans the whole table instead of the index (3,254 rows instead of 306 at 1,500 companies).
+ */
+const window_=(filtered:boolean,limit:number,offset:number)=>`LIMIT ${filtered?limit:limit+1} OFFSET ${offset}`;
 const like=(text?:string)=>text?`%${text.toLowerCase().replace(/[\\%_]/g,'\\$&')}%`:null;
+/**
+ * A page of a list. Without filters it walks an index and stops at the page, so no total is counted (that would read
+ * every row); one extra row says whether there is a next page. With filters the scan happens anyway and brings the total.
+ */
+export interface ListPage {total:number|null;hasMore:boolean;limit:number;offset:number;}
+function pageOf<T extends {total:number|null}>(rows:T[],filtered:boolean,limit:number,offset:number):{rows:Omit<T,'total'>[]}&ListPage {
+  const total=filtered?(rows[0]?.total??(offset===0?0:null)):null;
+  const hasMore=filtered?(total!==null&&offset+limit<total):rows.length>limit;
+  return {rows:rows.slice(0,limit).map(({total:_,...row})=>row),total,hasMore,limit,offset};
+}
 const parse=(text:string|null|undefined):unknown=>{
   if (!text) return null;
   try {return JSON.parse(text);} catch {return null;}
@@ -39,7 +54,8 @@ export async function getControlOverview(db:D1Database):Promise<ControlOverview>
     readCommerce(db),readCatalog(db),
     db.prepare(`SELECT COUNT(*) AS total,SUM(identity_state='pending_review') AS pending,SUM(publication_block IS NOT NULL) AS blocked FROM companies`)
       .first<{total:number;pending:number|null;blocked:number|null}>(),
-    db.prepare(`SELECT COUNT(DISTINCT m.company_id) AS n FROM users u JOIN memberships m ON m.user_id=u.id WHERE u.email LIKE '%.example' AND m.role='owner'`).first<{n:number}>(),
+    // CROSS JOIN keeps users first: one pass over users, then a key lookup only for the demo ones.
+    db.prepare(`SELECT COUNT(DISTINCT m.company_id) AS n FROM users u CROSS JOIN memberships m ON m.user_id=u.id WHERE u.email LIKE '%.example' AND m.role='owner'`).first<{n:number}>(),
     db.prepare(`SELECT COUNT(*) AS versions,COUNT(DISTINCT v.company_id) AS companies,SUM(v.review_status='pending') AS review,
         SUM(v.approved_at IS NULL AND v.published_at IS NULL AND v.review_status<>'rejected'
           AND v.version=(SELECT MAX(x.version) FROM profile_versions x WHERE x.company_id=v.company_id)) AS approval
@@ -72,23 +88,30 @@ export async function searchCompanies(db:D1Database,f:CompanyFilters) {
   if (f.country&&!/^[A-Z]{2}$/.test(f.country)) throw new AdminError('INVALID_COUNTRY',400);
   if (f.position!==undefined&&(!Number.isSafeInteger(f.position)||f.position<1||f.position>1500)) throw new AdminError('INVALID_QUERY',400);
   const q=like(f.q),email=like(f.email),industry=like(f.industry);
+  // Only the filters in use reach the SQL, so the planner can use an index for each one.
+  const where:string[]=[],binds:unknown[]=[];
+  if (q) {where.push(`(LOWER(c.display_name) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(c.website,'')) LIKE ? ESCAPE '\\')`);binds.push(q,q);}
+  // From users to companies: one pass over users and a key lookup per match, with or without migration 0011.
+  if (email) {where.push(`c.id IN (SELECT m.company_id FROM users u CROSS JOIN memberships m ON m.user_id=u.id WHERE LOWER(u.email) LIKE ? ESCAPE '\\')`);binds.push(email);}
+  if (f.country) {where.push('c.country=?');binds.push(f.country);}
+  if (industry) {where.push(`LOWER(COALESCE(c.industry,'')) LIKE ? ESCAPE '\\'`);binds.push(industry);}
+  if (f.identity) {where.push('c.identity_state=?');binds.push(f.identity);}
+  if (f.publication) {where.push('c.publication_status=?');binds.push(f.publication);}
+  if (f.position!==undefined) {where.push('c.id=(SELECT company_id FROM slots WHERE number=?)');binds.push(f.position);}
+  const filtered=where.length>0;
   // The page is chosen first, so the owner is looked up only for the rows shown.
   const rows=await db.prepare(`WITH chosen AS (
-      SELECT c.id,COUNT(*) OVER() AS total FROM companies c LEFT JOIN slots s ON s.company_id=c.id
-      WHERE (? IS NULL OR LOWER(c.display_name) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(c.website,'')) LIKE ? ESCAPE '\\')
-        AND (? IS NULL OR EXISTS(SELECT 1 FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.company_id=c.id AND LOWER(u.email) LIKE ? ESCAPE '\\'))
-        AND (? IS NULL OR c.country=?) AND (? IS NULL OR LOWER(COALESCE(c.industry,'')) LIKE ? ESCAPE '\\')
-        AND (? IS NULL OR c.identity_state=?) AND (? IS NULL OR c.publication_status=?) AND (? IS NULL OR s.number=?)
-      ORDER BY c.created_at DESC,c.id LIMIT ? OFFSET ?)
+      SELECT c.id,${filtered?'COUNT(*) OVER()':'NULL'} AS total FROM companies c ${filtered?`WHERE ${where.join(' AND ')}`:''}
+      ORDER BY c.created_at DESC,c.id ${window_(filtered,f.limit,f.offset)})
     SELECT c.id,c.display_name AS displayName,c.slug,c.country,c.website,c.industry,c.identity_state AS identityState,
       c.publication_status AS publicationStatus,c.publication_block AS publicationBlock,c.created_at AS createdAt,
       s.number AS position,s.status AS positionStatus,s.assignment_kind AS assignmentKind,o.status AS onboardingStatus,
       (SELECT u.email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.company_id=c.id AND m.role='owner' LIMIT 1) AS ownerEmail,chosen.total
     FROM chosen JOIN companies c ON c.id=chosen.id LEFT JOIN slots s ON s.company_id=c.id LEFT JOIN onboarding_cases o ON o.company_id=c.id
     ORDER BY c.created_at DESC,c.id`)
-    .bind(q,q,q,email,email,f.country??null,f.country??null,industry,industry,f.identity??null,f.identity??null,f.publication??null,f.publication??null,
-      f.position??null,f.position??null,f.limit,f.offset).all<Omit<CompanyRow,'isDemo'>&{total:number}>();
-  return {companies:rows.results.map(({total:_,...row})=>({...row,isDemo:isDemoAddress(row.ownerEmail)})),total:rows.results[0]?.total??0,limit:f.limit,offset:f.offset};
+    .bind(...binds).all<Omit<CompanyRow,'isDemo'>&{total:number|null}>();
+  const {rows:companies,...list}=pageOf(rows.results,filtered,f.limit,f.offset);
+  return {companies:companies.map(row=>({...row,isDemo:isDemoAddress(row.ownerEmail)})),...list};
 }
 
 export interface TimelineEvent {at:string;source:'admin'|'inventory'|'owner'|'system';action:string;actor:string|null;reasonCode:string|null;evidence:string|null;detail:string|null;}
@@ -156,18 +179,23 @@ export async function listProfileVersions(db:D1Database,f:ProfileFilters) {
   if (f.q&&f.q.length>100) throw new AdminError('INVALID_QUERY',400);
   const stage=f.stage?STAGE_SQL[f.stage]:null;
   if (f.stage&&!stage) throw new AdminError('INVALID_QUERY',400);
-  const q=like(f.q);
+  const where:string[]=[],binds:unknown[]=[];
+  if (f.review) {where.push('v.review_status=?');binds.push(f.review);}
+  if (f.q) {where.push(`EXISTS(SELECT 1 FROM companies c WHERE c.id=v.company_id AND LOWER(c.display_name) LIKE ? ESCAPE '\\')`);binds.push(like(f.q));}
+  if (stage) where.push(stage);
+  const filtered=where.length>0;
+  // This ORDER BY matches idx_profile_versions_recent (migration 0011) term by term; change both together.
   const rows=await db.prepare(`WITH chosen AS (
-      SELECT v.company_id,v.version,COUNT(*) OVER() AS total FROM profile_versions v
-      WHERE (? IS NULL OR v.review_status=?) AND (? IS NULL OR EXISTS(SELECT 1 FROM companies c WHERE c.id=v.company_id AND LOWER(c.display_name) LIKE ? ESCAPE '\\')) ${stage?`AND ${stage}`:''}
-      ORDER BY COALESCE(v.created_at,v.published_at,'') DESC,v.company_id,v.version DESC LIMIT ? OFFSET ?)
+      SELECT v.company_id,v.version,${filtered?'COUNT(*) OVER()':'NULL'} AS total FROM profile_versions v ${filtered?`WHERE ${where.join(' AND ')}`:''}
+      ORDER BY COALESCE(v.created_at,v.published_at,'') DESC,v.company_id,v.version DESC ${window_(filtered,f.limit,f.offset)})
     SELECT v.company_id AS companyId,c.display_name AS companyName,c.publication_status AS publicationStatus,v.version,v.created_at AS createdAt,
       v.review_status AS reviewStatus,v.approved_at AS approvedAt,v.published_at AS publishedAt,v.generator_json AS generator,chosen.total
     FROM chosen JOIN profile_versions v ON v.company_id=chosen.company_id AND v.version=chosen.version JOIN companies c ON c.id=v.company_id
     ORDER BY COALESCE(v.created_at,v.published_at,'') DESC,v.company_id,v.version DESC`)
-    .bind(f.review??null,f.review??null,q,q,f.limit,f.offset)
-    .all<{companyId:string;companyName:string;publicationStatus:string;version:number;createdAt:string|null;reviewStatus:string;approvedAt:string|null;publishedAt:string|null;generator:string|null;total:number}>();
-  return {profiles:rows.results.map(({total:_,generator,...row})=>({...row,generator:parse(generator) as {kind?:string;provider?:string;model?:string;reason?:string}|null})),total:rows.results[0]?.total??0,limit:f.limit,offset:f.offset};
+    .bind(...binds)
+    .all<{companyId:string;companyName:string;publicationStatus:string;version:number;createdAt:string|null;reviewStatus:string;approvedAt:string|null;publishedAt:string|null;generator:string|null;total:number|null}>();
+  const {rows:profiles,...list}=pageOf(rows.results,filtered,f.limit,f.offset);
+  return {profiles:profiles.map(({generator,...row})=>({...row,generator:parse(generator) as {kind?:string;provider?:string;model?:string;reason?:string}|null})),...list};
 }
 
 export interface DocumentCheck {id:string;ok:boolean;detail?:string;}
@@ -256,16 +284,21 @@ export interface AuditFilters {action?:string;subject?:string;actor?:string;limi
 export async function listAuditEvents(db:D1Database,f:AuditFilters) {
   page(f.limit,f.offset);
   for (const text of [f.action,f.subject,f.actor]) if (text&&text.length>100) throw new AdminError('INVALID_QUERY',400);
-  const subject=like(f.subject),actor=like(f.actor);
+  const where:string[]=[],binds:unknown[]=[];
+  if (f.action) {where.push('e.action=?');binds.push(f.action);}
+  if (f.subject) {where.push(`LOWER(e.subject_id) LIKE ? ESCAPE '\\'`);binds.push(like(f.subject));}
+  if (f.actor) {where.push(`LOWER(u.email) LIKE ? ESCAPE '\\'`);binds.push(like(f.actor));}
+  const filtered=where.length>0;
   const [rows,actions]=await Promise.all([
     db.prepare(`SELECT e.id,e.action,e.subject_type AS subjectType,e.subject_id AS subjectId,e.reason_code AS reasonCode,e.evidence_reference AS evidence,e.details_json AS details,e.occurred_at AS occurredAt,
-        u.email AS actor,c.display_name AS companyName,COUNT(*) OVER() AS total
+        u.email AS actor,c.display_name AS companyName,${filtered?'COUNT(*) OVER()':'NULL'} AS total
       FROM admin_events e LEFT JOIN users u ON u.id=e.admin_id LEFT JOIN companies c ON e.subject_type='company' AND c.id=e.subject_id
-      WHERE (? IS NULL OR e.action=?) AND (? IS NULL OR LOWER(e.subject_id) LIKE ? ESCAPE '\\') AND (? IS NULL OR LOWER(u.email) LIKE ? ESCAPE '\\')
-      ORDER BY e.occurred_at DESC,e.id LIMIT ? OFFSET ?`)
-      .bind(f.action??null,f.action??null,subject,subject,actor,actor,f.limit,f.offset)
-      .all<{id:string;action:string;subjectType:string;subjectId:string;reasonCode:string|null;evidence:string|null;details:string;occurredAt:string;actor:string|null;companyName:string|null;total:number}>(),
+      ${filtered?`WHERE ${where.join(' AND ')}`:''}
+      ORDER BY e.occurred_at DESC,e.id ${window_(filtered,f.limit,f.offset)}`)
+      .bind(...binds)
+      .all<{id:string;action:string;subjectType:string;subjectId:string;reasonCode:string|null;evidence:string|null;details:string;occurredAt:string;actor:string|null;companyName:string|null;total:number|null}>(),
     db.prepare(`SELECT DISTINCT action FROM admin_events ORDER BY action`).all<{action:string}>(),
   ]);
-  return {events:rows.results.map(({total:_,details,...row})=>({...row,details:parse(details)})),total:rows.results[0]?.total??0,actions:actions.results.map(a=>a.action),limit:f.limit,offset:f.offset};
+  const {rows:events,...list}=pageOf(rows.results,filtered,f.limit,f.offset);
+  return {events:events.map(({details,...row})=>({...row,details:parse(details)})),actions:actions.results.map(a=>a.action),...list};
 }

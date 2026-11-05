@@ -62,6 +62,8 @@ async function publish(c,decl){
 (async()=>{
   if(command==='link'){
     const email=args[1];if(!email||email.startsWith('--')){console.error('Email required');process.exit(2);}
+    // A link printed here skips the inbox, so it is only for demo addresses. Real people sign in through /login.
+    if(!/\.example$/i.test(email.trim())){console.error('Only demo addresses (.example). A real account signs in through the real login.');process.exit(2);}
     console.log(linkOf(challenge(email)));return;
   }
   if(sql(`SELECT COUNT(*) n FROM users WHERE email LIKE '%.example' AND email LIKE 'owner@demo-%'`)[0].n)throw new Error('Demo data already exists here.');

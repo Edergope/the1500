@@ -4,7 +4,7 @@ import AdminLayout from './AdminLayout.astro';
 import State from './State.astro';
 import Pager from './Pager.astro';
 import { copy, formatDate, stateLabel, type AdminLang } from './copy';
-import { listProfileVersions } from '../../core/admin-console';
+import { listProfileVersions, type ListPage } from '../../core/admin-console';
 
 interface Props { lang: AdminLang; }
 const { lang } = Astro.props;
@@ -21,8 +21,8 @@ const filters = {
   stage: STAGES.includes(p.get('stage') ?? '') ? p.get('stage')! : undefined,
   limit: LIMIT, offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0,
 };
-let rows: Awaited<ReturnType<typeof listProfileVersions>>['profiles'] = []; let total = 0; let failed = false;
-try { const r = await listProfileVersions(env.DB, filters); rows = r.profiles; total = r.total; } catch (e) { failed = true; console.error('admin_profiles_unavailable', e instanceof Error ? e.message : String(e)); }
+let rows: Awaited<ReturnType<typeof listProfileVersions>>['profiles'] = []; let list: ListPage | null = null; let failed = false;
+try { const r = await listProfileVersions(env.DB, filters); rows = r.profiles; list = r; } catch (e) { failed = true; console.error('admin_profiles_unavailable', e instanceof Error ? e.message : String(e)); }
 ---
 <AdminLayout lang={lang} title={t.profiles} active="profiles">
   <header class="ad-head"><h1>{t.profiles}</h1><p class="ad-sub">{t.profilesIntro}</p></header>
@@ -47,5 +47,5 @@ try { const r = await listProfileVersions(env.DB, filters); rows = r.profiles; t
       ))}</tbody>
     </table></div>
   )}
-  {!failed && <Pager lang={lang} total={total} limit={LIMIT} offset={filters.offset} />}
+  {list && <Pager lang={lang} total={list.total} hasMore={list.hasMore} count={rows.length} limit={LIMIT} offset={filters.offset} />}
 </AdminLayout>

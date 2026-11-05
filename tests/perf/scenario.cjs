@@ -8,7 +8,7 @@ const canonical=i=>({originalLanguage:'en',descriptionOriginal:`Company ${i} coo
   problemSolutions:[{problem:'No status visibility',solution:'Consolidated tracking'}],problemSolutionsEs:[{problem:'Sin visibilidad',solution:'Seguimiento consolidado'}],
   serviceCountries:['US'],foundedYear:2010,certifications:[],advantages:[],clients:[],publish:{certifications:false,advantages:false,clients:false},provenance:{description:{type:'owner'}}});
 const jsonld=(i,lang)=>JSON.stringify({'@graph':[{'@type':'Organization',name:`Simulated ${i}`,description:lang==='es'?`La empresa ${i}`:`Company ${i}`,knowsAbout:['Ocean freight'],identifier:`the1500-${i}`}]});
-async function seed(db,published,{assignedOnly=0,retired=0}={}){
+async function seed(db,published,{assignedOnly=0,retired=0,ownerDomain='test'}={}){
   const at='2026-11-05T00:00:00.000Z';let stm=[];
   const flush=async()=>{if(stm.length){await db.batch(stm);stm=[];}};
   const total=published+assignedOnly+retired;
@@ -18,6 +18,10 @@ async function seed(db,published,{assignedOnly=0,retired=0}={}){
     const summary=`Company ${n} coordinates ocean freight and shipment visibility for importers.`;
     stm.push(db.prepare(`INSERT INTO companies(id,display_name,slug,country,industry,website,public_summary,publication_status,published_at,identity_state) VALUES(?,?,?,?,?,?,?,?,?,'admin_verified')`)
       .bind(id,`Simulated ${n}`,`simulated-${n}`,country,industry,`sim${n}.example`,isPub?summary:null,n<=published?'published':n<=published+assignedOnly?'draft':'withdrawn',isPub?at:null));
+    // Every company has an owner, as in production; without one, owner lookups would measure an empty table.
+    stm.push(db.prepare(`INSERT INTO users(id,email) VALUES(?,?)`).bind(`sim-user-${n}`,`owner@sim${n}.${ownerDomain}`));
+    stm.push(db.prepare(`INSERT INTO memberships(user_id,company_id,role,created_at) VALUES(?,?,'owner',?)`).bind(`sim-user-${n}`,id,at));
+    stm.push(db.prepare(`UPDATE companies SET created_at=? WHERE id=?`).bind(new Date(Date.parse(at)-n*60000).toISOString(),id));
     if(isPub){const c=JSON.stringify(canonical(n));
       stm.push(db.prepare(`INSERT INTO profile_versions(company_id,version,canonical_json,public_jsonld,public_jsonld_es,approved_at,published_at) VALUES(?,1,?,?,?,?,?)`).bind(id,c,jsonld(n,'en'),jsonld(n,'es'),at,at));
       if(n<=published)stm.push(db.prepare(`INSERT INTO published_company_fts(company_id,name,industry,country,summary,services,problems,solutions) VALUES(?,?,?,?,?,?,?,?)`)
@@ -31,7 +35,7 @@ async function seed(db,published,{assignedOnly=0,retired=0}={}){
   }
   await flush();
 }
-const SCENARIOS={demo:db=>seed(db,9,{assignedOnly:2,retired:1}),full:db=>seed(db,1500)};
+const SCENARIOS={demo:db=>seed(db,9,{assignedOnly:2,retired:1,ownerDomain:'example'}),full:db=>seed(db,1500)};
 /** A fresh, migrated, seeded D1 under its own folder. The migrations are those of `root`, so each version of the code is measured on its own schema. */
 async function build(root,name){
   const {getPlatformProxy}=require(path.join(root,'node_modules/wrangler'));

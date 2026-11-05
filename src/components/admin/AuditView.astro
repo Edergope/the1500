@@ -37,5 +37,5 @@ try { r = await listAuditEvents(env.DB, filters); } catch (e) { console.error('a
       ))}</tbody>
     </table></div>
   )}
-  {r && <Pager lang={lang} total={r.total} limit={LIMIT} offset={filters.offset} />}
+  {r && <Pager lang={lang} total={r.total} hasMore={r.hasMore} count={r.events.length} limit={LIMIT} offset={filters.offset} />}
 </AdminLayout>

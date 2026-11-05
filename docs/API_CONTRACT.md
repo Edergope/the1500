@@ -125,7 +125,7 @@ Search is **lexical** (`retrieval.semantic:false`): do not call it semantic or A
 | GET `/admin/overview` | | Occupancy, founders, queues, payment totals |
 | GET `/admin/companies/detail` | `companyId` | Control center: company, owner, process, versions, requests, incidents, attempts, merged history |
 | GET `/admin/profiles/detail` | `companyId,version` | Control center: declaration, canonical JSON, JSON-LD EN and ES, generation record, approval, publication, integrity checks |
-| GET `/admin/audit` | `action,subject,actor,limit,offset` | Control center: administrative events, newest first |
+| GET `/admin/audit` | `action,subject,actor,limit,offset` | Control center: administrative events, newest first. `total` is null without filters (counting would read every row); `hasMore` says whether a next page exists |
 | GET `/admin/companies` | default: review queue, `limit`. `scope=all`: `query,status,limit,offset` | Queue (flags `duplicateOfVerifiedCompany`) or all companies |
 | POST `/admin/review-company` | `{companyId,decision:"approved"\|"rejected",reasonCode,evidenceReference}` | Identity review |
 | POST `/admin/company-action` | `{companyId,action:"block_publication"\|"clear_block"\|"grant_rectification",reasonCode,evidenceReference}` | Holds and legal rectification |

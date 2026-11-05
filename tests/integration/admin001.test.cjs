@@ -41,22 +41,59 @@ describe('authorization in the core',()=>{
     assert.deepEqual([...new Set(all.match(/\/api\/v1\/admin\/[a-z/-]+/g))].sort(),['/api/v1/admin/company-action','/api/v1/admin/profiles/detail','/api/v1/admin/profiles/review','/api/v1/admin/review-company']);
   });
 });
-describe('the bootstrap of the first administrator',()=>{
-  const run=(h,...args)=>{try{return {ok:true,out:execFileSync('node',[path.join(ROOT,'scripts/admin-bootstrap.cjs'),...args,'--persist-to',h.dir],{cwd:ROOT,stdio:'pipe'}).toString()};}catch(e){return {ok:false,out:e.stderr.toString()};}};
-  test('needs a verified sign-in, a named authority and a known target; a second one is refused; it stays on record',async()=>{
+describe('the superadministrator procedure',()=>{
+  const run=(h,...args)=>{try{return {ok:true,out:execFileSync('node',[path.join(ROOT,'scripts/superadmin.cjs'),...args,'--persist-to',h.dir],{cwd:ROOT,stdio:'pipe'}).toString()};}catch(e){return {ok:false,code:e.status,out:e.stderr.toString()+e.stdout.toString()};}};
+  const signIn=(h,userId,at)=>h.db.prepare(`INSERT INTO auth_audit(id,user_id,kind,occurred_at) VALUES(?,?,'login_completed',?)`).bind(crypto.randomUUID(),userId,at.toISOString()).run();
+  const crypto=require('node:crypto');const OWNER='first-owner@company.test';
+  const grant=(h,userId,...extra)=>run(h,'grant',OWNER,'--user-id',userId,'--confirm',OWNER,'--authorized-by','Owner decision','--target','local',...extra);
+  test('grant needs a fresh verified sign-in, the checked user id, a repeated email and a named authority',async()=>{
     const h=await freshDb();try{
-      const s=await seedCompany(h.db,{email:'first-owner@company.test'});
-      assert.match(run(h,'first-owner@company.test','--target','local').out,/authorized-by/);
-      assert.match(run(h,'first-owner@company.test','--authorized-by','Owner decision','--target','production').out,/local or staging/);
-      assert.match(run(h,'first-owner@company.test','--authorized-by','Owner decision','--target','staging').out,/--confirm/);
-      assert.match(run(h,'first-owner@company.test','--authorized-by','Owner decision','--target','local').out,/verified sign-in/);
-      await h.db.prepare(`INSERT INTO auth_audit(id,user_id,kind,occurred_at) VALUES('a1',?,'login_completed',?)`).bind(s.userId,NOW.toISOString()).run();
-      const done=run(h,'first-owner@company.test','--authorized-by','Owner decision','--target','local');assert.equal(done.ok,true,done.out);
+      const s=await seedCompany(h.db,{email:OWNER});
+      assert.match(run(h,'grant',OWNER,'--target','production').out,/local or staging/);
+      assert.match(run(h,'grant',OWNER,'--user-id',s.userId,'--confirm',OWNER,'--target','local').out,/authorized-by/);
+      assert.match(run(h,'grant',OWNER,'--user-id',s.userId,'--confirm','other@company.test','--authorized-by','Owner decision','--target','local').out,/repeat the same email/);
+      assert.match(grant(h,s.userId).out,/older than one hour/,'never signed in');
+      await signIn(h,s.userId,new Date(Date.now()-2*60*60*1000));
+      assert.match(grant(h,s.userId).out,/older than one hour/,'stale sign-in');
+      await signIn(h,s.userId,new Date());
+      assert.match(grant(h,'someone-else').out,/does not match/);
+      assert.match(run(h,'prepare',OWNER,'--target','local').out,new RegExp(`user id\\s+${s.userId}`));
+      const done=grant(h,s.userId);assert.equal(done.ok,true,done.out);
       await adm.requirePlatformAdmin(h.db,s.userId);
-      const event=await h.db.prepare(`SELECT reason_code,evidence_reference FROM admin_events WHERE action='admin_granted'`).first();
-      assert.deepEqual(event,{reason_code:'bootstrap',evidence_reference:'Owner decision'});
-      assert.match(run(h,'first-owner@company.test','--authorized-by','Owner decision','--target','local').out,/already active/);
+      const event=await h.db.prepare(`SELECT admin_id,reason_code,evidence_reference FROM admin_events WHERE action='admin_granted'`).first();
+      assert.deepEqual(event,{admin_id:s.userId,reason_code:'bootstrap',evidence_reference:'Owner decision'});
+      assert.match(grant(h,s.userId).out,/already an active administrator/);
+      const second=await seedCompany(h.db,{email:'second@company.test'});await signIn(h,second.userId,new Date());
+      const again=run(h,'grant','second@company.test','--user-id',second.userId,'--confirm','second@company.test','--authorized-by','x y z','--target','local');
+      assert.match(again.out,/non-demo administrator is already active/);
     }finally{await h.dispose();}
+  });
+  test('a demo address is never granted; an active demo administrator does not block the owner',async()=>{
+    const h=await freshDb();try{
+      const demo=await seedCompany(h.db,{email:'admin@demo-the1500.example'});await signIn(h,demo.userId,new Date());
+      assert.match(run(h,'grant','admin@demo-the1500.example','--user-id',demo.userId,'--confirm','admin@demo-the1500.example','--authorized-by','x y z','--target','local').out,/demo address/);
+      await h.db.prepare(`INSERT INTO platform_admins(user_id,granted_at,granted_by) VALUES(?,?,'demo seed')`).bind(demo.userId,NOW.toISOString()).run();
+      const s=await seedCompany(h.db,{email:OWNER});await signIn(h,s.userId,new Date());
+      const done=grant(h,s.userId);assert.equal(done.ok,true,done.out);assert.match(done.out,/revoke-demo next/);
+      assert.equal(run(h,'verify','--expect',OWNER,'--target','local').code,1,'two administrators is not the expected state');
+      assert.match(run(h,'revoke-demo','--by','admin@demo-the1500.example','--authorized-by','Owner decision','--target','local').out,/not an active non-demo/);
+      const r=run(h,'revoke-demo','--by',OWNER,'--authorized-by','Owner decision','--target','local');assert.equal(r.ok,true,r.out);
+      await assert.rejects(adm.requirePlatformAdmin(h.db,demo.userId),e=>e.code==='ADMIN_ONLY');
+      const ev=await h.db.prepare(`SELECT admin_id,subject_id,reason_code,evidence_reference FROM admin_events WHERE action='admin_revoked'`).all();
+      assert.deepEqual(ev.results,[{admin_id:s.userId,subject_id:demo.userId,reason_code:'demo_access_removed',evidence_reference:'Owner decision'}]);
+      const v=run(h,'verify','--expect',OWNER,'--target','local');assert.equal(v.ok,true,v.out);assert.match(v.out,/Only first-owner@company.test/);
+      assert.match(run(h,'status','--target','local').out,/Active administrators on local: 1\. Revoked: 1\./);
+      assert.match(run(h,'revoke-demo','--by',OWNER,'--authorized-by','Owner decision','--target','local').out,/Nothing to revoke/);
+    }finally{await h.dispose();}
+  });
+  test('the demo tool prints sign-in links only for demo addresses, so a real account always goes through the inbox',()=>{
+    let out='';try{execFileSync('node',[path.join(ROOT,'scripts/demo.cjs'),'link',OWNER,'--target','staging'],{cwd:ROOT,stdio:'pipe'});}catch(e){out=e.stderr.toString();}
+    assert.match(out,/Only demo addresses/);
+  });
+  test('no application code can write platform_admins',()=>{
+    const fs=require('node:fs');const hits=[];
+    const walk=d=>{for(const f of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,f.name);if(f.isDirectory())walk(p);else if(/platform_admins/.test(fs.readFileSync(p,'utf8'))&&/(INSERT|UPDATE|DELETE)[^;]*platform_admins/is.test(fs.readFileSync(p,'utf8')))hits.push(path.relative(ROOT,p));}};
+    walk(path.join(ROOT,'src'));assert.deepEqual(hits,[]);
   });
 });
 describe('companies',()=>{
@@ -88,9 +125,11 @@ describe('companies',()=>{
     assert.equal(rows.find(r=>r.displayName.startsWith('Harbor')).isDemo,false);
     assert.equal(con.isDemoAddress('someone@company.example.com'),false);
   });
-  test('pages keep the total, and bad input is refused',async()=>{
-    const p=await con.searchCompanies(h.db,{limit:2,offset:0});assert.equal(p.companies.length,2);assert.equal(p.total,3);
-    const q=await con.searchCompanies(h.db,{limit:2,offset:2});assert.equal(q.companies.length,1);assert.equal(q.total,3);
+  test('an unfiltered page counts nothing and knows if more follow; a filtered page keeps its total; bad input is refused',async()=>{
+    const p=await con.searchCompanies(h.db,{limit:2,offset:0});assert.equal(p.companies.length,2);assert.equal(p.total,null);assert.equal(p.hasMore,true);
+    const q=await con.searchCompanies(h.db,{limit:2,offset:2});assert.equal(q.companies.length,1);assert.equal(q.total,null);assert.equal(q.hasMore,false);
+    const f=await con.searchCompanies(h.db,{q:'i',limit:1,offset:0});assert.equal(f.total,2);assert.equal(f.hasMore,true);
+    const none=await con.searchCompanies(h.db,{country:'BR',limit:5,offset:0});assert.equal(none.total,0);assert.equal(none.hasMore,false);
     await assert.rejects(con.searchCompanies(h.db,{limit:500,offset:0}),e=>e.code==='INVALID_LIMIT');
     await assert.rejects(con.searchCompanies(h.db,{limit:5,offset:-1}),e=>e.code==='INVALID_LIMIT');
     await assert.rejects(con.searchCompanies(h.db,{limit:5,offset:0,country:'colombia'}),e=>e.code==='INVALID_COUNTRY');
@@ -195,7 +234,7 @@ describe('the audit trail and the overview',()=>{
     await adm.companyAdminAction(h.db,admin.userId,a.companyId,'clear_block','legal_cleared','ticket-2',new Date(NOW.getTime()+1000));});after(()=>h.dispose());
   test('events carry who, when, why and evidence, newest first, and can be filtered',async()=>{
     const all=await con.listAuditEvents(h.db,{limit:50,offset:0});
-    assert.equal(all.total,2);assert.deepEqual(all.events.map(e=>e.action),['clear_block','block_publication']);
+    assert.equal(all.total,null);assert.equal(all.hasMore,false);assert.equal(all.events.length,2);assert.deepEqual(all.events.map(e=>e.action),['clear_block','block_publication']);
     assert.deepEqual(all.actions,['block_publication','clear_block']);
     const e=all.events[1];assert.deepEqual([e.actor,e.reasonCode,e.evidence,e.companyName],[admin.email,'legal_hold','ticket-1','Audit Co']);assert.ok(e.occurredAt);
     assert.equal((await con.listAuditEvents(h.db,{action:'clear_block',limit:50,offset:0})).total,1);
@@ -233,5 +272,23 @@ describe('the audit trail and the overview',()=>{
   test('the panel page never asks on its own',()=>{
     const fs=require('node:fs');
     for(const f of ['src/components/admin/JsonWorkbench.tsx','src/ui/admin-actions.ts'])assert.equal(/setInterval|setTimeout|EventSource|WebSocket/.test(fs.readFileSync(path.join(ROOT,f),'utf8')),false,f);
+  });
+});
+
+describe('migration 0011 (pending)',()=>{
+  test('it holds indexes only, and the lists use them',async()=>{
+    const fs=require('node:fs');const file=fs.readFileSync(path.join(ROOT,'db/pending/0011_admin_indexes.sql'),'utf8').replace(/--.*$/gm,'');
+    const statements=file.split(';').map(x=>x.trim()).filter(Boolean);
+    for(const x of statements)assert.match(x,/^CREATE INDEX IF NOT EXISTS /,x);
+    assert.equal(fs.existsSync(path.join(ROOT,'db/migrations/0011_admin_indexes.sql')),false,'0011 waits for PERF-001 in staging');
+    const h=await freshDb();try{
+      await h.db.batch(statements.map(x=>h.db.prepare(x)));await h.db.batch(statements.map(x=>h.db.prepare(x)));
+      const plan=async sql=>(await h.db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all()).results.map(r=>r.detail).join(' | ');
+      assert.match(await plan(`SELECT id FROM companies c ORDER BY c.created_at DESC,c.id LIMIT 51`),/idx_companies_created/);
+      assert.doesNotMatch(await plan(`SELECT id FROM companies c ORDER BY c.created_at DESC,c.id LIMIT 51`),/TEMP B-TREE/);
+      assert.match(await plan(`SELECT v.company_id FROM profile_versions v ORDER BY COALESCE(v.created_at,v.published_at,'') DESC,v.company_id,v.version DESC LIMIT 51`),/idx_profile_versions_recent/);
+      assert.match(await plan(`SELECT u.email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.company_id='x' AND m.role='owner'`),/idx_memberships_company/);
+      assert.match(await plan(`SELECT e.id FROM admin_events e ORDER BY e.occurred_at DESC,e.id LIMIT 51`),/idx_admin_events_recent/);
+    }finally{await h.dispose();}
   });
 });
