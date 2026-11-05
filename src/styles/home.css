@@ -4,7 +4,7 @@
   --grout: #04060b;
   max-width: none;
   padding: 0;
-  margin-top: calc(-1 * var(--head, 4.2rem));
+  margin-top: calc(-1 * var(--head, 4.33rem));
 }
 
 /* Over the wall the header has no plate of its own until the page moves. */
@@ -188,6 +188,7 @@ body:has(.home) .site-header:not(.scrolled) {
   --cols: 50;
   --rows: 30;
   --b: 1;
+  --g: 0;
   --lx: 30;
   --ly: 12;
   --u: calc(max(100vw / var(--cols), 100svh / var(--rows)) * 1.5);
@@ -253,11 +254,15 @@ body:has(.home) .site-header:not(.scrolled) {
   height: calc(var(--th) * var(--u));
   transform-origin: 0 0;
   transform:
-    translate3d(calc((var(--ax) - var(--x)) * var(--u) * (1 - var(--b))), calc((var(--ay) - var(--y)) * var(--u) * (1 - var(--b))), calc(var(--u) * 1.6 * var(--b)))
+    translate3d(calc((var(--ax) - var(--x)) * var(--u) * (1 - var(--b))), calc((var(--ay) - var(--y)) * var(--u) * (1 - var(--b))), calc(var(--u) * 1.6 * var(--b) * (1 - var(--g))))
     scale(calc(1 / var(--tw) + (1 - 1 / var(--tw)) * var(--b)), calc(1 / var(--th) + (1 - 1 / var(--th)) * var(--b)));
   color: var(--ink);
   pointer-events: auto;
   transition: translate 0.25s ease, filter 0.25s ease;
+}
+
+.tiles.is-out .tile {
+  transition: none;
 }
 
 .tile:hover,
@@ -732,170 +737,662 @@ body:has(.home) .site-header:not(.scrolled) {
   overflow: hidden;
 }
 
-/* After the story, plain reading */
-.after {
-  position: relative;
-  z-index: 3;
-  background: var(--bg-canvas);
-  padding-inline: var(--gutter);
-}
-
-.after > * {
-  max-width: 1280px;
-  margin-inline: auto;
-}
-
-.home-block {
-  padding-block: clamp(4rem, 9vw, 7.5rem);
-  border-top: 1px solid var(--border-subtle);
-}
-
-.after > .home-block:first-child {
-  border-top: 0;
-}
-
-.home-lead {
-  max-width: 44rem;
-  margin-bottom: clamp(2rem, 4vw, 3.25rem);
-}
-
-/* Inside the Home the search is a section of the page, not a card on it. */
-.discovery-wrap #discovery-hub {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-}
-
-.discovery-wrap #discovery-hub > div:first-child {
-  border-bottom: 0;
-}
-
-.discovery-wrap #discovery-hub h2 {
-  font-size: clamp(1.8rem, 3vw, 2.5rem);
-}
-
-/* Steps: a real sequence, so the numbers carry meaning */
-.steps {
-  list-style: none;
-  counter-reset: step;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: clamp(1rem, 2vw, 1.75rem);
-}
-
-.steps li {
-  counter-increment: step;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-strong);
-}
-
-.steps li::before {
-  content: counter(step);
-  display: block;
-  font-family: var(--font-display);
-  font-size: 2.6rem;
-  line-height: 1;
-  color: var(--gold-primary);
-  margin-bottom: 0.9rem;
-}
-
-.steps h3 {
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-.steps p {
-  margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-
-/* Promises */
-.promises {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: clamp(2rem, 6vw, 5rem);
-}
-
-.promises ul {
-  margin: 0.75rem 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.85rem;
-}
-
-.promises li {
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-/* Questions */
-.faq {
-  max-width: 52rem;
-  border-top: 1px solid var(--border-strong);
-}
-
-.faq details {
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.faq summary {
-  padding: 1.1rem 0.25rem;
-  font-size: 1.08rem;
-  font-weight: 500;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.faq details p {
-  padding: 0 0.25rem 1.25rem;
-  margin: 0;
-  line-height: 1.6;
-}
-
-/* Closing */
-.closing {
-  padding-block: clamp(4.5rem, 10vw, 8rem);
-  border-top: 1px solid var(--border-subtle);
-}
-
-.home .closing h2 {
-  font-size: clamp(2.6rem, 6.4vw, 5.5rem);
-  line-height: 1.02;
-  max-width: 16ch;
-  margin-bottom: 2rem;
-}
-
-.closing-signin {
-  margin: 1.25rem 0 0;
-  font-size: 0.92rem;
-  color: var(--text-muted);
-}
-
-.closing-signin a {
-  margin-inline-start: 0.35rem;
-}
-
 .mobile-cta {
   display: none;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+/* The wall lights up, position by position. The headline is pinned by CSS, so nothing here holds the scroll. */
+.ch-ignite {
+  /* Visible unless the script is driving it, so the headline survives without JavaScript. */
+  --r: 1;
+  min-height: 320svh;
+  pointer-events: none;
 }
 
+.ignite-text {
+  position: sticky;
+  top: 15svh;
+  margin: 0;
+  /* Exactly as tall as the rest of the screen, so that it leaves together with the wall. */
+  min-height: 85svh;
+  padding-inline: var(--gutter);
+  color: #f6f2e8;
+  font-size: clamp(3rem, 8.6vw, 9rem);
+  line-height: 0.98;
+  letter-spacing: -0.025em;
+}
+
+.home .ignite-text {
+  font-size: clamp(3rem, 8.6vw, 9rem);
+  line-height: 0.98;
+  margin: 0;
+}
+
+.il {
+  display: block;
+  overflow: clip;
+  overflow-clip-margin: 0.14em;
+}
+
+.il > span {
+  display: block;
+  transform: translateY(calc((1 - var(--r)) * 112%));
+}
+
+.il + .il > span {
+  transform: translateY(calc((1 - clamp(0, var(--r) * 1.4 - 0.4, 1)) * 112%));
+}
+
+.tile {
+  --leaves: 0;
+  opacity: calc(1 - var(--g) * var(--leaves));
+}
+
+/* After the story the same page goes on: lapis, night, stone, wine, and the wall again. */
+.after {
+  --lapis: #14297a;
+  --night: #070b14;
+  --stone: #ece7db;
+  --wine: #10090f;
+  position: relative;
+  z-index: 3;
+}
+
+.wrap {
+  max-width: 1320px;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.home .display {
+  font-size: clamp(2.8rem, 7.2vw, 7.2rem);
+  line-height: 0.98;
+  letter-spacing: -0.025em;
+  max-width: 15ch;
+  margin-bottom: 1.5rem;
+}
+
+.seam {
+  display: block;
+  width: 100%;
+  height: clamp(7rem, 26svh, 15rem);
+  background: linear-gradient(var(--a) 45%, var(--b) 55%);
+}
+
+/* Discover */
+.discover {
+  background: var(--lapis);
+  color: #f6f2e8;
+  padding-block: clamp(2rem, 6vw, 5rem) clamp(3rem, 7vw, 6rem);
+}
+
+.home .discover h2 {
+  color: #f6f2e8;
+}
+
+.home .discover .lead {
+  max-width: 44rem;
+  margin-bottom: 2.5rem;
+  color: #dbe2f5;
+  font-size: clamp(1.05rem, 1.5vw, 1.3rem);
+  line-height: 1.5;
+}
+
+/* How it works: one company, from loose information to a piece of the wall */
+.onboard {
+  background: var(--night);
+  background-image: radial-gradient(ellipse 70% 45% at 78% 45%, rgba(238, 198, 121, 0.08), transparent);
+  padding-block: clamp(2rem, 5vw, 4rem) clamp(3rem, 7vw, 6rem);
+}
+
+.ob-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(2rem, 5vw, 5rem);
+}
+
+.ob-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ob-step {
+  min-height: 62svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 0.38;
+  transition: opacity 0.3s ease;
+}
+
+.ob-step.is-active,
+.onboard:not(.is-scrubbed) .ob-step {
+  opacity: 1;
+}
+
+.home .ob-step h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.9rem, 3.2vw, 3.2rem);
+  line-height: 1.04;
+  margin-bottom: 0.75rem;
+}
+
+.ob-step p {
+  max-width: 34rem;
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.ob-scene {
+  --q1: 1;
+  --q2: 1;
+  --q3: 1;
+  --q4: 0;
+  position: sticky;
+  top: calc(50svh - min(21rem, 38svh));
+  align-self: start;
+}
+
+.ob-frame {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-height: min(42rem, 76svh);
+  width: 100%;
+  container-type: size;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #0b111d;
+  outline: 1px solid var(--border-subtle);
+}
+
+.ob-ticket {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 62cqw;
+  padding: 5cqw;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+  transform: translate(-50%, calc(-50% - var(--q1) * 30cqh)) scale(calc(1 - var(--q1) * 0.25));
+  opacity: calc(1 - var(--q2));
+}
+
+.ob-ticket span {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 7cqw;
+  line-height: 1.05;
+}
+
+.ob-ticket small {
+  display: block;
+  margin-top: 2cqw;
+  font-size: 3.2cqw;
+  opacity: 0.9;
+}
+
+.ob-card {
+  position: absolute;
+  left: 8cqw;
+  right: 8cqw;
+  top: 10cqh;
+  bottom: 10cqh;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #101826;
+  outline: 1px solid var(--border-strong);
+  transform-origin: 50% 50%;
+  /* At the end the card shrinks into its own place on the wall. */
+  transform: translate(calc(var(--q4) * 25.7cqw), calc(var(--q4) * -3.67cqw)) scale(calc(1 - var(--q4) * 0.91));
+  opacity: calc((var(--q2) * 2 - 0.2) * (1 - max(0, var(--q4) - 0.85) * 6.6));
+}
+
+.ob-card header {
+  display: flex;
+  align-items: center;
+  gap: 3cqw;
+  padding: 3.4cqw 4cqw;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.ob-card header b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 8.5cqw;
+  line-height: 1;
+}
+
+.ob-card header span {
+  font-size: 3.6cqw;
+  font-weight: 600;
+}
+
+.ob-card p {
+  position: absolute;
+  left: 4cqw;
+  right: 4cqw;
+  top: calc(19cqh + var(--row) * 11.5cqh);
+  margin: 0;
+  padding-top: 1.6cqh;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--gold-primary);
+}
+
+.ob-card p small {
+  font-size: 2.8cqw;
+}
+
+.ob-stamp {
+  position: absolute;
+  right: 4cqw;
+  bottom: 3cqh;
+  padding: 0.5cqh 2cqw;
+  border: 2px solid #8df0c6;
+  border-radius: 3px;
+  color: #8df0c6;
+  font-size: 3.2cqw;
+  font-style: normal;
+  font-weight: 600;
+  transform: rotate(-3deg) scale(calc(1.5 - var(--q3) * 0.5));
+  opacity: var(--q3);
+}
+
+.ob-chip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: 54cqw;
+  padding: 1cqh 2.4cqw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 3px;
+  background: rgba(238, 198, 121, calc(0.14 * (1 - var(--q2))));
+  outline: 1px solid rgba(238, 198, 121, calc(0.5 * (1 - var(--q2))));
+  color: var(--text-primary);
+  font-size: 3.5cqw;
+  --slot-x: 27cqw;
+  --slot-y: calc(29.4cqh + var(--row) * 11.5cqh);
+  transform:
+    translate(
+      calc(var(--sx) * 1cqw * (1 - var(--q2)) + var(--slot-x) * var(--q2)),
+      calc(var(--sy) * 1cqh * (1 - var(--q2)) + var(--slot-y) * var(--q2))
+    )
+    rotate(calc(var(--rot) * 1deg * (1 - var(--q2))));
+  opacity: calc(var(--q1) * (1 - var(--q4) * 3));
+}
+
+.ob-wall {
+  position: absolute;
+  inset: 6cqh 6cqw;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-content: center;
+  gap: 0.8cqw;
+  opacity: calc(var(--q4) * 1.6 - 0.2);
+}
+
+.ob-wall i {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: #1a2536;
+}
+
+.ob-wall i.ob-slot {
+  background: var(--bg);
+  box-shadow: 0 0 calc(var(--q4) * 5cqw) rgba(238, 198, 121, 0.75);
+}
+
+.home .ob-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.86rem;
+  color: var(--gold-primary);
+}
+
+/* What you get: daylight, and the page itself */
+.get {
+  background: var(--stone);
+  color: #15120c;
+  padding-block: clamp(2rem, 5vw, 4rem) clamp(3rem, 7vw, 6rem);
+}
+
+.home .get h2,
+.home .get h3 {
+  color: #15120c;
+}
+
+.get-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+}
+
+.get-parts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.get-parts li {
+  padding: 0.95rem 0 0.95rem 1rem;
+  border-top: 1px solid rgba(21, 18, 12, 0.2);
+  border-inline-start: 3px solid transparent;
+  cursor: default;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.get-parts li.is-active {
+  border-inline-start-color: #14297a;
+  background: rgba(20, 41, 122, 0.06);
+}
+
+.get-parts li:focus-visible {
+  outline: 2px solid #14297a;
+  outline-offset: -2px;
+}
+
+.home .get-parts h3 {
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.15rem;
+}
+
+.get-parts p {
+  margin: 0;
+  color: #4a4438;
+  line-height: 1.45;
+}
+
+.sheet {
+  position: sticky;
+  top: 6rem;
+  margin: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0a0f18;
+  color: var(--text-primary);
+  box-shadow: 0 40px 70px -40px rgba(21, 18, 12, 0.75);
+}
+
+.sheet-bar {
+  padding: 0.7rem 1.1rem;
+  background: #161e2d;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.sheet-body {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.sheet [data-mark] {
+  border-radius: 5px;
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+  transition: outline-color 0.2s ease, opacity 0.2s ease;
+}
+
+.sheet[data-show="number"] [data-mark="number"],
+.sheet[data-show="page"] [data-mark="page"],
+.sheet[data-show="profile"] [data-mark="profile"],
+.sheet[data-show="data"] [data-mark="data"],
+.sheet[data-show="presence"] [data-mark="presence"],
+.sheet[data-show="term"] [data-mark="term"] {
+  outline-color: var(--gold-primary);
+}
+
+.sheet-tile {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.7rem;
+  background: var(--bg);
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 42%, rgba(0, 0, 0, 0.24));
+  color: var(--ink);
+}
+
+.sheet-tile b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 3.6rem;
+  line-height: 1;
+}
+
+.sheet-tile span {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.home .sheet-main h3 {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.7rem, 2.8vw, 2.6rem);
+  margin: 0 0 0.4rem;
+}
+
+.sheet-main p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.sheet-data {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.8rem 1rem;
+  max-height: 11rem;
+  overflow: hidden;
+  background: #05080e;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sheet-where {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.sheet-where span {
+  padding: 0.25rem 0.65rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  font-size: 0.86rem;
+}
+
+.sheet-term {
+  grid-column: 1 / -1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  color: var(--gold-primary);
+}
+
+.sheet figcaption {
+  padding: 0 1.25rem 1rem;
+  font-size: 0.85rem;
+  color: var(--gold-primary);
+}
+
+.get-limits {
+  margin-top: clamp(2.5rem, 5vw, 4rem);
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  column-gap: clamp(2rem, 5vw, 5rem);
+}
+
+.home .get-limits h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.6rem, 2.6vw, 2.4rem);
+}
+
+.get-limits ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+  color: #3d382d;
+  line-height: 1.45;
+}
+
+.get-limits p {
+  grid-column: 2;
+  margin: 1rem 0 0;
+}
+
+.get-limits a,
+.get-limits a:hover {
+  color: #14297a;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* Trust and questions */
+.trust {
+  background: var(--wine);
+  background-image: radial-gradient(ellipse 60% 40% at 20% 20%, rgba(126, 31, 46, 0.28), transparent);
+  padding-block: clamp(2rem, 5vw, 4rem) clamp(3rem, 7vw, 6rem);
+}
+
+.facts {
+  margin: 0 0 clamp(2.5rem, 5vw, 4rem);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.facts dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 5vw, 5rem);
+  line-height: 1;
+  color: var(--gold-primary);
+  font-variant-numeric: lining-nums;
+}
+
+.facts dt {
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.faq {
+  max-width: 58rem;
+  margin-inline-start: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.faq details {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.faq summary {
+  padding: 1.15rem 0.25rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2vw, 1.7rem);
+  line-height: 1.2;
+  color: var(--text-primary);
+  cursor: pointer;
+  list-style-position: outside;
+  transition: color 0.15s ease;
+}
+
+.faq summary:hover {
+  color: var(--gold-bright);
+}
+
+.faq details[open] p {
+  animation: faq-in 0.28s ease both;
+}
+
+@keyframes faq-in {
+  from {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+}
+
+.faq details p {
+  max-width: 48rem;
+  padding: 0 0.25rem 1.25rem;
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* The close: the wall again, and the number */
+.finale {
+  background: #04060b;
+  min-height: 190svh;
+}
+
+.finale-wall {
+  --p: 1;
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: clip;
+  display: flex;
+  align-items: flex-end;
+  perspective: 1400px;
+}
+
+.finale-glass {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100vw, 100svh * 5 / 3);
+  height: max(100svh, 100vw * 3 / 5);
+  transform: translate(-50%, -50%) rotateX(calc((1 - var(--p)) * 16deg)) scale(calc(1.14 - var(--p) * 0.14));
+  background: #04060b;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.finale-glass.is-lit {
+  opacity: 1;
+}
+
+.finale-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, #04060b 0%, rgba(4, 6, 11, 0.86) 24%, rgba(4, 6, 11, 0) 50%);
+}
+
+.finale-copy {
+  position: relative;
+  width: 100%;
+  padding: 0 var(--gutter) clamp(2rem, 6svh, 4rem);
+}
+
+.home .finale-copy h2 {
+  max-width: 22ch;
+  font-size: clamp(2.2rem, 5vw, 5rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+}
 
 /* Portrait screens get their own composition: the wall above, the words below. */
 @media (orientation: portrait) {
@@ -965,13 +1462,6 @@ body:has(.home) .site-header:not(.scrolled) {
   }
 }
 
-@media (max-width: 1100px) {
-  .steps {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    row-gap: 2rem;
-  }
-}
-
 @media (max-width: 820px) {
   .home h2 {
     font-size: clamp(2rem, 8.4vw, 2.8rem);
@@ -996,8 +1486,7 @@ body:has(.home) .site-header:not(.scrolled) {
   }
 
   .flow,
-  .readers,
-  .promises {
+  .readers {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1010,25 +1499,68 @@ body:has(.home) .site-header:not(.scrolled) {
     border-top: 1px solid var(--border-strong);
   }
 
-  .steps {
+  /* On a phone the scene stays above the words that drive it. */
+  .ob-layout {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0;
+  }
+
+  .ob-scene {
+    top: 3.6rem;
+    z-index: 2;
+    padding-block: 0.5rem;
+    background: var(--night);
+  }
+
+  .ob-frame {
+    width: min(100%, 44svh);
+    margin-inline: auto;
+  }
+
+  .ob-step {
+    min-height: 44svh;
+    justify-content: flex-start;
+    padding-top: 1.5rem;
+  }
+
+  .get-layout,
+  .get-limits {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .steps li {
-    display: grid;
-    grid-template-columns: 3rem minmax(0, 1fr);
-    column-gap: 0.5rem;
+  .get-limits p {
+    grid-column: 1;
   }
 
-  .steps li::before {
-    grid-row: span 2;
+  .get-limits ul {
+    margin-top: 0.75rem;
+  }
+
+  .sheet {
+    position: static;
+    grid-row: 1;
+    order: -1;
+  }
+
+  .get-layout {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  .sheet-body {
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+  }
+
+  .sheet-tile b {
+    font-size: 2.4rem;
+  }
+
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   /* Both actions stay in reach on a long page. */
-  .after {
-    padding-bottom: 4.5rem;
-  }
-
   .mobile-cta {
     position: fixed;
     inset: auto 0 0 0;
@@ -1056,10 +1588,63 @@ body:has(.home) .site-header:not(.scrolled) {
   }
 }
 
+@media (orientation: portrait) {
+  .finale-glass {
+    width: max(100vw, 100svh * 3 / 5);
+    height: max(100svh, 100vw * 5 / 3);
+  }
+
+  .finale-shade {
+    background: linear-gradient(to top, #04060b 0%, rgba(4, 6, 11, 0.92) 30%, rgba(4, 6, 11, 0) 52%);
+  }
+
+  .ignite-text {
+    top: 12svh;
+    min-height: 88svh;
+  }
+
+  .home .ignite-text {
+    font-size: clamp(2.7rem, 11vw, 6rem);
+  }
+}
+
+/* A still version of the same story: no camera, the colour change is drawn once. */
 @media (prefers-reduced-motion: reduce) {
   .tile,
   .wall-glass,
-  .mobile-cta {
+  .mobile-cta,
+  .ob-step,
+  .get-parts li,
+  .faq summary,
+  .finale-glass {
     transition: none;
+  }
+
+  .faq details[open] p {
+    animation: none;
+  }
+
+  .ch-ignite {
+    min-height: auto;
+    padding-block: 4rem 2rem;
+    background: var(--lapis, #14297a);
+    position: relative;
+  }
+
+  .ignite-text {
+    position: static;
+    min-height: 0;
+  }
+
+  .finale {
+    min-height: auto;
+  }
+
+  .finale-wall {
+    position: relative;
+  }
+
+  .finale-glass {
+    transform: translate(-50%, -50%);
   }
 }

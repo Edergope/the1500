@@ -6,7 +6,8 @@ interface ClientData {
   labels:Record<'published'|'assigned'|'open'|'reserved'|'unreleased'|'demo',string>;
 }
 interface Tile {el:HTMLAnchorElement;slug:string;n:number;name:string;meta:string;demo:boolean;mark:string;cx:number;cy:number;w:number;h:number;}
-interface Cam {vx:number;vy:number;fx:number;fy:number;s:number;rx:number;ry:number;bloom:number;shade:number;}
+interface Cam {vx:number;vy:number;fx:number;fy:number;s:number;rx:number;ry:number;bloom:number;shade:number;ignite:number;close:number;gather:number;}
+interface Place {x:number;y:number;k:number;}
 interface PublicProfile {
   summary:string;problemSolutions:{problem:string;solution:string}[];audiences:string[];html:string;jsonld:string;
 }
@@ -27,6 +28,7 @@ function start() {
   const tip=qs<HTMLElement>('#cell-tip')!,plate=qs<HTMLElement>('#plate')!,tilesRoot=qs<HTMLElement>('#tiles')!;
   const shade=qs<HTMLElement>('.stage-shade')!;
   const tileEls=[...tilesRoot.querySelectorAll<HTMLAnchorElement>('.tile')];
+  const igniteEl=qs<HTMLElement>('.ch-ignite');
 
   let grid:Grid=portrait.matches?PORTRAIT:LANDSCAPE;
   let order=cellOrder(grid);
@@ -38,7 +40,9 @@ function start() {
   let featured=0;
   let renderer:WallRenderer|null=null;
   let canvas=qs<HTMLCanvasElement>('#wall-glass')!;
-  const view:Cam={vx:0,vy:0,fx:0,fy:0,s:1,rx:0,ry:0,bloom:1,shade:1};
+  const view:Cam={vx:0,vy:0,fx:0,fy:0,s:1,rx:0,ry:0,bloom:1,shade:1,ignite:0,close:0,gather:0};
+  let igniteTop=0,igniteHeight=1,gathered=false;
+  let places:Place[]=[];
   let primed=false,running=false,visible=true;
   const pointer={x:0,y:0,active:false,px:0,py:0};
   const appeared=performance.now();
@@ -63,21 +67,58 @@ function start() {
     const featureFocus=f?{x:f.cx,y:f.cy}:nucleus;
     const featureScale=f?clamp((tall?vw*0.56:vh*0.46)/(Math.max(f.w,f.h)*unit),coverScale,1.5):coverScale;
     const whole=tall?Math.min(vh*0.4/(grid.rows*unit),vw*0.8/(grid.cols*unit)):Math.min(vh*0.84/(grid.rows*unit),vw*0.56/(grid.cols*unit));
+    const still={ignite:0,close:0,gather:0};
     cams=tall?{
-      hero:{vx:0.5,vy:0.31,fx:nucleus.x,fy:nucleus.y,s:coverScale*1.12,rx:7,ry:-6,bloom:1,shade:1},
-      finite:{vx:0.5,vy:0.29,fx:middle.x,fy:middle.y,s:whole,rx:3,ry:-3,bloom:0,shade:1},
-      shape:{vx:0.5,vy:0.27,fx:nucleus.x,fy:nucleus.y,s:coverScale*1.04,rx:6,ry:-4,bloom:1,shade:1},
-      useful:{vx:0.5,vy:0.17,fx:featureFocus.x,fy:featureFocus.y,s:featureScale*0.8,rx:0,ry:0,bloom:1,shade:1.45},
-      identity:{vx:0.5,vy:0.14,fx:featureFocus.x,fy:featureFocus.y,s:featureScale*0.7,rx:0,ry:0,bloom:1,shade:2.1},
-      belong:{vx:0.5,vy:0.29,fx:middle.x,fy:middle.y,s:whole,rx:3,ry:-3,bloom:1,shade:1},
+      hero:{vx:0.5,vy:0.31,fx:nucleus.x,fy:nucleus.y,s:coverScale*1.12,rx:7,ry:-6,bloom:1,shade:1,...still},
+      finite:{vx:0.5,vy:0.29,fx:middle.x,fy:middle.y,s:whole,rx:3,ry:-3,bloom:0,shade:1,...still},
+      shape:{vx:0.5,vy:0.27,fx:nucleus.x,fy:nucleus.y,s:coverScale*1.04,rx:6,ry:-4,bloom:1,shade:1,...still},
+      useful:{vx:0.5,vy:0.17,fx:featureFocus.x,fy:featureFocus.y,s:featureScale*0.8,rx:0,ry:0,bloom:1,shade:1.45,...still},
+      identity:{vx:0.5,vy:0.14,fx:featureFocus.x,fy:featureFocus.y,s:featureScale*0.7,rx:0,ry:0,bloom:1,shade:2.1,...still},
+      belong:{vx:0.5,vy:0.29,fx:middle.x,fy:middle.y,s:whole,rx:3,ry:-3,bloom:1,shade:1,...still},
     }:{
-      hero:{vx:0.7,vy:0.52,fx:nucleus.x,fy:nucleus.y,s:coverScale*1.16,rx:7,ry:-11,bloom:1,shade:1},
-      finite:{vx:0.68,vy:0.52,fx:middle.x,fy:middle.y,s:whole,rx:3,ry:-7,bloom:0,shade:1},
-      shape:{vx:0.68,vy:0.5,fx:nucleus.x,fy:nucleus.y,s:coverScale*1.08,rx:5,ry:-8,bloom:1,shade:1},
-      useful:{vx:0.76,vy:0.5,fx:featureFocus.x,fy:featureFocus.y,s:featureScale,rx:2,ry:-6,bloom:1,shade:1},
-      identity:{vx:0.5,vy:0.5,fx:featureFocus.x,fy:featureFocus.y,s:featureScale*1.15,rx:0,ry:0,bloom:1,shade:2.2},
-      belong:{vx:0.68,vy:0.52,fx:middle.x,fy:middle.y,s:whole,rx:3,ry:-7,bloom:1,shade:1},
+      hero:{vx:0.7,vy:0.52,fx:nucleus.x,fy:nucleus.y,s:coverScale*1.16,rx:7,ry:-11,bloom:1,shade:1,...still},
+      finite:{vx:0.68,vy:0.52,fx:middle.x,fy:middle.y,s:whole,rx:3,ry:-7,bloom:0,shade:1,...still},
+      shape:{vx:0.68,vy:0.5,fx:nucleus.x,fy:nucleus.y,s:coverScale*1.08,rx:5,ry:-8,bloom:1,shade:1,...still},
+      useful:{vx:0.76,vy:0.5,fx:featureFocus.x,fy:featureFocus.y,s:featureScale,rx:2,ry:-6,bloom:1,shade:1,...still},
+      identity:{vx:0.5,vy:0.5,fx:featureFocus.x,fy:featureFocus.y,s:featureScale*1.15,rx:0,ry:0,bloom:1,shade:2.2,...still},
+      belong:{vx:0.68,vy:0.52,fx:middle.x,fy:middle.y,s:whole,rx:3,ry:-7,bloom:1,shade:1,...still},
     };
+    // The wall ends flat and filling the screen, so that the next section can continue it.
+    cams.ignite={vx:0.5,vy:0.5,fx:middle.x,fy:middle.y,s:Math.max(vw/(grid.cols*unit),vh/(grid.rows*unit))*1.06,rx:0,ry:0,bloom:1,shade:0,ignite:1,close:1,gather:1};
+    if (igniteEl) {
+      const r=igniteEl.getBoundingClientRect();
+      igniteTop=r.top+scrollY;igniteHeight=r.height;
+    }
+    placeLineup(tall);
+  };
+  /** Where the companies stand once they have left the wall: one row, or several on a narrow screen. */
+  const placeLineup=(tall:boolean)=>{
+    const going=tiles.slice(0,tall?6:7);
+    const rowHeight=tall?vh*0.15:vh*0.27,gap=tall?10:16,maxWidth=vw*(tall?0.92:0.9);
+    const rows:{i:number;w:number}[][]=[[]];
+    let used=0;
+    going.forEach((t,i)=>{
+      const w=rowHeight*t.w/t.h;
+      // A wide screen keeps one row; a phone needs a second.
+      if (tall&&used+w>maxWidth&&rows.length<3&&rows[rows.length-1]!.length) {rows.push([]);used=0;}
+      rows[rows.length-1]!.push({i,w});used+=w+gap;
+    });
+    const fit=Math.min(1,...rows.map(r=>maxWidth/(r.reduce((a,c)=>a+c.w,0)+gap*(r.length-1))));
+    const cam=cams.ignite!;
+    places=[];
+    const top=vh*(tall?0.4:0.56);
+    rows.forEach((row,n)=>{
+      const width=row.reduce((a,c)=>a+c.w*fit,0)+gap*(row.length-1);
+      let x=(vw-width)/2;
+      const y=top+n*(rowHeight*fit+gap);
+      for (const {i,w} of row) {
+        const tile=tiles[i]!;
+        const k=(w*fit)/(tile.w*unit*cam.s);
+        places[i]={x:cam.fx*unit+(x-cam.vx*vw)/cam.s-(tile.cx-tile.w/2)*unit,y:cam.fy*unit+(y-cam.vy*vh)/cam.s-(tile.cy-tile.h/2)*unit,k};
+        x+=w*fit+gap;
+      }
+    });
+    tileEls.forEach((el,i)=>{el.style.setProperty('--leaves',places[i]?'0':'1');});
   };
   const targetCam=():Cam=>{
     if (reduced.matches||!chapters.length) return cams.hero!;
@@ -86,18 +127,47 @@ function start() {
     while (i<chapterCentres.length-1&&chapterCentres[i+1]!<=mid) i++;
     const from=cams[chapters[i]!.dataset.cam!]!;
     const next=chapters[i+1];
-    if (!next||mid<=chapterCentres[i]!) return from;
+    if (!next) return withIgnite(from);
+    if (mid<=chapterCentres[i]!) return from;
     const to=cams[next.dataset.cam!]!;
     // Each chapter holds still for a moment, so its text can be read.
     const t=smooth(clamp(((mid-chapterCentres[i]!)/(chapterCentres[i+1]!-chapterCentres[i]!)-0.18)/0.64,0,1));
-    return {vx:lerp(from.vx,to.vx,t),vy:lerp(from.vy,to.vy,t),fx:lerp(from.fx,to.fx,t),fy:lerp(from.fy,to.fy,t),s:lerp(from.s,to.s,t),
-      rx:lerp(from.rx,to.rx,t),ry:lerp(from.ry,to.ry,t),bloom:lerp(from.bloom,to.bloom,t),shade:lerp(from.shade,to.shade,t)};
+    return mixCams(from,to,t);
+  };
+  const mixCams=(a:Cam,b:Cam,t:number):Cam=>{
+    const out={...a};
+    for (const key of Object.keys(a) as (keyof Cam)[]) out[key]=lerp(a[key],b[key],t);
+    return out;
+  };
+  /** The last stretch of the story: position by position the glass lights up, the camera closes in, the companies step out. */
+  const withIgnite=(from:Cam):Cam=>{
+    if (!igniteEl) return from;
+    const p=clamp((scrollY+vh-igniteTop)/igniteHeight,0,1);
+    igniteEl.style.setProperty('--p',p.toFixed(4));
+    igniteEl.style.setProperty('--r',smooth(clamp((p-0.62)/0.2,0,1)).toFixed(4));
+    const end=cams.ignite!;
+    const out=mixCams(from,end,smooth(clamp((p-0.12)/0.5,0,1)));
+    out.ignite=smooth(clamp((p-0.14)/0.5,0,1));
+    out.close=smooth(clamp((p-0.58)/0.14,0,1));
+    out.gather=smooth(clamp((p-0.5)/0.3,0,1));
+    return out;
   };
   const applyCam=()=>{
     const tiltX=view.rx-(pointer.active?pointer.py*1.6:0),tiltY=view.ry+(pointer.active?pointer.px*2.2:0);
     wall.style.transformOrigin=`${view.fx*unit}px ${view.fy*unit}px`;
     wall.style.transform=`translate(${view.vx*vw-view.fx*unit}px,${view.vy*vh-view.fy*unit}px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${view.s})`;
     wall.style.setProperty('--b',view.bloom.toFixed(3));
+    wall.style.setProperty('--g',view.gather.toFixed(3));
+    const out=view.gather>0.002;
+    if (out!==gathered) tilesRoot.classList.toggle('is-out',out);
+    if (out||gathered) places.forEach((place,i)=>{
+      const el=tileEls[i];
+      if (!el||!place) return;
+      if (!out) {el.style.translate='';el.style.scale='';return;}
+      el.style.translate=`${place.x*view.gather}px ${place.y*view.gather}px`;
+      el.style.scale=String(lerp(1,place.k,view.gather));
+    });
+    gathered=out;
     shade.style.opacity=String(Math.min(1,view.shade*0.92));
     shade.style.setProperty('--veil',String(clamp(view.shade-1,0,1).toFixed(3)));
   };
@@ -128,7 +198,7 @@ function start() {
     const orbit:[number,number]=still?[view.fx-6,view.fy-3]:[view.fx+Math.sin(t*0.31)*grid.cols*0.32,view.fy+Math.cos(t*0.23)*grid.rows*0.32];
     const second:[number,number]=still?[view.fx+8,view.fy+6]:[grid.cols/2+Math.cos(t*0.17)*grid.cols*0.45,grid.rows/2+Math.sin(t*0.13)*grid.rows*0.45];
     const main=pointer.active?[pointer.x,pointer.y] as [number,number]:orbit;
-    renderer.draw({a:main,b:second,reveal:still?999:Math.max(0,t*44),origin:[view.fx,view.fy]});
+    renderer.draw({a:main,b:second,reveal:still?999:Math.max(0,t*44),origin:[view.fx,view.fy],ignite:view.ignite,close:view.close});
     // The same light falls on the companies, while they are few enough for that to be cheap.
     if (tiles.length<=80) {wall.style.setProperty('--lx',main[0].toFixed(2));wall.style.setProperty('--ly',main[1].toFixed(2));}
   };
@@ -311,8 +381,16 @@ function start() {
   new IntersectionObserver(([entry])=>{visible=!!entry?.isIntersecting;wake();}).observe(stage);
   document.fonts?.ready.then(()=>{measure();wake();});
 
-  const heroCta=qs('#hero-cta'),mobileCta=qs('#mobile-cta');
-  if (heroCta&&mobileCta) new IntersectionObserver(([entry])=>{mobileCta.classList.toggle('is-visible',!entry?.isIntersecting);}).observe(heroCta);
+  // The bar on phones appears only while no other pair of buttons is on screen.
+  const mobileCta=qs('#mobile-cta'),ownCtas=[...document.querySelectorAll('.home .cta')];
+  if (mobileCta&&ownCtas.length) {
+    const showing=new Set<Element>();
+    const watch=new IntersectionObserver(entries=>{
+      for (const e of entries) {if (e.isIntersecting) showing.add(e.target);else showing.delete(e.target);}
+      mobileCta.classList.toggle('is-visible',showing.size===0);
+    });
+    ownCtas.forEach(el=>watch.observe(el));
+  }
 
   // Heavy work waits until the page is on screen and answering.
   const whenIdle=(fn:()=>void)=>('requestIdleCallback' in window?requestIdleCallback(fn,{timeout:1200}):setTimeout(fn,300));

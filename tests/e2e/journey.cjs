@@ -70,6 +70,12 @@ async function buy(owner,companyId){
     assert.doesNotMatch(home,/FTS5|lifetime|vitalicia|private index|índice privado|self_declared|role: owner|founder badge/i,p);
     assert.doesNotMatch(home,/\$400|\$1,000|\$1\.000|\$5,066|\$5\.066|Fase 2|Phase 2|601|1,?351/,p);
   }
+  // UX-004: every section down to the footer, with no legal page presented as if it existed.
+  for(const [p,words] of [['/',['Behind the glass','Search by the problem','How it works','Publication terms','Terms of service: in preparation','Privacy policy: in preparation']],['/es/',['Detrás del vidrio','Busca por el problema','Cómo funciona','Condiciones de publicación','Términos de servicio: en preparación','Política de privacidad: en preparación']]]){
+    const home=await (await fetch(BASE+p)).text();for(const w of words)assert.ok(home.includes(w),`${p} ${w}`);
+    for(const id of ['explore','how-it-works','what-you-get','faq','availability'])assert.ok(home.includes(`id="${id}"`),`${p} ${id}`);
+    assert.match(home,/action="[^"]*\/empresas" method="get"/,'search works without JavaScript');
+  }
   assert.deepEqual(s0.data.phases.map(p=>p.phase),[1],'only the open phase is public');
   const phase1=s0.data.phases[0];assert.equal(phase1.reservedByInvitation,100);assert.equal(phase1.forSale,500);
   for(const p of ['/unirse','/es/unirse']){const join=await (await fetch(BASE+p)).text();assert.doesNotMatch(join,/\$400|\$1,000|\$1\.000|\$5,066|\$5\.066|4-Tier|4 tramos/,p);}

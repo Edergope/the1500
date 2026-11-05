@@ -151,11 +151,6 @@ const metaDesc =
         transition: padding 0.2s ease;
       }
 
-      .site-header.scrolled .nav-container {
-        padding-top: 0.65rem;
-        padding-bottom: 0.65rem;
-      }
-
       .brand-lockup {
         display: inline-flex;
         align-items: center;
@@ -591,35 +586,44 @@ const metaDesc =
         color: var(--text-secondary);
       }
 
-      /* 10. FOOTER (Component #12) */
+      /* The footer ends on the name itself, cut by the edge of the page. */
       .site-footer {
         margin-top: auto;
-        border-top: 1px solid var(--border-subtle);
-        background: #040810;
-        padding: 3.5rem clamp(1rem, 4vw, 2.5rem) 2rem;
+        background: #04060b;
+        padding: clamp(2.5rem, 6vw, 5rem) 0 0;
+        overflow: hidden;
+        border-top: 1px solid rgba(238, 198, 121, 0.22);
       }
 
       .footer-inner {
-        max-width: 1280px;
+        max-width: 1320px;
         margin: 0 auto;
+        padding-inline: clamp(1rem, 4vw, 3rem);
+      }
+
+      .footer-claim {
+        max-width: 26ch;
+        margin: 0 0 clamp(2rem, 5vw, 3.5rem);
+        font-family: var(--font-display);
+        font-size: clamp(1.6rem, 3vw, 2.6rem);
+        line-height: 1.12;
+        color: var(--text-primary);
+        text-wrap: balance;
       }
 
       .footer-columns {
         display: grid;
-        grid-template-columns: 1.4fr 1fr 1fr 1fr;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 2rem;
-        padding-bottom: 2.5rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
       }
 
       .footer-col-title {
-        font-family: var(--font-mono);
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: var(--text-primary);
-        margin-bottom: 0.9rem;
+        margin: 0 0 0.8rem;
+        font-family: var(--font-sans);
+        font-size: 0.86rem;
+        font-weight: 600;
+        letter-spacing: 0;
+        color: var(--gold-primary);
       }
 
       .footer-col-list {
@@ -628,27 +632,51 @@ const metaDesc =
         margin: 0;
         display: flex;
         flex-direction: column;
-        gap: 0.55rem;
-        font-size: 0.88rem;
+        gap: 0.5rem;
+        font-size: 0.98rem;
       }
 
       .footer-col-list a {
-        color: var(--text-secondary);
+        color: var(--text-primary);
       }
 
       .footer-col-list a:hover {
         color: var(--gold-primary);
       }
 
-      .footer-bottom {
-        padding-top: 1.5rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 1rem;
-        font-size: 0.8rem;
+      .footer-col-list a[aria-current] {
+        text-decoration: underline;
+        text-underline-offset: 0.25em;
+        text-decoration-color: var(--gold-primary);
+      }
+
+      .footer-pending {
         color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+
+      .footer-note {
+        margin: clamp(2rem, 4vw, 3rem) 0 0;
+        max-width: 70ch;
+        font-size: 0.84rem;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+
+      .footer-mark {
+        margin: clamp(1.5rem, 3vw, 2.5rem) 0 -0.17em;
+        text-align: center;
+        font-family: var(--font-display);
+        font-size: 25.5vw;
+        line-height: 0.86;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+        color: var(--gold-primary);
+        background: linear-gradient(rgba(238, 198, 121, 0.95), rgba(238, 198, 121, 0.25));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        user-select: none;
       }
 
       /* Responsive Rules (Desktop vs Mobile) */
@@ -707,7 +735,7 @@ const metaDesc =
         .grid-3,
         .grid-4,
         .footer-columns {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
     </style>
@@ -789,84 +817,48 @@ const metaDesc =
     <!-- 10. FOOTER (4 Columns + Bottom Line) -->
     <footer class="site-footer">
       <div class="footer-inner">
+        <p class="footer-claim">
+          {es ? 'Un registro público limitado a 1.500 empresas, con perfiles aprobados por sus titulares.' : 'A public register limited to 1,500 companies, with profiles approved by their owners.'}
+        </p>
         <div class="footer-columns">
-          <!-- Column 1 -->
-          <div>
-            <a class="brand-lockup" href={es ? '/es/' : '/'} style="margin-bottom:0.75rem">
-              <span class="brand-mark">1500</span>
-              <span class="brand-name">THE1500</span>
-            </a>
-            <p class="muted" style="margin:0.5rem 0 0.85rem 0;max-width:34ch;font-size:0.9rem">
-              {es
-                ? 'Un índice empresarial estructurado para la era de la IA.'
-                : 'A structured business index for the AI era.'}
-            </p>
-            <span class="badge badge-slate mono" style="font-size:0.7rem">
-              {es ? 'Máximo de 1.500 empresas' : 'A maximum of 1,500 companies'}
-            </span>
-          </div>
-
-          <!-- Column 2 -->
-          <div>
-            <div class="footer-col-title">{es ? 'Plataforma' : 'Platform'}</div>
+          <nav aria-label={es ? 'Explorar' : 'Explore'}>
+            <h2 class="footer-col-title">{es ? 'Explorar' : 'Explore'}</h2>
             <ul class="footer-col-list">
-              <li><a href={es ? '/es/empresas' : '/empresas'}>{es ? 'Ver Directorio' : 'View Directory'}</a></li>
+              <li><a href={es ? '/es/empresas' : '/empresas'}>{es ? 'Directorio' : 'Directory'}</a></li>
+              <li><a href={es ? '/es/#how-it-works' : '/#how-it-works'}>{es ? 'Cómo funciona' : 'How it works'}</a></li>
+              <li><a href={es ? '/es/#faq' : '/#faq'}>{es ? 'Preguntas frecuentes' : 'Questions'}</a></li>
+            </ul>
+          </nav>
+          <nav aria-label={es ? 'Tu cuenta' : 'Your account'}>
+            <h2 class="footer-col-title">{es ? 'Tu empresa' : 'Your company'}</h2>
+            <ul class="footer-col-list">
               <li><a href={es ? '/es/unirse' : '/unirse'}>{es ? 'Unirse a THE1500' : 'Join THE1500'}</a></li>
-              <li><a href={es ? '/es/login' : '/login'}>{es ? 'Iniciar sesión' : 'Sign in'}</a></li>
-              <li><a href={es ? '/es/#faq' : '/#faq'}>FAQ</a></li>
+              <li><a href={signedIn ? accountHref : es ? '/es/login' : '/login'}>{signedIn ? accountLabel : es ? 'Iniciar sesión' : 'Sign in'}</a></li>
             </ul>
-          </div>
-
-          <!-- Column 3 -->
+          </nav>
           <div>
-            <div class="footer-col-title">{es ? 'Legal y Políticas' : 'Legal & Policies'}</div>
+            <h2 class="footer-col-title">Legal</h2>
             <ul class="footer-col-list">
-              <li><a href={es ? '/es/unirse#terms' : '/unirse#terms'}>{es ? 'Términos' : 'Terms'}</a></li>
-              <li>
-                <a href={es ? '/es/#trust-proof' : '/#trust-proof'}>
-                  {es ? 'Política de datos y publicación' : 'Data & publication policy'}
-                </a>
-              </li>
+              <li><a href={es ? '/es/unirse#terms' : '/unirse#terms'}>{es ? 'Condiciones de publicación' : 'Publication terms'}</a></li>
+              <li class="footer-pending">{es ? 'Términos de servicio: en preparación' : 'Terms of service: in preparation'}</li>
+              <li class="footer-pending">{es ? 'Política de privacidad: en preparación' : 'Privacy policy: in preparation'}</li>
             </ul>
           </div>
-
-          <!-- Column 4 -->
           <div>
-            <div class="footer-col-title">{es ? 'Idioma y Estándares' : 'Language & Standards'}</div>
-            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.85rem">
-              <a
-                class={`lang-pill ${!es ? 'badge-gold' : ''}`}
-                href={es ? switchHref : currentPath}
-                hreflang="en"
-              >
-                English (EN)
-              </a>
-              <a
-                class={`lang-pill ${es ? 'badge-gold' : ''}`}
-                href={es ? currentPath : switchHref}
-                hreflang="es"
-              >
-                Español (ES)
-              </a>
-            </div>
-            <div class="mono muted" style="font-size:0.74rem;line-height:1.5">
-              {es ? 'Perfiles en formato Schema.org' : 'Profiles in Schema.org format'}
-            </div>
+            <h2 class="footer-col-title">{es ? 'Idioma' : 'Language'}</h2>
+            <ul class="footer-col-list">
+              <li><a href={es ? switchHref : currentPath} hreflang="en" aria-current={es ? undefined : 'true'}>English</a></li>
+              <li><a href={es ? currentPath : switchHref} hreflang="es" aria-current={es ? 'true' : undefined}>Español</a></li>
+            </ul>
           </div>
         </div>
-
-        <div class="footer-bottom">
-          <div>
-            © {new Date().getFullYear()} THE1500 · {es ? 'Entorno de pruebas' : 'Test environment'} ·{' '}
-            {es ? 'Todos los derechos reservados.' : 'All rights reserved.'}
-          </div>
-          <div>
-            {es
-              ? 'Edición limitada a 1.500 empresas. No garantizamos inclusión ni recomendación en plataformas de IA externas.'
-              : 'Limited to 1,500 companies. We do not guarantee inclusion or recommendation inside external AI platforms.'}
-          </div>
-        </div>
+        <p class="footer-note">
+          {es
+            ? 'Entorno de pruebas: no se procesan cobros reales. No garantizamos inclusión ni recomendación en plataformas externas de IA.'
+            : 'Test environment: no real charges are processed. We do not guarantee inclusion or recommendation on external AI platforms.'}
+        </p>
       </div>
+      <div class="footer-mark" aria-hidden="true">THE1500</div>
     </footer>
 
     <script is:inline>

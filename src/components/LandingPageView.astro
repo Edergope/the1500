@@ -103,36 +103,41 @@ const legend = counts
     ] as const
   : [];
 
+const sampleLook = sample ? tileLook(sample.profile.slug) : null;
+const sampleProblem = sample?.profile.problemSolutions[0];
+
 const steps = es
   ? [
-      ['Únete o recibe una invitación', 'Registra tu empresa con tu correo corporativo.'],
-      ['Cuéntanos qué hace tu empresa', 'Tus servicios, a quién atiendes y qué problemas resuelves.'],
-      ['Revisa el perfil', 'Preparamos un perfil ordenado y te mostramos exactamente lo que se publicará.'],
-      ['Apruébalo', 'Nada se publica sin tu aprobación expresa.'],
-      ['Ocupa tu lugar', 'Tu pieza aparece en el muro, en el directorio, en su buscador y en su asistente.'],
+      ['Tu empresa solicita su lugar', 'Se registra con correo corporativo y adquiere una posición, o recibe una invitación. El número se asigna al confirmarse el pago.'],
+      ['Nos cuenta qué hace', 'Servicios, clientes, problemas que resuelve, países. Tal como lo diría a un cliente.'],
+      ['THE1500 lo ordena', 'Convierte esa información en un perfil estructurado, bilingüe, e indica de dónde salió cada dato.'],
+      ['Su representante aprueba', 'Revisa el contenido exacto. No responder no cuenta como aprobar, y sin aprobación no se publica nada.'],
+      ['Aparece en el muro', 'Su pieza se enciende en el mosaico, y su perfil entra en el directorio, el buscador y el asistente.'],
     ]
   : [
-      ['Join or get invited', 'Register your company with your work email.'],
-      ['Tell us what your company does', 'Your services, who you serve and the problems you solve.'],
-      ['Review the profile', 'We prepare a structured profile and show you exactly what will be published.'],
-      ['Approve it', 'Nothing goes live without your explicit approval.'],
-      ['Take your place', 'Your piece appears on the wall, in the directory, its search and its assistant.'],
+      ['Your company asks for its place', 'It registers with a work email and acquires a position, or receives an invitation. The number is assigned when payment is confirmed.'],
+      ['It tells us what it does', 'Services, customers, the problems it solves, countries. The way it would tell a customer.'],
+      ['THE1500 structures it', 'That information becomes a structured, bilingual profile that shows where each detail came from.'],
+      ['Its representative approves', 'They review the exact content. Not responding does not count as approval, and without approval nothing is published.'],
+      ['It appears on the wall', 'Its piece lights up in the mosaic, and its profile enters the directory, the search and the assistant.'],
     ];
 
-const promises = es
+const parts = es
   ? [
-      'Una posición numerada dentro de un máximo de 1.500.',
-      'Publicación garantizada 12 meses desde la primera publicación, según las condiciones aplicables.',
-      '15 días tras publicar para hacer correcciones iniciales.',
-      'Una página pública bilingüe y tus datos en un formato estándar que puedes exportar.',
-      'Presencia en el buscador y el asistente de THE1500.',
+      ['number', 'Una posición numerada', 'Un número dentro de un máximo de 1.500, y una pieza en el muro.'],
+      ['page', 'Una página pública', 'Una dirección propia para tu empresa, en inglés y español.'],
+      ['profile', 'Un perfil que tú apruebas', 'Qué haces, qué resuelves y a quién atiendes. 15 días tras publicar para correcciones iniciales.'],
+      ['data', 'Legible por personas y software', 'Tus datos en un formato estándar que puedes exportar.'],
+      ['presence', 'Presencia en THE1500', 'En su directorio, su buscador y su asistente.'],
+      ['term', '12 meses garantizados', 'Publicación garantizada 12 meses desde la primera publicación, según las condiciones aplicables.'],
     ]
   : [
-      'A numbered position, out of a maximum of 1,500.',
-      'Publication guaranteed for 12 months from first publication, under the applicable conditions.',
-      '15 days after publishing to make initial corrections.',
-      'A bilingual public page, and your data in a standard format you can export.',
-      'A place in THE1500’s own search and assistant.',
+      ['number', 'A numbered position', 'A number out of a maximum of 1,500, and a piece on the wall.'],
+      ['page', 'A public page', 'An address of its own for your company, in English and Spanish.'],
+      ['profile', 'A profile you approve', 'What you do, what you solve and who you serve. 15 days after publishing for initial corrections.'],
+      ['data', 'Readable by people and software', 'Your data in a standard format you can export.'],
+      ['presence', 'A presence in THE1500', 'In its directory, its search and its assistant.'],
+      ['term', '12 months guaranteed', 'Publication guaranteed for 12 months from first publication, under the applicable conditions.'],
     ];
 
 const limits = es
@@ -147,21 +152,61 @@ const limits = es
       'Keeping profiles for 10 years is a technical goal, not a contractual promise.',
     ];
 
+const facts = es
+  ? [
+      ['1.500', 'empresas como máximo'],
+      ['0', 'publicaciones sin aprobación expresa'],
+      ['20 min', 'de reserva, sin número asignado'],
+      ['15', 'días tras publicar para correcciones iniciales'],
+    ]
+  : [
+      ['1,500', 'companies at most'],
+      ['0', 'publications without explicit approval'],
+      ['20 min', 'hold, with no number assigned'],
+      ['15', 'days after publishing for initial corrections'],
+    ];
+
 const faqs = es
   ? [
       ['¿Cuándo recibe mi empresa su número?', 'Al confirmarse el pago, en orden ascendente. Una reserva de 20 minutos guarda capacidad, pero no asigna un número, y los números no se pueden elegir.'],
       ['¿Qué pasa si una empresa publicada se retira?', 'Su identidad desaparece de todas las superficies públicas y la posición queda retirada de forma permanente. No vuelve a venderse.'],
-      ['¿Se publica algo sin mi aprobación?', 'Nunca. No responder no cuenta como aprobar: un representante autorizado debe aprobar el contenido exacto antes de publicarlo.'],
+      ['¿Qué significa «sin aprobación no se publica»?', 'No responder no cuenta como aprobar: un representante autorizado debe aprobar el contenido exacto antes de publicarlo.'],
       ['¿Por qué algunas posiciones no están en venta?', 'Las posiciones 1 a 100 se asignan solo por invitación. Las empresas que compran reciben posiciones desde la 101.'],
       ['¿El precio será siempre el mismo?', 'Las posiciones se abren por fases y cada fase tiene su propio precio. El que ves aquí es el de la fase abierta ahora, antes de los impuestos aplicables. Siempre verás el precio y las condiciones antes de pagar.'],
+      ['¿Apareceré en ChatGPT u otras plataformas de IA?', 'No lo garantizamos. THE1500 ordena la información de tu empresa y la publica, pero no controla ni promete inclusión o recomendación en plataformas externas.'],
     ]
   : [
       ['When does my company get its number?', 'When payment is confirmed, in ascending order. A 20-minute hold keeps capacity but assigns no number, and numbers cannot be chosen.'],
       ['What happens if a published company withdraws?', 'Its identity is removed from every public surface and the position is permanently retired. It is never sold again.'],
-      ['Is anything published without my approval?', 'Never. Not responding does not count as approval: an authorized representative must approve the exact content before it goes live.'],
+      ['What does “no approval, no publication” mean?', 'Not responding does not count as approval: an authorized representative must approve the exact content before it goes live.'],
       ['Why are some positions not for sale?', 'Positions 1 to 100 are allocated by invitation only. Companies that buy receive positions from 101 onward.'],
       ['Will the price always be the same?', 'Positions are released in stages, and each stage has its own price. The one shown here is for the stage open now, before applicable tax. You always see the price and terms before you pay.'],
+      ['Will I appear in ChatGPT or other AI platforms?', 'We do not guarantee it. THE1500 structures and publishes your company information, but does not control or promise inclusion or recommendation on external platforms.'],
     ];
+
+// Fragments of a real published profile, for the two scenes that show one. Marked when it is a demonstration.
+const fragments = sample
+  ? [
+      (sample.profile.services[0] ?? '').slice(0, 44),
+      (sample.profile.audiences[0] ?? '').slice(0, 44),
+      countryName(sample.profile.country),
+      (sampleProblemText()).slice(0, 44),
+    ]
+  : es
+    ? ['Tus servicios', 'Tus clientes', 'Tu país', 'El problema que resuelves']
+    : ['Your services', 'Your customers', 'Your country', 'The problem you solve'];
+const fragmentLabels = es ? ['Servicio', 'Atiende a', 'País', 'Resuelve'] : ['Service', 'Serves', 'Country', 'Solves'];
+function sampleProblemText() {
+  return sample?.profile.problemSolutions[0]?.problem ?? '';
+}
+const scatter = [[4, 12, -9], [50, 4, 6], [12, 62, 5], [46, 72, -6]];
+const exampleName = sample?.profile.name ?? (es ? 'Tu empresa' : 'Your company');
+const exampleLook = sample ? tileLook(sample.profile.slug) : { color: { bg: '#1f43b0', ink: '#f5f2eb' }, variant: 0 };
+const exampleDemo = sample ? isDemoName(sample.profile.name) : false;
+const exampleMachine = sample
+  ? JSON.stringify({ '@type': sample.machine['@type'], name: sample.machine.name, knowsAbout: sample.machine.knowsAbout }, null, 2)
+  : '';
+const SEAM = { lapis: '#14297a', night: '#070b14', stone: '#ece7db', wine: '#10090f', end: '#04060b' };
 
 const clientData = {
   lang,
@@ -179,8 +224,6 @@ const clientData = {
 };
 const clientJson = JSON.stringify(clientData).replace(/</g, '\\u003c');
 
-const sampleLook = sample ? tileLook(sample.profile.slug) : null;
-const sampleProblem = sample?.profile.problemSolutions[0];
 ---
 <main class="home" id="home">
   <div class="story" id="story">
@@ -352,6 +395,14 @@ const sampleProblem = sample?.profile.problemSolutions[0];
           )}
         </div>
       </section>
+
+      <section class="ch-ignite" aria-labelledby="ignite-title">
+        <h2 class="ignite-text" id="ignite-title">
+          {companies.length > 0
+            ? es ? <><span class="il"><span>Detrás del vidrio,</span></span> <span class="il"><span>empresas.</span></span></> : <><span class="il"><span>Behind the glass,</span></span> <span class="il"><span>companies.</span></span></>
+            : es ? <><span class="il"><span>Detrás del vidrio,</span></span> <span class="il"><span>llegarán empresas.</span></span></> : <><span class="il"><span>Behind the glass,</span></span> <span class="il"><span>companies will come.</span></span></>}
+        </h2>
+      </section>
     </div>
 
     <div class="stage" id="stage" style={`--fx:${focusWide.x};--fy:${focusWide.y};--pfx:${focusTall.x};--pfy:${focusTall.y};--density:${density}`}>
@@ -416,65 +467,143 @@ const sampleProblem = sample?.profile.problemSolutions[0];
   </aside>
 
   <div class="after">
-    <section id="explore" class="home-block" aria-label={es ? 'Directorio' : 'Directory'}>
-      <div class="discovery-wrap">
-        <DiscoveryHub client:visible lang={lang} />
+    <section id="explore" class="discover" aria-labelledby="discover-title">
+      <div class="wrap">
+        <h2 id="discover-title" class="display">{es ? 'Busca por el problema, no por el nombre.' : 'Search by the problem, not the name.'}</h2>
+        <p class="lead">
+          {es
+            ? 'Cada perfil dice qué hace la empresa y qué resuelve, en palabras aprobadas por ella. Describe lo que necesitas y mira quién lo ha publicado.'
+            : 'Every profile says what the company does and what it solves, in words it approved. Describe what you need and see who has published it.'}
+        </p>
+        <DiscoveryHub client:visible lang={lang} bare featured={companies.slice(0, 6)} />
       </div>
     </section>
 
-    <section id="how-it-works" class="home-block" aria-labelledby="how-title">
-      <div class="home-lead">
-        <h2 id="how-title">{es ? 'De la solicitud a tu lugar en el muro' : 'From application to your place on the wall'}</h2>
-      </div>
-      <ol class="steps">
-        {steps.map(([title, text]) => (
-          <li>
-            <h3>{title}</h3>
-            <p>{text}</p>
-          </li>
-        ))}
-      </ol>
-    </section>
+    <canvas class="seam" data-a={SEAM.lapis} data-b={SEAM.night} aria-hidden="true" style={`--a:${SEAM.lapis};--b:${SEAM.night}`}></canvas>
 
-    <section id="trust-proof" class="home-block" aria-labelledby="promise-title">
-      <div class="home-lead">
-        <h2 id="promise-title">{es ? 'Lo que prometemos, y lo que no' : 'What we promise, and what we don’t'}</h2>
-      </div>
-      <div class="promises">
-        <div>
-          <h3>{es ? 'Recibes' : 'You get'}</h3>
-          <ul>{promises.map((item) => <li>{item}</li>)}</ul>
+    <section id="how-it-works" class="onboard" aria-labelledby="how-title">
+      <div class="wrap">
+        <h2 id="how-title" class="display">{es ? 'De información suelta a una pieza del muro.' : 'From loose information to a piece of the wall.'}</h2>
+        <div class="ob-layout">
+          <ol class="ob-steps">
+            {steps.map(([title, text], i) => (
+              <li class:list={['ob-step', { 'is-active': i === 0 }]}>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </li>
+            ))}
+          </ol>
+          <div class="ob-scene" aria-hidden="true" style={`--bg:${exampleLook.color.bg};--ink:${exampleLook.color.ink}`}>
+            <div class="ob-frame">
+              <div class="ob-ticket">
+                <span>{exampleName}</span>
+                <small>{es ? 'Número: se asigna al pagar' : 'Number: assigned at payment'}</small>
+              </div>
+              <div class="ob-wall">
+                {Array.from({ length: 96 }, (_, i) => <i class:list={[{ 'ob-slot': i === 45 }]}></i>)}
+              </div>
+              <article class="ob-card">
+                <header><b>{monogram(exampleName)}</b><span>{exampleName}</span></header>
+                {fragmentLabels.map((label, i) => <p style={`--row:${i}`}><small>{label}</small></p>)}
+                <em class="ob-stamp">{es ? 'Aprobado por su titular' : 'Approved by its owner'}</em>
+              </article>
+              {fragments.map((text, i) => (
+                <span class="ob-chip" style={`--sx:${scatter[i]![0]};--sy:${scatter[i]![1]};--rot:${scatter[i]![2]};--row:${i}`}>{text}</span>
+              ))}
+            </div>
+            {exampleDemo && <p class="ob-note">{es ? 'Ejemplo con una empresa de demostración' : 'Example using a demonstration company'}</p>}
+          </div>
         </div>
-        <div>
-          <h3>{es ? 'No prometemos' : 'We don’t promise'}</h3>
+      </div>
+    </section>
+
+    <canvas class="seam" data-a={SEAM.night} data-b={SEAM.stone} aria-hidden="true" style={`--a:${SEAM.night};--b:${SEAM.stone}`}></canvas>
+
+    <section id="what-you-get" class="get" aria-labelledby="get-title">
+      <div class="wrap">
+        <h2 id="get-title" class="display">{es ? 'Esto es lo que ocupa tu lugar.' : 'This is what takes your place.'}</h2>
+        <div class="get-layout">
+          <ul class="get-parts">
+            {parts.map(([part, title, text]) => (
+              <li data-part={part} tabindex="0">
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </li>
+            ))}
+          </ul>
+          <figure class="sheet" data-show="number" style={`--bg:${exampleLook.color.bg};--ink:${exampleLook.color.ink}`}>
+            <div class="sheet-bar" data-mark="page">
+              <span>{`the1500/${es ? 'es/' : ''}empresas/${sample?.profile.slug ?? 'tu-empresa'}`.slice(0, 44)}</span>
+            </div>
+            <div class="sheet-body">
+              <div class="sheet-tile" data-mark="number">
+                <b>{monogram(exampleName)}</b>
+                <span>{sample ? formatPosition(sample.profile.position) : '#----'}</span>
+              </div>
+              <div class="sheet-main" data-mark="profile">
+                <h3>{exampleName}</h3>
+                <p>{sample?.profile.summary ?? (es ? 'Qué hace tu empresa, en palabras que tú apruebas.' : 'What your company does, in words you approve.')}</p>
+              </div>
+              <pre class="sheet-data" data-mark="data">{exampleMachine || '{ "@type": "Organization" }'}</pre>
+              <div class="sheet-where" data-mark="presence">
+                <span>{es ? 'Directorio' : 'Directory'}</span>
+                <span>{es ? 'Buscador' : 'Search'}</span>
+                <span>{es ? 'Asistente' : 'Assistant'}</span>
+              </div>
+              <div class="sheet-term" data-mark="term">{es ? 'Publicación garantizada: 12 meses' : 'Publication guaranteed: 12 months'}</div>
+            </div>
+            {exampleDemo && <figcaption>{es ? 'Empresa de demostración, no es un negocio real.' : 'Demonstration company, not a real business.'}</figcaption>}
+          </figure>
+        </div>
+        <div class="get-limits">
+          <h3>{es ? 'Y lo que no prometemos' : 'And what we do not promise'}</h3>
           <ul>{limits.map((item) => <li>{item}</li>)}</ul>
+          <p><a href={`${prefix}/unirse#terms`}>{es ? 'Ver las condiciones de publicación' : 'See the publication terms'}</a></p>
         </div>
       </div>
     </section>
 
-    <section id="faq" class="home-block" aria-labelledby="faq-title">
-      <div class="home-lead">
-        <h2 id="faq-title">{es ? 'Preguntas frecuentes' : 'Questions'}</h2>
-      </div>
-      <div class="faq">
-        {faqs.map(([question, answer]) => (
-          <details>
-            <summary>{question}</summary>
-            <p>{answer}</p>
-          </details>
-        ))}
+    <canvas class="seam" data-a={SEAM.stone} data-b={SEAM.wine} aria-hidden="true" style={`--a:${SEAM.stone};--b:${SEAM.wine}`}></canvas>
+
+    <section id="faq" class="trust" aria-labelledby="faq-title">
+      <div class="wrap">
+        <h2 id="faq-title" class="display">{es ? 'Las reglas no cambian según quién pregunte.' : 'The rules do not change depending on who asks.'}</h2>
+        <dl class="facts">
+          {facts.map(([value, label]) => (
+            <div>
+              <dd>{value}</dd>
+              <dt>{label}</dt>
+            </div>
+          ))}
+        </dl>
+        <div class="faq">
+          {faqs.map(([question, answer]) => (
+            <details>
+              <summary>{question}</summary>
+              <p>{answer}</p>
+            </details>
+          ))}
+        </div>
       </div>
     </section>
 
-    <section class="closing" aria-labelledby="closing-title">
-      <h2 id="closing-title">
-        {closed
-          ? es ? 'Las 1.500 posiciones ya tienen dueño.' : 'All 1,500 positions are taken.'
-          : es ? 'Cuando se asigne la última, el muro se cierra.' : 'When the last one goes, the wall is closed.'}
-      </h2>
-      <div class="cta">
-        {!closed && <a class="button btn-lg" href={`${prefix}/unirse`}>{es ? 'Unirse a THE1500' : 'Join THE1500'}</a>}
-        <a class={closed ? 'button btn-lg' : 'btn-secondary btn-lg'} href={`${prefix}/empresas`}>{es ? 'Ver directorio' : 'View Directory'}</a>
+    <canvas class="seam" data-a={SEAM.wine} data-b={SEAM.end} aria-hidden="true" style={`--a:${SEAM.wine};--b:${SEAM.end}`}></canvas>
+
+    <section class="finale" aria-labelledby="closing-title">
+      <div class="finale-wall">
+        <canvas class="finale-glass" aria-hidden="true"></canvas>
+        <div class="finale-shade" aria-hidden="true"></div>
+        <div class="finale-copy">
+          <h2 id="closing-title">
+            {closed
+              ? es ? 'Las 1.500 posiciones ya tienen dueño.' : 'All 1,500 positions are taken.'
+              : es ? 'Solo existe un universo de 1.500 empresas.' : 'There is only one universe of 1,500 companies.'}
+          </h2>
+          <div class="cta">
+            {!closed && <a class="button btn-lg" href={`${prefix}/unirse`}>{es ? 'Unirse a THE1500' : 'Join THE1500'}</a>}
+            <a class={closed ? 'button btn-lg' : 'btn-secondary btn-lg'} href={`${prefix}/empresas`}>{es ? 'Ver directorio' : 'View Directory'}</a>
+          </div>
+        </div>
       </div>
     </section>
   </div>
@@ -487,6 +616,16 @@ const sampleProblem = sample?.profile.problemSolutions[0];
   <script type="application/json" id="mosaic-data" set:html={clientJson}></script>
 </main>
 
+<noscript>
+  <style is:inline>
+    .ch-ignite { min-height: auto; padding: 5rem 1.5rem; background: #14297a; }
+    .ignite-text { position: static; }
+    .finale { min-height: auto; }
+    .finale-wall { position: relative; height: auto; }
+  </style>
+</noscript>
+
 <script>
   import '../ui/mosaic-stage';
+  import '../ui/home-scenes';
 </script>

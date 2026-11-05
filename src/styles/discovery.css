@@ -1,0 +1,522 @@
+/* The way into the directory. On the Home it sits on lapis; on the directory page, on the night of the site. */
+.dh {
+  --dh-text: var(--text-primary);
+  --dh-soft: var(--text-secondary);
+  --dh-line: var(--border-strong);
+  --dh-card: #0a0f18;
+  color: var(--dh-text);
+  padding-block: 2rem;
+}
+
+.dh-bare {
+  --dh-text: #f6f2e8;
+  --dh-soft: #c6d0ee;
+  --dh-line: rgba(246, 242, 232, 0.28);
+  --dh-card: #0d1c58;
+  padding-block: 0;
+}
+
+.dh-head {
+  max-width: 46rem;
+  margin-bottom: 1.5rem;
+}
+
+.dh-head h2 {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.8rem, 3.4vw, 2.8rem);
+}
+
+.dh p {
+  color: var(--dh-soft);
+}
+
+.dh-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.dh-modes button {
+  padding: 0.35rem 0;
+  min-height: 2.75rem;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--dh-soft);
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.dh-modes button[aria-selected="true"] {
+  color: var(--dh-text);
+  border-bottom-color: var(--gold-primary);
+}
+
+.dh-field {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0 1rem;
+  border-bottom: 2px solid var(--gold-primary);
+  transition: box-shadow 0.25s ease;
+}
+
+.dh-field:focus-within {
+  box-shadow: 0 10px 28px -14px var(--gold-primary);
+}
+
+.dh .dh-label {
+  grid-column: 1 / -1;
+  display: block;
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--dh-soft);
+}
+
+.dh-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0 0.7rem;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  color: var(--dh-text);
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 4.2vw, 3.6rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  box-shadow: none;
+  appearance: none;
+}
+
+.dh .dh-field input:focus {
+  outline: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.dh-field input::placeholder {
+  color: var(--dh-soft);
+  opacity: 0.72;
+}
+
+.dh-field input::-webkit-search-cancel-button {
+  filter: invert(1);
+}
+
+.dh-go {
+  margin-bottom: 0.7rem;
+  padding: 0.8rem 1.5rem;
+  background: var(--gold-primary);
+  border: 0;
+  border-radius: 4px;
+  color: #070d17;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.dh-go:hover {
+  background: var(--gold-bright);
+}
+
+.dh-go:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.dh .dh-honest {
+  margin: 0.8rem 0 0;
+  max-width: 62ch;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.dh-refine {
+  margin-top: 0.75rem;
+}
+
+.dh-refine summary {
+  display: inline-block;
+  padding-block: 0.5rem;
+  color: var(--dh-text);
+  font-size: 0.92rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  text-decoration-color: var(--dh-line);
+}
+
+.dh-refine-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0.75rem 0 0.25rem;
+}
+
+.dh-refine label {
+  color: var(--dh-soft);
+  font-size: 0.84rem;
+}
+
+.dh-refine input,
+.dh-refine select {
+  width: 100%;
+  background: rgba(4, 6, 11, 0.3);
+  border: 1px solid var(--dh-line);
+  color: var(--dh-text);
+}
+
+.dh-try {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1.1rem;
+  margin-top: 1rem;
+}
+
+.dh-try span {
+  color: var(--dh-soft);
+  font-size: 0.9rem;
+}
+
+.dh-try button {
+  padding: 0.4rem 0;
+  background: none;
+  border: 0;
+  color: var(--dh-text);
+  font: inherit;
+  font-size: 0.98rem;
+  text-align: start;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  text-decoration-color: var(--gold-primary);
+}
+
+.dh-try button:hover {
+  color: var(--gold-bright);
+}
+
+.dh-error {
+  margin-top: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-inline-start: 3px solid var(--red);
+  background: rgba(4, 6, 11, 0.4);
+  color: #ffd9d6;
+}
+
+.dh-results,
+.dh-answer,
+.dh-rail {
+  margin-top: 2.25rem;
+}
+
+.dh .dh-count {
+  color: var(--dh-text);
+  margin-bottom: 1rem;
+}
+
+.dh .dh-empty {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.4vw, 1.9rem);
+  line-height: 1.25;
+  color: var(--dh-text);
+  max-width: 34ch;
+}
+
+.dh-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
+}
+
+.dh-card {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--dh-card);
+  box-shadow: 0 16px 40px -22px rgba(0, 0, 0, 0.9);
+  animation: dh-card-in 0.45s calc(var(--i, 0) * 60ms) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes dh-card-in {
+  from {
+    transform: translateY(18px) scale(0.97);
+  }
+}
+
+.dh-card-band {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.dh-card-mark {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  line-height: 1;
+  margin-inline-end: auto;
+}
+
+.dh-card-no,
+.dh-card-demo {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.dh-card-demo {
+  padding: 0 0.35rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+}
+
+.dh-card-body {
+  padding: 1rem;
+}
+
+.dh .dh-card-body h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dh-card-body h3 a {
+  color: var(--dh-text);
+}
+
+.dh .dh-card-meta {
+  margin: 0.1rem 0 0.6rem;
+  font-size: 0.86rem;
+}
+
+.dh-card-body > p {
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+.dh-card-body blockquote,
+.dh-cite blockquote {
+  margin: 0.7rem 0;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 2px solid var(--gold-primary);
+  color: var(--dh-text);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.dh-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.7rem;
+}
+
+.dh-terms mark {
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  background: rgba(238, 198, 121, 0.2);
+  color: var(--gold-bright);
+  font-size: 0.78rem;
+}
+
+.dh-card-body footer,
+.dh-cite > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  font-size: 0.88rem;
+}
+
+.dh a {
+  color: var(--gold-primary);
+}
+
+.dh a.dh-data {
+  color: var(--dh-soft);
+  font-size: 0.82rem;
+}
+
+.dh-answer {
+  max-width: 62rem;
+}
+
+.dh .dh-mode {
+  display: inline-block;
+  margin: 0 0 1rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 0.84rem;
+}
+
+.dh .dh-mode-llm_grounded {
+  color: #8df0c6;
+}
+
+.dh .dh-mode-retrieval_only {
+  color: #b9d4ff;
+}
+
+.dh .dh-mode-abstained {
+  color: #ffd98a;
+}
+
+.dh .dh-answer-text {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.4vw, 1.9rem);
+  line-height: 1.28;
+  color: var(--dh-text);
+  overflow-wrap: anywhere;
+}
+
+.dh-cites h3 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gold-primary);
+  letter-spacing: 0;
+}
+
+.dh-cite {
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--dh-line);
+}
+
+.dh-cite small {
+  color: var(--dh-soft);
+  font-size: 0.78rem;
+}
+
+.dh .dh-limits {
+  margin: 1rem 0 0;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--dh-line);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.dh-rail h3 {
+  margin: 0 0 0.85rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--dh-soft);
+  letter-spacing: 0;
+}
+
+.dh-rail ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.5rem), 1fr));
+  gap: 0.6rem;
+}
+
+.dh-rail a {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 13.5rem;
+  height: 100%;
+  padding: 0.75rem 0.85rem;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--bg);
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 40%, rgba(0, 0, 0, 0.22));
+  color: var(--ink);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
+}
+
+.dh-rail a:hover,
+.dh-rail a:focus-visible {
+  color: var(--ink);
+  transform: translateY(-6px);
+  box-shadow: 0 18px 30px -16px rgba(0, 0, 0, 0.8);
+}
+
+.dh-rail-mark {
+  font-family: var(--font-display);
+  font-size: 3.6rem;
+  line-height: 1;
+  margin-block: 0.4rem auto;
+}
+
+.dh-rail-no {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.dh-rail strong {
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.dh-rail span:not([class]),
+.dh-rail em {
+  font-size: 0.82rem;
+  font-style: normal;
+  opacity: 0.9;
+}
+
+@media (max-width: 640px) {
+  .dh-field {
+    grid-template-columns: minmax(0, 1fr);
+    border-bottom: 0;
+  }
+
+  .dh .dh-field input,
+  .dh .dh-field input:focus {
+    border-bottom: 2px solid var(--gold-primary);
+    margin-bottom: 0.75rem;
+    font-size: 1.7rem;
+  }
+
+  .dh-go {
+    width: 100%;
+    margin-bottom: 0;
+  }
+
+  .dh-field:focus-within {
+    box-shadow: none;
+  }
+
+  .dh-refine-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dh-rail ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dh-rail a {
+    min-height: 10.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dh-card {
+    animation: none;
+  }
+
+  .dh-rail a,
+  .dh-modes button,
+  .dh-field {
+    transition: none;
+  }
+}
