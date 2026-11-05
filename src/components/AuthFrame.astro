@@ -1,0 +1,26 @@
+---
+import '../styles/auth.css';
+
+interface Props {
+  lang: 'en' | 'es';
+}
+const { lang } = Astro.props;
+const es = lang === 'es';
+---
+<main class="auth">
+  <aside class="auth-wall" aria-hidden="true">
+    <canvas class="auth-glass"></canvas>
+    <div class="auth-wall-shade"></div>
+    <p class="auth-motto">{es ? 'Un solo muro, 1.500 empresas.' : 'One wall, 1,500 companies.'}</p>
+  </aside>
+  <div class="auth-side">
+    <div class="auth-column">
+      <slot />
+      <a class="auth-home" href={es ? '/es/' : '/'}>{es ? 'Volver al inicio' : 'Back to Home'}</a>
+    </div>
+  </div>
+</main>
+
+<script>
+  import '../ui/auth-wall';
+</script>

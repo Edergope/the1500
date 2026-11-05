@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import Shell from '../layouts/Shell.astro';
 import { authenticatedPrincipal } from '../core/identity';
 import AuthPortal from '../components/AuthPortal';
+import AuthFrame from '../components/AuthFrame.astro';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
@@ -15,8 +16,9 @@ try {
   /* not signed in: show the form */
 }
 ---
-<Shell title="Sign in — THE1500" lang="en" forceNoIndex={true}>
-  <main>
+<Shell title="Sign in — THE1500" lang="en" forceNoIndex={true} focused>
+  <AuthFrame lang="en">
     <AuthPortal client:load lang="en" requiredRedirect={requiredRedirect} linkExpired={linkExpired} />
-  </main>
+    <noscript><p class="auth-fine">Signing in needs JavaScript. Turn it on and reload this page.</p></noscript>
+  </AuthFrame>
 </Shell>

@@ -10,6 +10,8 @@ interface Props {
   description?: string;
   forceNoIndex?: boolean;
   altPath?: string;
+  /** For pages with one job: the header keeps only the name and the language. */
+  focused?: boolean;
 }
 
 const {
@@ -18,6 +20,7 @@ const {
   description,
   forceNoIndex = false,
   altPath,
+  focused = false,
 } = Astro.props;
 
 const es = lang === 'es';
@@ -772,8 +775,13 @@ const metaDesc =
           <span class="brand-name">THE1500</span>
         </a>
 
-        <!-- Mobile Hamburger Right -->
-        <button
+        {focused ? (
+          <a class="lang-pill" href={switchHref} hreflang={es ? 'en' : 'es'} title={es ? 'Switch to English' : 'Cambiar a Español'}>
+            {es ? 'EN' : 'ES'}
+          </a>
+        ) : (
+          <>
+                <button
           type="button"
           class="mobile-menu-toggle"
           id="mobile-nav-btn"
@@ -815,7 +823,6 @@ const metaDesc =
           </div>
         </div>
 
-        <!-- Desktop Right Actions: Language Switcher + Sign in (secondary text button) + Join THE1500 (primary button) -->
         <div class="nav-actions">
           <a
             class="lang-pill"
@@ -832,6 +839,8 @@ const metaDesc =
             {es ? 'Unirse a THE1500' : 'Join THE1500'}
           </a>
         </div>
+          </>
+        )}
       </nav>
     </header>
 

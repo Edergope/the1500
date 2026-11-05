@@ -1,0 +1,347 @@
+/* The way in: the wall of the Home on one side, one form on the other. */
+.auth {
+  flex: 1;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+  min-height: calc(100svh - 4.33rem);
+}
+
+.auth-wall {
+  position: relative;
+  overflow: clip;
+  background-color: #03050a;
+  /* The same pieces before the glass lights up, and where there is no canvas at all. */
+  background-image:
+    linear-gradient(to right, #03050a 6%, transparent 6%, transparent 94%, #03050a 94%),
+    linear-gradient(to bottom, #03050a 6%, #101722 6%, #101722 94%, #03050a 94%);
+  background-size: 28px 28px;
+  background-position: center;
+}
+
+.auth-glass {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 60vh);
+  aspect-ratio: 3 / 5;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.auth-glass.is-lit {
+  opacity: 1;
+}
+
+.auth-wall-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(4, 6, 11, 0.92), rgba(4, 6, 11, 0) 34%);
+}
+
+.auth-motto {
+  position: absolute;
+  left: clamp(1.5rem, 3vw, 3rem);
+  bottom: clamp(1.25rem, 3vw, 2.5rem);
+  margin: 0;
+  max-width: 20ch;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 2.8vw, 2.75rem);
+  line-height: 1.05;
+  color: var(--text-primary);
+}
+
+.auth-side {
+  display: flex;
+  /* From a fixed height, not centred: a message appearing must not move the form under the pointer. */
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(3rem, 19svh, 11rem) clamp(1.25rem, 4vw, 4rem) clamp(2rem, 5vw, 4rem);
+  background: var(--bg-canvas);
+}
+
+.auth-column {
+  width: min(100%, 25.5rem);
+}
+
+.auth-panel h1 {
+  margin: 0 0 0.6rem;
+  font-size: clamp(1.75rem, 1.3rem + 1.1vw, 2.25rem);
+  outline: none;
+}
+
+.auth-lead {
+  margin: 0 0 1.5rem;
+  font-size: var(--fs-body);
+  line-height: var(--lh-text);
+}
+
+.auth-panel label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.auth-panel input[type="email"] {
+  width: 100%;
+  height: 3.25rem;
+  padding: 0 0.95rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  /* 16px or more, so phones do not zoom into the field. */
+  font-size: 1.0625rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-panel input[type="email"]::placeholder {
+  color: var(--text-muted);
+}
+
+.auth-panel input[type="email"]:hover {
+  border-color: #3a5480;
+}
+
+.auth-panel input[type="email"]:focus {
+  outline: none;
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 3px rgba(238, 198, 121, 0.28);
+}
+
+.auth-panel input[aria-invalid="true"] {
+  border-color: #ff9d94;
+}
+
+.auth-field-error {
+  margin: 0.45rem 0 0;
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  color: #ffb4ad;
+}
+
+.auth-submit {
+  width: 100%;
+  height: 3.25rem;
+  margin-top: 0.85rem;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.auth-submit:focus-visible,
+.auth-text-button:focus-visible,
+.auth-column a:focus-visible,
+.auth-side button:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+}
+
+.auth-submit:hover:not(:disabled) {
+  transform: none;
+}
+
+.auth-submit:disabled {
+  opacity: 0.8;
+  cursor: progress;
+}
+
+.auth-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(7, 13, 23, 0.3);
+  border-top-color: #070d17;
+  border-radius: 50%;
+  animation: auth-spin 0.8s linear infinite;
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.auth-note {
+  display: grid;
+  gap: 0.15rem;
+  margin: 1rem 0;
+  padding: 0.75rem 0.9rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-inline-start: 3px solid var(--gold-primary);
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.auth-panel > .auth-note:first-child {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.auth-note strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.auth-note-error {
+  border-inline-start-color: #ff9d94;
+  background: rgba(255, 157, 148, 0.08);
+}
+
+.auth-note-warn {
+  border-inline-start-color: var(--amber);
+}
+
+.auth-fine {
+  margin: 1.25rem 0 0;
+  font-size: var(--fs-caption);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.auth-fine a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* Sent: the piece lights up, which is what comes next */
+.auth-sent-mark {
+  display: block;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 1.25rem;
+  border-radius: 4px;
+  background: var(--gold-primary);
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.2));
+  box-shadow: 0 0 30px rgba(238, 198, 121, 0.45);
+  animation: auth-lit 0.5s ease both;
+}
+
+@keyframes auth-lit {
+  from {
+    background-color: #1a2536;
+    box-shadow: none;
+  }
+}
+
+.auth-sent p {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-text);
+  overflow-wrap: anywhere;
+}
+
+.auth-sent strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.auth-sent .auth-fine {
+  margin: 0.85rem 0 0;
+  font-size: var(--fs-small);
+}
+
+.auth-text-button {
+  margin-top: 1.25rem;
+  padding: 0.5rem 0;
+  background: none;
+  border: 0;
+  color: var(--gold-primary);
+  font: inherit;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.auth-home {
+  display: inline-block;
+  margin-top: 1.5rem;
+  padding-block: 0.4rem;
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+}
+
+.auth-home:hover {
+  color: var(--gold-primary);
+}
+
+/* The confirmation that opens from the link */
+.auth-confirm .btn-primary {
+  width: 100%;
+  height: 3.25rem;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.auth-confirm form {
+  margin-top: 0.25rem;
+}
+
+/* On small screens the form leads, and the wall is only a band of pieces above it. */
+@media (max-width: 900px) {
+  .auth {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .auth-wall {
+    height: 4.5rem;
+    flex: none;
+    background-size: 18px 18px;
+  }
+
+  .auth-wall::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(6, 11, 19, 0) 10%, var(--bg-canvas));
+  }
+
+  .auth-glass,
+  .auth-wall-shade,
+  .auth-motto {
+    display: none;
+  }
+
+  .auth-side {
+    flex: 1;
+    align-items: flex-start;
+    padding: 1.25rem 1rem 2.5rem;
+  }
+
+  .auth-column {
+    width: min(100%, 28rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-glass,
+  .auth-panel input[type="email"] {
+    transition: none;
+  }
+
+  .auth-sent-mark {
+    animation: none;
+  }
+
+  /* A slow pulse says the same as a spinning ring. */
+  .auth-spinner {
+    animation: auth-pulse 1.6s ease-in-out infinite;
+    border-color: #070d17;
+  }
+}
+
+@keyframes auth-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}

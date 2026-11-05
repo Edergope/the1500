@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import Shell from '../../layouts/Shell.astro';
 import { authenticatedPrincipal } from '../../core/identity';
 import AuthPortal from '../../components/AuthPortal';
+import AuthFrame from '../../components/AuthFrame.astro';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
@@ -15,8 +16,9 @@ try {
   /* not signed in: show the form */
 }
 ---
-<Shell title="Iniciar sesión — THE1500" lang="es" forceNoIndex={true}>
-  <main>
+<Shell title="Iniciar sesión — THE1500" lang="es" forceNoIndex={true} focused>
+  <AuthFrame lang="es">
     <AuthPortal client:load lang="es" requiredRedirect={requiredRedirect} linkExpired={linkExpired} />
-  </main>
+    <noscript><p class="auth-fine">Para iniciar sesión hace falta JavaScript. Actívalo y recarga esta página.</p></noscript>
+  </AuthFrame>
 </Shell>
