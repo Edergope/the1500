@@ -94,7 +94,7 @@ function start() {
   /** Where the companies stand once they have left the wall: one row, or several on a narrow screen. */
   const placeLineup=(tall:boolean)=>{
     const going=tiles.slice(0,tall?6:7);
-    const rowHeight=tall?vh*0.15:vh*0.27,gap=tall?10:16,maxWidth=vw*(tall?0.92:0.9);
+    const rowHeight=tall?vh*0.115:vh*0.27,gap=tall?10:16,maxWidth=vw*(tall?0.92:0.9);
     const rows:{i:number;w:number}[][]=[[]];
     let used=0;
     going.forEach((t,i)=>{

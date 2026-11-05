@@ -1509,6 +1509,7 @@ body:has(.home) .site-header:not(.scrolled) {
   .ob-scene {
     top: 3.6rem;
     z-index: 2;
+    align-self: stretch;
     padding-block: 0.5rem;
     background: var(--night);
   }
