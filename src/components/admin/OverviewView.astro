@@ -1,0 +1,96 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import { copy, formatNumber, formatUsd, stateLabel, type AdminLang } from './copy';
+import { getControlOverview, type ControlOverview } from '../../core/admin-console';
+import { integrationStatus } from '../../core/admin';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const t = copy(lang);
+const n = (value: number) => formatNumber(lang, value);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+let data: ControlOverview | null = null;
+try { data = await getControlOverview(env.DB); } catch (e) { console.error('admin_overview_unavailable', e instanceof Error ? e.message : String(e)); }
+const integrations = integrationStatus(env);
+const s = data?.stats;
+const assigned = s ? s.occupied - s.retired : 0;
+const share = (value: number) => `${(value / 1500) * 100}%`;
+const current = s?.phases.find((p) => p.status === 'current');
+const attention = data ? [
+  { label: t.pendingReview, value: data.companies.pendingReview, href: `${base}/empresas?identity=pending_review` },
+  { label: t.reviewPending, value: data.profiles.pendingReview, href: `${base}/perfiles?review=pending` },
+  { label: t.blocked, value: data.companies.blocked, href: null },
+  { label: t.incidents, value: data.incidentsOpen, href: null },
+  { label: t.requests, value: data.requestsOpen, href: null },
+  { label: `${t.payments}: ${t.inPaymentReview.toLowerCase()}`, value: data.payments.inReview, href: null },
+] : [];
+---
+<AdminLayout lang={lang} title={t.overview} active="overview">
+  <header class="ad-head"><h1>{t.overview}</h1></header>
+  {!data || !s ? <p class="ad-empty">{t.noData}</p> : (
+    <>
+      <section class="ad-band" aria-labelledby="ad-positions">
+        <div class="ad-band-title">
+          <h2 id="ad-positions">{t.positions}</h2>
+          <p class="ad-big"><em>{n(s.occupied)}</em> <span>{t.capacity}</span></p>
+        </div>
+        <div class="ad-bar" role="img" aria-label={`${t.assigned} ${assigned}, ${t.retired} ${s.retired}, ${t.held} ${s.held}, ${t.available} ${s.available}`}>
+          <i class="is-assigned" style={`width:${share(assigned)}`}></i><i class="is-retired" style={`width:${share(s.retired)}`}></i><i class="is-held" style={`width:${share(s.held)}`}></i>
+        </div>
+        <dl class="ad-figures">
+          <div><dt><span class="ad-swatch is-assigned"></span>{t.assigned}</dt><dd>{n(assigned)}</dd></div>
+          <div><dt><span class="ad-swatch is-retired"></span>{t.retired}</dt><dd>{n(s.retired)}</dd></div>
+          <div><dt><span class="ad-swatch is-held"></span>{t.held}</dt><dd>{n(s.held)}</dd></div>
+          <div><dt><span class="ad-swatch"></span>{t.available}</dt><dd>{n(s.available)}</dd></div>
+          <div><dt>{t.founders}</dt><dd>{n(data.foundersActive)}</dd></div>
+          <div><dt>{t.salesState}</dt><dd class="ad-dd-text"><State lang={lang} value={s.salesMode} /></dd></div>
+          <div><dt>{t.phase}</dt><dd>{s.currentPhase ?? '—'}{current && <small> {current.firstPosition}–{current.lastPosition}</small>}</dd></div>
+          <div><dt>{t.price}</dt><dd>{formatUsd(lang, s.currentPriceUsdCents)}</dd></div>
+        </dl>
+      </section>
+      <div class="ad-columns">
+        <section class="ad-panel">
+          <h2>{t.attention}</h2>
+          <ul class="ad-queue">
+            {attention.map((item) => (
+              <li class={item.value > 0 ? 'has-items' : ''}>
+                {item.href && item.value > 0 ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>}
+                <strong>{n(item.value)}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section class="ad-panel">
+          <h2>{t.business}</h2>
+          <dl class="ad-rows">
+            <div><dt>{t.registered}</dt><dd>{n(data.companies.total)}</dd></div>
+            <div class="is-sub"><dt>{t.realData}</dt><dd>{n(data.companies.real)}</dd></div>
+            <div class="is-sub"><dt>{t.demoData}</dt><dd>{n(data.companies.demo)}</dd></div>
+            <div><dt>{t.published}</dt><dd>{n(s.published)}</dd></div>
+            <div><dt>{t.withProfile}</dt><dd>{n(data.profiles.companiesWithProfile)}</dd></div>
+            <div><dt>{t.profilesGenerated}</dt><dd>{n(data.profiles.versions)}</dd></div>
+            <div><dt>{t.ownerPending}</dt><dd>{n(data.profiles.pendingOwnerApproval)}</dd></div>
+          </dl>
+          {data.companies.demo > 0 && <p class="ad-note">{t.demoNotice}</p>}
+        </section>
+        <section class="ad-panel">
+          <h2>{t.payments}</h2>
+          <dl class="ad-rows">
+            <div><dt>{t.attempts}</dt><dd>{n(data.payments.attempts)}</dd></div>
+            <div><dt>{t.confirmed}</dt><dd>{n(data.payments.confirmed)}</dd></div>
+            <div><dt>{t.refunded}</dt><dd>{n(data.payments.refunded)}</dd></div>
+          </dl>
+          <h2 class="ad-h2-next">{t.integrations}</h2>
+          <dl class="ad-rows">
+            <div><dt>{t.mail}</dt><dd class="ad-dd-text"><State lang={lang} value={integrations.mail.configured ? 'active' : 'pending'} label={integrations.mail.configured ? `${t.configured} · ${integrations.mail.provider}` : t.notConfigured} /></dd></div>
+            <div><dt>{t.stripe}</dt><dd class="ad-dd-text"><State lang={lang} value={integrations.stripe.enabled ? 'active' : 'pending'} label={integrations.stripe.keyPresent ? `${integrations.stripe.enabled ? t.enabled : t.disabled} · ${integrations.stripe.keyIsTestMode ? t.testKey : t.liveKey}` : t.notConfigured} /></dd></div>
+            <div><dt>{t.ai}</dt><dd class="ad-dd-text"><State lang={lang} value={integrations.ai.configured ? 'active' : 'pending'} label={integrations.ai.configured ? `${integrations.ai.provider ?? ''} ${integrations.ai.model ?? ''}`.trim() : t.notConfigured} /></dd></div>
+          </dl>
+          <p class="ad-note">{t.readOnly}</p>
+        </section>
+      </div>
+    </>
+  )}
+</AdminLayout>

@@ -1,0 +1,64 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import Pager from './Pager.astro';
+import { copy, formatDate, formatPosition, stateLabel, type AdminLang } from './copy';
+import { searchCompanies, type CompanyRow } from '../../core/admin-console';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const t = copy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const p = Astro.url.searchParams;
+const text = (name: string) => p.get(name)?.trim() || undefined;
+const rawPosition = Number(p.get('position'));
+const rawCountry = text('country')?.toUpperCase();
+const LIMIT = 50;
+const rawOffset = Number(p.get('offset') ?? 0);
+const filters = {
+  q: text('query'), email: text('email'), country: rawCountry && /^[A-Z]{2}$/.test(rawCountry) ? rawCountry : undefined, industry: text('sector'),
+  identity: text('identity'), publication: text('publication'),
+  position: Number.isSafeInteger(rawPosition) && rawPosition >= 1 && rawPosition <= 1500 ? rawPosition : undefined,
+  limit: LIMIT, offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0,
+};
+let rows: CompanyRow[] = []; let total = 0; let failed = false;
+try { const r = await searchCompanies(env.DB, filters); rows = r.companies; total = r.total; } catch (e) { failed = true; console.error('admin_companies_unavailable', e instanceof Error ? e.message : String(e)); }
+const identities = ['pending_review', 'self_declared', 'admin_verified', 'rejected'];
+const publications = ['draft', 'generated', 'owner_approved', 'published', 'withdrawn'];
+---
+<AdminLayout lang={lang} title={t.companies} active="companies">
+  <header class="ad-head"><h1>{t.companies}</h1></header>
+  <form class="ad-filters" method="get">
+    <label>{t.name}<input name="query" value={filters.q ?? ''} maxlength="100" /></label>
+    <label>{t.email}<input name="email" value={filters.email ?? ''} maxlength="100" /></label>
+    <label class="is-short">{t.country}<input name="country" value={filters.country ?? ''} maxlength="2" /></label>
+    <label>{t.sector}<input name="sector" value={filters.industry ?? ''} maxlength="100" /></label>
+    <label>{t.identity}<select name="identity"><option value="">{t.any}</option>{identities.map((v) => <option value={v} selected={filters.identity === v}>{stateLabel(lang, v)}</option>)}</select></label>
+    <label>{t.publication}<select name="publication"><option value="">{t.any}</option>{publications.map((v) => <option value={v} selected={filters.publication === v}>{stateLabel(lang, v)}</option>)}</select></label>
+    <label class="is-short">{t.position}<input name="position" type="number" min="1" max="1500" value={filters.position ?? ''} /></label>
+    <div class="ad-filter-actions"><button class="ad-btn ad-btn-primary" type="submit">{t.apply}</button><a class="ad-btn" href={`${base}/empresas`}>{t.clear}</a></div>
+  </form>
+  {failed ? <p class="ad-empty">{t.noData}</p> : rows.length === 0 ? <p class="ad-empty">{t.noResults}</p> : (
+    <div class="ad-table-wrap">
+      <table class="ad-table">
+        <thead><tr><th>{t.position}</th><th>{t.company}</th><th>{t.owner}</th><th>{t.country}</th><th>{t.sector}</th><th>{t.identity}</th><th>{t.publication}</th><th>{t.created}</th></tr></thead>
+        <tbody>
+          {rows.map((c) => (
+            <tr>
+              <td class="ad-num">{formatPosition(c.position)}</td>
+              <td><a href={`${base}/empresas/${encodeURIComponent(c.id)}`}>{c.displayName}</a>{c.isDemo && <span class="ad-demo">{t.demoBadge}</span>}{c.publicationBlock && <span class="ad-flag">{t.blocked}</span>}</td>
+              <td class="ad-dim">{c.ownerEmail ?? '—'}</td>
+              <td>{c.country}</td>
+              <td class="ad-dim">{c.industry ?? '—'}</td>
+              <td><State lang={lang} value={c.identityState} /></td>
+              <td><State lang={lang} value={c.publicationStatus} /></td>
+              <td class="ad-dim ad-nowrap">{formatDate(lang, c.createdAt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+  {!failed && <Pager lang={lang} total={total} limit={LIMIT} offset={filters.offset} />}
+</AdminLayout>

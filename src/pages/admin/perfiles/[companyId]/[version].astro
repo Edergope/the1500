@@ -1,0 +1,10 @@
+---
+import { env } from 'cloudflare:workers';
+import ProfileView from '../../../../components/admin/ProfileView.astro';
+import { getProfileDossier, readRecord } from '../../../../core/admin-console';
+const companyId = Astro.params.companyId ?? '';
+const version = Number(Astro.params.version);
+const { record, missing } = await readRecord(() => getProfileDossier(env.DB, companyId, version));
+if (missing) Astro.response.status = 404;
+---
+<ProfileView lang="en" companyId={companyId} version={version} dossier={record} missing={missing} />

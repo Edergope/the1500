@@ -245,6 +245,39 @@ async function buy(owner,companyId){
   assert.equal(statsSigned.headers.get('set-cookie'),null);assert.match(statsSigned.headers.get('cache-control'),/^public/);
   assert.equal(await statsSigned.text(),await statsAnon.text());
   step('A page never goes to a shared cache; public statistics are the same with or without a session');
+  // ---- ADMIN-001: the control center, through the real guard
+  const panelGet=(url,headers={})=>fetch(BASE+url,{redirect:'manual',headers});
+  for(const url of ['/admin','/admin/empresas','/es/admin/perfiles','/admin/auditoria']){
+    const anonymous=await panelGet(url);assert.equal(anonymous.status,302,url);assert.match(anonymous.headers.get('location'),/login\?required=1/);assert.equal(anonymous.headers.get('cache-control'),'no-store');
+    const outsider=await panelGet(url,{cookie:owner.cookie});assert.equal(outsider.status,404,url);assert.equal(outsider.headers.get('cache-control'),'no-store');assert.equal((await outsider.text()).includes('THE1500'),false,'nothing reveals the panel');
+  }
+  step('Control center: no session goes to sign-in, a non-administrator gets a plain 404');
+  for(const url of ['overview','companies/detail?companyId=x','profiles/detail?companyId=x&version=1','audit']){
+    assert.equal((await api('GET',`/api/v1/admin/${url}`)).status,401,url);assert.equal((await api('GET',`/api/v1/admin/${url}`,{cookie:owner.cookie})).status,403,url);
+  }
+  assert.equal((await api('POST','/api/v1/admin/company-action',{cookie:owner.cookie,body:{companyId:'x',action:'block_publication',reasonCode:'abc',evidenceReference:'x'}})).status,403);
+  step('Control center API: 401 without a session, 403 without the permission');
+  const adminEmail='control@the1500.example';const adminCookie=(await login(adminEmail)).cookie;
+  assert.equal((await panelGet('/admin',{cookie:adminCookie})).status,404,'signing in does not make an administrator');
+  sql(`INSERT INTO platform_admins(user_id,granted_at,granted_by) SELECT id,'2026-11-05T00:00:00.000Z','e2e' FROM users WHERE email='${adminEmail}'`);
+  const headersOf={cookie:adminCookie};
+  const panel=await panelGet('/admin',headersOf);assert.equal(panel.status,200);assert.equal(panel.headers.get('cache-control'),'no-store');assert.match(panel.headers.get('x-robots-tag'),/noindex/);
+  const panelHtml=await panel.text();assert.ok(panelHtml.includes(adminEmail));assert.ok(panelHtml.includes('Positions'));
+  const companiesHtml=await (await panelGet('/admin/empresas?query='+encodeURIComponent('"><script>alert(1)</script>'),headersOf)).text();
+  assert.equal(companiesHtml.includes('"><script>alert(1)'),false,'a search term cannot leave its attribute');assert.ok(companiesHtml.includes('&quot;><script>alert(1)'));
+  const anyCompany=sql(`SELECT c.id,c.display_name,v.version FROM companies c JOIN profile_versions v ON v.company_id=c.id ORDER BY v.published_at DESC LIMIT 1`)[0];
+  const listed=await (await panelGet('/es/admin/empresas?query='+encodeURIComponent(anyCompany.display_name),headersOf)).text();assert.ok(listed.includes(anyCompany.display_name));
+  const fileHtml=await (await panelGet(`/admin/empresas/${anyCompany.id}`,headersOf)).text();assert.ok(fileHtml.includes(anyCompany.display_name));
+  const profileHtml=await (await panelGet(`/admin/perfiles/${anyCompany.id}/${anyCompany.version}`,headersOf)).text();assert.ok(profileHtml.includes('astro-island'),'the JSON viewer is there');
+  assert.equal((await panelGet('/admin/empresas/no-such-company',headersOf)).status,404);
+  const detail=await api('GET',`/api/v1/admin/profiles/detail?companyId=${anyCompany.id}&version=${anyCompany.version}`,{cookie:adminCookie});assert.equal(detail.status,200);assert.ok(detail.data.documents.canonical);
+  assert.equal((await api('POST','/api/v1/admin/company-action',{cookie:adminCookie,origin:false,body:{companyId:anyCompany.id,action:'block_publication',reasonCode:'abc',evidenceReference:'x'}})).status,403,'no origin, no write');
+  const blocked=await fetch(BASE+'/api/v1/admin/company-action',{method:'POST',headers:{'content-type':'application/json',cookie:adminCookie,Origin:'https://evil.test'},body:JSON.stringify({companyId:anyCompany.id,action:'block_publication',reasonCode:'abc',evidenceReference:'x'})});assert.equal(blocked.status,403,'another origin, no write');
+  assert.equal((await api('POST','/api/v1/admin/company-action',{cookie:adminCookie,body:{companyId:anyCompany.id,action:'block_publication',reasonCode:'x',evidenceReference:''}})).status,400,'no reason, no action');
+  assert.equal((await api('POST','/api/v1/admin/company-action',{cookie:adminCookie,body:{companyId:anyCompany.id,action:'block_publication',reasonCode:'e2e_check',evidenceReference:'journey'}})).status,200);
+  const auditHtml=await (await panelGet('/admin/auditoria',headersOf)).text();assert.ok(auditHtml.includes('e2e_check')&&auditHtml.includes(adminEmail));
+  assert.equal((await api('POST','/api/v1/admin/company-action',{cookie:adminCookie,body:{companyId:anyCompany.id,action:'clear_block',reasonCode:'e2e_check',evidenceReference:'journey'}})).status,200);
+  step('Control center: an administrator reads real data, writes need origin and reason, and the action is on the audit page');
   // ---- Sessions
   const out=await api('POST','/api/v1/auth/logout-all',{cookie:stranger.cookie});assert.equal(out.status,200);
   assert.equal((await api('GET','/api/v1/auth/me',{cookie:stranger.cookie})).status,401);

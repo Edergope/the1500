@@ -21,4 +21,10 @@ declare namespace Cloudflare {
   }
 }
 interface Env extends Cloudflare.Env {}
+declare namespace App {
+  interface Locals {
+    /** Set only by the middleware, after checking the session and platform_admins. */
+    admin?: {id:string;email:string};
+  }
+}
 

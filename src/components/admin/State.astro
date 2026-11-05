@@ -1,0 +1,6 @@
+---
+import { stateLabel, stateTone, type AdminLang } from './copy';
+interface Props { lang: AdminLang; value: string | null | undefined; label?: string; }
+const { lang, value, label } = Astro.props;
+---
+<span class={`ad-state ad-tone-${stateTone(value)}`}><span class="ad-mark"></span>{label ?? stateLabel(lang, value)}</span>

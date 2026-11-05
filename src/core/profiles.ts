@@ -203,7 +203,7 @@ export function buildJsonLd(company:CompanyRow,p:CanonicalProfile,language:'en'|
     }],
   };
 }
-function contentDigestSource(row:{canonical_json:string;public_jsonld:string|null;public_jsonld_es:string|null}):string {
+export function contentDigestSource(row:{canonical_json:string;public_jsonld:string|null;public_jsonld_es:string|null}):string {
   return `${row.canonical_json}\n${row.public_jsonld??''}\n${row.public_jsonld_es??''}`;
 }
 async function allocatedSlot(db:D1Database,companyId:string) {

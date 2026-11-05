@@ -3,10 +3,14 @@ import { env } from 'cloudflare:workers';
 import Shell from '../../layouts/Shell.astro';
 import AccountWorkspace from '../../components/AccountWorkspace';
 import { authenticatedPrincipal } from '../../core/identity';
+import { requirePlatformAdmin } from '../../core/admin';
 
 let email = '';
+let isAdmin = false;
 try {
-  email = (await authenticatedPrincipal(env.DB, Astro.request)).email;
+  const user = await authenticatedPrincipal(env.DB, Astro.request);
+  email = user.email;
+  isAdmin = await requirePlatformAdmin(env.DB, user.id).then(() => true, () => false);
 } catch {
   return Astro.redirect('/es/login?required=1', 302);
 }
@@ -15,6 +19,7 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 ---
 <Shell title="Mi cuenta — THE1500" lang="es" forceNoIndex={true}>
   <main>
+    {isAdmin && <p style="margin:1rem auto 0;max-width:1100px;padding:0 1rem;text-align:right"><a href="/es/admin">Centro de control</a></p>}
     <AccountWorkspace client:load initialEmail={email} lang="es" />
   </main>
 </Shell>

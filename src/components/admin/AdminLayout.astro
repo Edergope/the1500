@@ -1,0 +1,55 @@
+---
+import '@fontsource-variable/schibsted-grotesk/wght.css';
+import '@fontsource/instrument-serif/400.css';
+import '../../styles/admin.css';
+import { env } from 'cloudflare:workers';
+import { copy, otherLanguagePath, type AdminLang } from './copy';
+
+interface Props {
+  lang: AdminLang;
+  title: string;
+  active: 'overview' | 'companies' | 'profiles' | 'audit';
+}
+const { lang, title, active } = Astro.props;
+const t = copy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const nav = [
+  { id: 'overview', label: t.overview, href: base },
+  { id: 'companies', label: t.companies, href: `${base}/empresas` },
+  { id: 'profiles', label: t.profiles, href: `${base}/perfiles` },
+  { id: 'audit', label: t.audit, href: `${base}/auditoria` },
+];
+// The address of this deployment decides the label, so the panel cannot claim to be somewhere else.
+const host = (() => { try { return new URL(env.PUBLIC_BASE_URL ?? Astro.url.href).hostname; } catch { return ''; } })();
+const environment = host === 'localhost' || host === '127.0.0.1' ? t.local : t.staging;
+---
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} — THE1500 {t.control}</title>
+  </head>
+  <body class="ad">
+    <a class="ad-skip" href="#ad-main">{lang === 'es' ? 'Saltar al contenido' : 'Skip to content'}</a>
+    <aside class="ad-side">
+      <a class="ad-brand" href={base}><strong>THE1500</strong><em>{t.control}</em></a>
+      <nav class="ad-nav" aria-label={t.control}>
+        {nav.map((item) => <a href={item.href} aria-current={item.id === active ? 'page' : undefined}>{item.label}</a>)}
+      </nav>
+      <div class="ad-side-foot">
+        <p class="ad-env"><span class="ad-mark ad-tone-wait"></span>{environment}<br /><small>{t.noCharges}</small></p>
+        <p class="ad-who"><small>{t.signedInAs}</small><br /><span title={Astro.locals.admin?.email}>{Astro.locals.admin?.email}</span></p>
+        <div class="ad-links">
+          <a href={otherLanguagePath(lang, Astro.url.pathname, Astro.url.search)} lang={lang === 'es' ? 'en' : 'es'}>{t.language}</a>
+          <a href={lang === 'es' ? '/es/mi-cuenta' : '/mi-cuenta'}>{t.account}</a>
+          <a href={lang === 'es' ? '/es/' : '/'}>{t.publicSite}</a>
+        </div>
+      </div>
+    </aside>
+    <main class="ad-main" id="ad-main">
+      <slot />
+    </main>
+  </body>
+</html>

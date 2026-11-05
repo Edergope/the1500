@@ -1,0 +1,51 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import Pager from './Pager.astro';
+import { copy, formatDate, stateLabel, type AdminLang } from './copy';
+import { listProfileVersions } from '../../core/admin-console';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const t = copy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const p = Astro.url.searchParams;
+const LIMIT = 50;
+const REVIEWS = ['pending', 'cleared', 'rejected', 'not_required'];
+const STAGES = ['generated', 'approved', 'published'];
+const rawOffset = Number(p.get('offset') ?? 0);
+const filters = {
+  q: p.get('query')?.trim() || undefined,
+  review: REVIEWS.includes(p.get('review') ?? '') ? p.get('review')! : undefined,
+  stage: STAGES.includes(p.get('stage') ?? '') ? p.get('stage')! : undefined,
+  limit: LIMIT, offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0,
+};
+let rows: Awaited<ReturnType<typeof listProfileVersions>>['profiles'] = []; let total = 0; let failed = false;
+try { const r = await listProfileVersions(env.DB, filters); rows = r.profiles; total = r.total; } catch (e) { failed = true; console.error('admin_profiles_unavailable', e instanceof Error ? e.message : String(e)); }
+---
+<AdminLayout lang={lang} title={t.profiles} active="profiles">
+  <header class="ad-head"><h1>{t.profiles}</h1><p class="ad-sub">{t.profilesIntro}</p></header>
+  <form class="ad-filters" method="get">
+    <label>{t.company}<input name="query" value={filters.q ?? ''} maxlength="100" /></label>
+    <label>{t.stage}<select name="stage"><option value="">{t.allStages}</option>{STAGES.map((v) => <option value={v} selected={filters.stage === v}>{stateLabel(lang, v)}</option>)}</select></label>
+    <label>{t.review}<select name="review"><option value="">{t.allReviews}</option>{REVIEWS.map((v) => <option value={v} selected={filters.review === v}>{stateLabel(lang, v)}</option>)}</select></label>
+    <div class="ad-filter-actions"><button class="ad-btn ad-btn-primary" type="submit">{t.apply}</button><a class="ad-btn" href={`${base}/perfiles`}>{t.clear}</a></div>
+  </form>
+  {failed ? <p class="ad-empty">{t.noData}</p> : rows.length === 0 ? <p class="ad-empty">{t.noProfiles}</p> : (
+    <div class="ad-table-wrap"><table class="ad-table">
+      <thead><tr><th>{t.company}</th><th>{t.version}</th><th>{t.stage}</th><th>{t.review}</th><th>{t.generatedWith}</th><th>{t.created}</th></tr></thead>
+      <tbody>{rows.map((r) => (
+        <tr>
+          <td><a href={`${base}/perfiles/${encodeURIComponent(r.companyId)}/${r.version}`}>{r.companyName}</a></td>
+          <td class="ad-num">v{r.version}</td>
+          <td><State lang={lang} value={r.publishedAt ? 'published' : r.approvedAt ? 'approved' : 'generated'} /></td>
+          <td><State lang={lang} value={r.reviewStatus} /></td>
+          <td class="ad-dim">{r.generator?.kind === 'llm' ? `${r.generator.provider} / ${r.generator.model}` : t.deterministic}</td>
+          <td class="ad-dim ad-nowrap">{formatDate(lang, r.createdAt)}</td>
+        </tr>
+      ))}</tbody>
+    </table></div>
+  )}
+  {!failed && <Pager lang={lang} total={total} limit={LIMIT} offset={filters.offset} />}
+</AdminLayout>

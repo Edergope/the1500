@@ -1,0 +1,28 @@
+---
+import { copy, type AdminLang } from './copy';
+interface Props { lang: AdminLang; }
+const t = copy(Astro.props.lang);
+---
+<dialog class="ad-dialog" id="ad-action-dialog" aria-labelledby="ad-action-title">
+  <form method="dialog" id="ad-action-form">
+    <h2 id="ad-action-title">{t.actionTitle}</h2>
+    <p class="ad-dialog-what" id="ad-action-what"></p>
+    <label>{t.reasonCode}
+      <input name="reasonCode" required pattern="[a-zA-Z0-9_\-]{3,64}" maxlength="64" autocomplete="off" spellcheck="false" />
+      <small>{t.reasonHint}</small>
+    </label>
+    <label>{t.evidenceLabel}
+      <textarea name="evidenceReference" required maxlength="400" rows="3"></textarea>
+      <small>{t.evidenceHint}</small>
+    </label>
+    <label class="ad-check"><input type="checkbox" name="understood" required /> {t.understand}</label>
+    <p class="ad-dialog-error" id="ad-action-error" role="alert" hidden></p>
+    <div class="ad-dialog-buttons">
+      <button type="button" class="ad-btn" id="ad-action-cancel">{t.cancel}</button>
+      <button type="submit" class="ad-btn ad-btn-primary" id="ad-action-confirm">{t.confirm}</button>
+    </div>
+  </form>
+</dialog>
+<script>
+  import '../../ui/admin-actions';
+</script>

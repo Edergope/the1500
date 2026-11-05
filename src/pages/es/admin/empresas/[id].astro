@@ -1,0 +1,8 @@
+---
+import { env } from 'cloudflare:workers';
+import CompanyView from '../../../../components/admin/CompanyView.astro';
+import { getCompanyDossier, readRecord } from '../../../../core/admin-console';
+const { record, missing } = await readRecord(() => getCompanyDossier(env.DB, Astro.params.id ?? ''));
+if (missing) Astro.response.status = 404;
+---
+<CompanyView lang="es" dossier={record} missing={missing} />

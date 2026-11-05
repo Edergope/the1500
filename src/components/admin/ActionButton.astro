@@ -1,0 +1,6 @@
+---
+import { copy, type AdminLang } from './copy';
+interface Props { lang: AdminLang; label: string; endpoint: string; payload: Record<string, unknown>; summary: string; danger?: boolean; }
+const { lang, label, endpoint, payload, summary, danger } = Astro.props;
+---
+<button type="button" class:list={['ad-btn', danger && 'ad-btn-danger']} data-admin-action data-endpoint={endpoint} data-payload={JSON.stringify(payload)} data-summary={summary} data-failed={copy(lang).failed}>{label}</button>

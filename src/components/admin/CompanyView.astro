@@ -1,0 +1,109 @@
+---
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import ActionButton from './ActionButton.astro';
+import ActionDialog from './ActionDialog.astro';
+import { copy, formatDate, formatPosition, formatUsd, stateLabel, type AdminLang } from './copy';
+import type { getCompanyDossier } from '../../core/admin-console';
+
+interface Props { lang: AdminLang; dossier: Awaited<ReturnType<typeof getCompanyDossier>> | null; missing: boolean; }
+const { lang, dossier: d, missing } = Astro.props;
+const t = copy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const c = d?.company;
+const withName = (label: string) => `${label}: ${c?.displayName}`;
+const processLabels: Record<string, string> = { registered: t.registered, identity: t.identity, position: t.position, declaration: t.declaration, generated: t.generated, approved: t.approved, published: t.publicDoc, withdrawn: stateLabel(lang, 'withdrawn') };
+const actionLabel = (action: string) => action.replace(/^consent_/, '').replace(/_/g, ' ');
+---
+<AdminLayout lang={lang} title={c?.displayName ?? t.companies} active="companies">
+  <a class="ad-back" href={`${base}/empresas`}>{t.back}</a>
+  {!d || !c ? <p class="ad-empty">{missing ? t.noResults : t.noData}</p> : (
+    <>
+      <header class="ad-head ad-head-record">
+        <div>
+          <h1>{c.displayName}{d.isDemo && <span class="ad-demo">{t.demoBadge}</span>}</h1>
+          <p class="ad-sub"><span class="ad-num">{formatPosition(c.position)}</span> <State lang={lang} value={c.identityState} /> <State lang={lang} value={c.publicationStatus} />{c.publicationBlock && <span class="ad-flag">{t.blocked}: {c.publicationBlock}</span>}</p>
+        </div>
+        <div class="ad-actions" aria-label={t.actions}>
+          {c.identityState === 'pending_review' && <ActionButton lang={lang} label={t.approveIdentity} endpoint="/api/v1/admin/review-company" payload={{ companyId: c.id, decision: 'approved' }} summary={withName(t.approveIdentity)} />}
+          {c.identityState === 'pending_review' && <ActionButton lang={lang} label={t.rejectIdentity} danger endpoint="/api/v1/admin/review-company" payload={{ companyId: c.id, decision: 'rejected' }} summary={withName(t.rejectIdentity)} />}
+          {c.publicationBlock
+            ? <ActionButton lang={lang} label={t.clearBlock} endpoint="/api/v1/admin/company-action" payload={{ companyId: c.id, action: 'clear_block' }} summary={withName(t.clearBlock)} />
+            : <ActionButton lang={lang} label={t.blockPublication} danger endpoint="/api/v1/admin/company-action" payload={{ companyId: c.id, action: 'block_publication' }} summary={withName(t.blockPublication)} />}
+          {c.publishedAt && <ActionButton lang={lang} label={t.grantRectification} endpoint="/api/v1/admin/company-action" payload={{ companyId: c.id, action: 'grant_rectification' }} summary={withName(t.grantRectification)} />}
+        </div>
+      </header>
+      <ol class="ad-process">
+        {d.process.map((s) => <li class={s.at ? 'is-done' : ''}><span class="ad-mark"></span><strong>{processLabels[s.step] ?? s.step}</strong><small>{s.step === 'identity' ? stateLabel(lang, s.state) : formatDate(lang, s.at)}</small></li>)}
+      </ol>
+      <div class="ad-columns">
+        <section class="ad-panel">
+          <h2>{t.facts}</h2>
+          <dl class="ad-rows ad-rows-text">
+            <div><dt>{t.country}</dt><dd>{c.country}</dd></div>
+            <div><dt>{t.sector}</dt><dd>{c.industry ?? '—'}</dd></div>
+            <div><dt>{t.website}</dt><dd>{c.website ?? '—'}</dd></div>
+            <div><dt>{t.slug}</dt><dd>{c.publicationStatus === 'published' ? <a href={`${lang === 'es' ? '/es' : ''}/empresas/${c.slug}`}>/empresas/{c.slug}</a> : `/empresas/${c.slug}`}</dd></div>
+            <div><dt>{t.created}</dt><dd>{formatDate(lang, c.createdAt)}</dd></div>
+          </dl>
+          {c.publicSummary && <p class="ad-quote"><small>{t.summary}</small><br />{c.publicSummary}</p>}
+        </section>
+        <section class="ad-panel">
+          <h2>{t.members}</h2>
+          {d.members.length === 0 ? <p class="ad-note">{t.none}</p> : (
+            <ul class="ad-people">{d.members.map((m) => <li><span>{m.email}</span><span class="ad-dim">{stateLabel(lang, m.role)}</span><State lang={lang} value={m.status} /></li>)}</ul>
+          )}
+          <h2 class="ad-h2-next">{t.positionFacts}</h2>
+          <dl class="ad-rows ad-rows-text">
+            <div><dt>{t.position}</dt><dd class="ad-num">{formatPosition(c.position)}</dd></div>
+            <div><dt>{t.kind}</dt><dd>{stateLabel(lang, c.assignmentKind)}</dd></div>
+            <div><dt>{t.assignedAt}</dt><dd>{formatDate(lang, c.assignedAt)}</dd></div>
+            <div><dt>{t.firstPublished}</dt><dd>{formatDate(lang, c.firstPublishedAt)}</dd></div>
+            <div><dt>{t.guarantee}</dt><dd>{formatDate(lang, c.guaranteeEndsAt)}</dd></div>
+            <div><dt>{t.correction}</dt><dd>{formatDate(lang, c.correctionOverrideUntil ?? c.correctionWindowEndsAt)}</dd></div>
+            <div><dt>{t.onboarding}</dt><dd>{stateLabel(lang, c.onboardingStatus)}</dd></div>
+          </dl>
+          <p class="ad-note">{t.positionNote}</p>
+        </section>
+        <section class="ad-panel">
+          <h2>{t.requestsTitle}</h2>
+          {d.requests.length === 0 ? <p class="ad-note">{t.noneOpen}</p> : <ul class="ad-people">{d.requests.map((r) => <li><span>{stateLabel(lang, r.kind)}</span><span class="ad-dim">{formatDate(lang, r.requestedAt)}</span><State lang={lang} value={r.status} /></li>)}</ul>}
+          <h2 class="ad-h2-next">{t.incidentsTitle}</h2>
+          {d.incidents.length === 0 ? <p class="ad-note">{t.noneOpen}</p> : <ul class="ad-people">{d.incidents.map((r) => <li><span>{r.kind.replace(/_/g, ' ')}</span><span class="ad-dim">{formatDate(lang, r.createdAt)}</span><State lang={lang} value={r.status} /></li>)}</ul>}
+          <h2 class="ad-h2-next">{t.attemptsTitle}</h2>
+          {d.attempts.length === 0 ? <p class="ad-note">{t.noneOpen}</p> : <ul class="ad-people">{d.attempts.map((r) => <li><span>{r.provider} · {formatUsd(lang, r.amountUsdCents)}</span><span class="ad-num">{formatPosition(r.position)}</span><State lang={lang} value={r.status} /></li>)}</ul>}
+        </section>
+      </div>
+      <section class="ad-panel ad-panel-wide">
+        <h2>{t.versions}</h2>
+        {d.versions.length === 0 ? <p class="ad-note">{t.noVersions}</p> : (
+          <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>{t.version}</th><th>{t.stage}</th><th>{t.review}</th><th>{t.generatedWith}</th><th>{t.created}</th><th></th></tr></thead>
+            <tbody>{d.versions.map((v) => (
+              <tr>
+                <td class="ad-num">v{v.version}</td>
+                <td><State lang={lang} value={v.publishedAt ? 'published' : v.approvedAt ? 'approved' : 'generated'} /></td>
+                <td><State lang={lang} value={v.reviewStatus} /></td>
+                <td class="ad-dim">{v.generator?.kind === 'llm' ? `${v.generator.provider} / ${v.generator.model}` : t.deterministic}</td>
+                <td class="ad-dim ad-nowrap">{formatDate(lang, v.createdAt)}</td>
+                <td><a href={`${base}/perfiles/${encodeURIComponent(c.id)}/${v.version}`}>{t.open_}</a></td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </section>
+      <section class="ad-panel ad-panel-wide">
+        <h2>{t.history}</h2>
+        {d.timeline.length === 0 ? <p class="ad-note">{t.noHistory}</p> : (
+          <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>{t.when}</th><th>{t.action}</th><th>{t.actor}</th><th>{t.reason}</th><th>{t.evidence}</th><th>{t.detail}</th></tr></thead>
+            <tbody>{d.timeline.map((e) => (
+              <tr><td class="ad-dim ad-nowrap">{formatDate(lang, e.at)}</td><td>{actionLabel(e.action)}</td><td class="ad-dim">{e.actor ?? '—'}</td><td class="ad-dim">{e.reasonCode ?? '—'}</td><td class="ad-dim">{e.evidence ?? '—'}</td><td class="ad-dim">{e.detail ?? '—'}</td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </section>
+      <ActionDialog lang={lang} />
+    </>
+  )}
+</AdminLayout>

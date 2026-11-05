@@ -1,0 +1,90 @@
+---
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import ActionButton from './ActionButton.astro';
+import ActionDialog from './ActionDialog.astro';
+import JsonWorkbench from './JsonWorkbench';
+import { copy, formatDate, formatPosition, stateLabel, type AdminLang } from './copy';
+import type { getProfileDossier } from '../../core/admin-console';
+
+interface Props { lang: AdminLang; companyId: string; version: number; dossier: Awaited<ReturnType<typeof getProfileDossier>> | null; missing: boolean; }
+const { lang, companyId, version, dossier: d, missing } = Astro.props;
+const t = copy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const documentLabels = { declaration: t.declaration, companyData: t.companyData, canonical: t.canonical, jsonldEn: t.jsonldEn, jsonldEs: t.jsonldEs, generator: t.generator };
+const stages = { original: t.original, generated: t.generated, approved: t.approved, published: t.publicDoc };
+const summary = d ? `${d.company.displayName}, v${version}` : '';
+---
+<AdminLayout lang={lang} title={d?.company.displayName ?? t.profiles} active="profiles">
+  <a class="ad-back" href={`${base}/perfiles`}>{t.backProfiles}</a>
+  {!d ? <p class="ad-empty">{missing ? t.noProfiles : t.noData}</p> : (
+    <>
+      <header class="ad-head ad-head-record">
+        <div>
+          <h1><a href={`${base}/empresas/${encodeURIComponent(companyId)}`}>{d.company.displayName}</a> <span class="ad-num ad-h1-num">v{version}</span></h1>
+          <p class="ad-sub"><span class="ad-num">{formatPosition(d.company.position)}</span> <State lang={lang} value={d.stage === 'published' ? 'published' : d.stage === 'approved' ? 'approved' : 'generated'} /> <State lang={lang} value={d.reviewStatus} label={`${t.review}: ${stateLabel(lang, d.reviewStatus)}`} /> <State lang={lang} value={d.isPublic ? 'active' : 'plain'} label={d.isPublic ? t.live : t.notLive} /></p>
+        </div>
+        {d.reviewStatus === 'pending' && (
+          <div class="ad-actions" aria-label={t.actions}>
+            <ActionButton lang={lang} label={t.clearReview} endpoint="/api/v1/admin/profiles/review" payload={{ companyId, version, decision: 'cleared' }} summary={`${t.clearReview}: ${summary}`} />
+            <ActionButton lang={lang} label={t.rejectReview} danger endpoint="/api/v1/admin/profiles/review" payload={{ companyId, version, decision: 'rejected' }} summary={`${t.rejectReview}: ${summary}`} />
+          </div>
+        )}
+      </header>
+      <div class="ad-columns">
+        <section class="ad-panel">
+          <h2>{t.integrity}</h2>
+          <ul class="ad-checks">
+            {d.checks.map((c) => <li class={c.ok ? 'is-ok' : 'is-bad'}><span class="ad-mark"></span><span>{t.checks[c.id] ?? c.id}{c.detail && <small>: {c.detail}</small>}</span></li>)}
+          </ul>
+          <p class="ad-hash"><small>{t.digest}</small><br /><code>{d.contentDigest}</code></p>
+        </section>
+        <section class="ad-panel">
+          <h2>{t.generation}</h2>
+          <dl class="ad-rows ad-rows-text">
+            <div><dt>{t.created}</dt><dd>{formatDate(lang, d.createdAt)}</dd></div>
+            <div><dt>{t.provider}</dt><dd>{d.generator?.kind === 'llm' ? d.generator.provider : t.deterministic}</dd></div>
+            <div><dt>{t.model}</dt><dd>{d.generator?.model ?? '—'}</dd></div>
+            <div><dt>{t.promptVersion}</dt><dd>{d.generator?.promptVersion ?? '—'}</dd></div>
+            {d.generator?.reason && <div><dt>{t.reasonNoAi}</dt><dd>{d.generator.reason}</dd></div>}
+            <div><dt>{t.declaration}</dt><dd>{d.declaration.revision ? <>r{d.declaration.revision} · {d.declaration.submittedBy ?? '—'}<br /><small>{formatDate(lang, d.declaration.submittedAt)}</small></> : '—'}</dd></div>
+          </dl>
+        </section>
+        <section class="ad-panel">
+          <h2>{t.approval}</h2>
+          <dl class="ad-rows ad-rows-text">
+            <div><dt>{t.owner}</dt><dd>{d.approval ? d.approval.by : t.notApproved}</dd></div>
+            <div><dt>{t.when}</dt><dd>{formatDate(lang, d.approval?.at)}</dd></div>
+            <div><dt>{t.publicDoc}</dt><dd>{d.publication ? formatDate(lang, d.publication.at) : t.notPublished}</dd></div>
+          </dl>
+          {d.reviews.length > 0 && (
+            <>
+              <h2 class="ad-h2-next">{t.reviewHistory}</h2>
+              <ul class="ad-people">{d.reviews.map((r) => <li><span>{r.reasonCode}</span><span class="ad-dim">{r.actor}</span><span class="ad-dim ad-nowrap">{formatDate(lang, r.at)}</span></li>)}</ul>
+            </>
+          )}
+        </section>
+      </div>
+      <div class="ad-columns ad-columns-two">
+        <section class="ad-panel">
+          <h2>{t.unsupported}</h2>
+          {d.unsupportedClaims.length === 0 ? <p class="ad-note">{t.noUnsupported}</p> : <ul class="ad-claims">{d.unsupportedClaims.map((c) => <li><strong>{c.text}</strong><small>{c.reason}</small></li>)}</ul>}
+          <h2 class="ad-h2-next">{t.warnings}</h2>
+          {d.warnings.length === 0 ? <p class="ad-note">{t.noWarnings}</p> : <ul class="ad-claims">{d.warnings.map((w) => <li>{w}</li>)}</ul>}
+        </section>
+        <section class="ad-panel">
+          <h2>{t.provenance}</h2>
+          <dl class="ad-rows ad-rows-text ad-rows-tight">
+            {Object.entries(d.provenance as Record<string, { type?: string; method?: string }>).map(([field, entry]) => <div><dt><code>{field}</code></dt><dd>{entry?.type ?? '—'}{entry?.method && <small> · {entry.method}</small>}</dd></div>)}
+          </dl>
+        </section>
+      </div>
+      <JsonWorkbench client:load lang={lang} companyId={companyId} version={version} slug={d.company.slug} versions={d.versions.map((v) => v.version)}
+        labels={documentLabels} stages={stages} current={{
+          declaration: d.documents.declaration, companyData: { displayName: d.company.displayName, slug: d.company.slug, country: d.company.country, industry: d.company.industry, website: d.company.website },
+          canonical: d.documents.canonical, jsonldEn: d.documents.jsonld, jsonldEs: d.documents.jsonldEs, generator: d.generator,
+        }} stage={d.stage} />
+      <ActionDialog lang={lang} />
+    </>
+  )}
+</AdminLayout>

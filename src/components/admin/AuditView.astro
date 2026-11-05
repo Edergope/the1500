@@ -1,0 +1,41 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from './AdminLayout.astro';
+import Pager from './Pager.astro';
+import { copy, formatDate, type AdminLang } from './copy';
+import { listAuditEvents } from '../../core/admin-console';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const t = copy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const p = Astro.url.searchParams;
+const LIMIT = 50;
+const rawOffset = Number(p.get('offset') ?? 0);
+const filters = { action: p.get('action')?.trim() || undefined, subject: p.get('subject')?.trim() || undefined, actor: p.get('actor')?.trim() || undefined, limit: LIMIT, offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0 };
+let r: Awaited<ReturnType<typeof listAuditEvents>> | null = null;
+try { r = await listAuditEvents(env.DB, filters); } catch (e) { console.error('admin_audit_unavailable', e instanceof Error ? e.message : String(e)); }
+---
+<AdminLayout lang={lang} title={t.audit} active="audit">
+  <header class="ad-head"><h1>{t.audit}</h1><p class="ad-sub">{t.auditIntro}</p></header>
+  <form class="ad-filters" method="get">
+    <label>{t.action}<select name="action"><option value="">{t.allActions}</option>{r?.actions.map((a) => <option value={a} selected={filters.action === a}>{a.replace(/_/g, ' ')}</option>)}</select></label>
+    <label>{t.subject}<input name="subject" value={filters.subject ?? ''} maxlength="100" /></label>
+    <label>{t.actor}<input name="actor" value={filters.actor ?? ''} maxlength="100" /></label>
+    <div class="ad-filter-actions"><button class="ad-btn ad-btn-primary" type="submit">{t.apply}</button><a class="ad-btn" href={`${base}/auditoria`}>{t.clear}</a></div>
+  </form>
+  {!r ? <p class="ad-empty">{t.noData}</p> : r.events.length === 0 ? <p class="ad-empty">{t.noEvents}</p> : (
+    <div class="ad-table-wrap"><table class="ad-table">
+      <thead><tr><th>{t.when}</th><th>{t.action}</th><th>{t.subject}</th><th>{t.actor}</th><th>{t.reason}</th><th>{t.evidence}</th></tr></thead>
+      <tbody>{r.events.map((e) => (
+        <tr>
+          <td class="ad-dim ad-nowrap">{formatDate(lang, e.occurredAt)}</td>
+          <td>{e.action.replace(/_/g, ' ')}</td>
+          <td>{e.subjectType === 'company' ? <a href={`${base}/empresas/${encodeURIComponent(e.subjectId)}`}>{e.companyName ?? e.subjectId}</a> : <span class="ad-dim">{e.subjectType}: {e.subjectId}</span>}</td>
+          <td class="ad-dim">{e.actor ?? '—'}</td><td class="ad-dim">{e.reasonCode ?? '—'}</td><td class="ad-dim">{e.evidence ?? '—'}</td>
+        </tr>
+      ))}</tbody>
+    </table></div>
+  )}
+  {r && <Pager lang={lang} total={r.total} limit={LIMIT} offset={filters.offset} />}
+</AdminLayout>

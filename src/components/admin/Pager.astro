@@ -1,0 +1,12 @@
+---
+import { copy, formatNumber, type AdminLang } from './copy';
+interface Props { lang: AdminLang; total: number; limit: number; offset: number; }
+const { lang, total, limit, offset } = Astro.props;
+const t = copy(lang);
+const to = (next: number) => { const u = new URL(Astro.url); u.searchParams.set('offset', String(next)); return `${u.pathname}${u.search}`; };
+---
+<nav class="ad-pager" aria-label={lang === 'es' ? 'Páginas' : 'Pages'}>
+  <span>{total ? `${formatNumber(lang, offset + 1)}–${formatNumber(lang, Math.min(offset + limit, total))} / ` : ''}{formatNumber(lang, total)} {t.results}</span>
+  {offset > 0 && <a class="ad-btn" href={to(Math.max(0, offset - limit))}>{t.previous}</a>}
+  {offset + limit < total && <a class="ad-btn" href={to(offset + limit)}>{t.next}</a>}
+</nav>
