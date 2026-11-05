@@ -1,4 +1,5 @@
 import {IdentityError} from './identity';
+import {readCatalog,readCatalogWithMosaic,type CatalogModel} from './read-model';
 export interface PublicCompanyCard {slug:string;name:string;country:string;industry:string|null;summary:string|null;position:number;}
 export interface PublicCompanyRow {
   id:string;slug:string;display_name:string;country:string;industry:string|null;
@@ -32,18 +33,15 @@ export function publicProfileDto(row:PublicCompanyRow,language:'en'|'es'='en') {
 }
 /** Every published company, as the wall on the Home needs it. Same conditions as the directory. */
 export async function listMosaicCompanies(db:D1Database):Promise<import('../lib/mosaic').MosaicCompany[]> {
-  const res=await db.prepare(`SELECT c.slug,c.display_name AS name,c.country,c.industry,s.number AS position
-    FROM companies c JOIN slots s ON s.company_id=c.id
-    WHERE c.publication_status='published' AND s.status='assigned' AND EXISTS(
-      SELECT 1 FROM profile_versions v WHERE v.company_id=c.id AND v.published_at IS NOT NULL)
-    ORDER BY s.number ASC`).all<import('../lib/mosaic').MosaicCompany>();
-  return res.results;
+  return (await readCatalogWithMosaic(db)).mosaic;
 }
 /** SQL for a company's summary in the visitor's language, read from its latest published version. */
 export const localizedSummary=(language:'en'|'es'='en')=>language==='es'
   ?`COALESCE((SELECT json_extract(v.canonical_json,'$.descriptionEs') FROM profile_versions v WHERE v.company_id=c.id AND v.published_at IS NOT NULL ORDER BY v.version DESC LIMIT 1),c.public_summary)`
   :'c.public_summary';
-export async function listPublishedCompanies(db:D1Database,filters:{page:number;country?:string;q?:string;industry?:string;service?:string;language?:'en'|'es'}) {
+export interface DirectoryFilters {page:number;country?:string;q?:string;industry?:string;service?:string;language?:'en'|'es';}
+const PAGE_SIZE=24;
+export async function listPublishedCompanies(db:D1Database,filters:DirectoryFilters,knownCatalog?:CatalogModel) {
   if (!Number.isSafeInteger(filters.page)||filters.page<1||filters.page>500) throw new IdentityError('INVALID_PAGE');
   if (filters.country&&!/^[A-Z]{2}$/.test(filters.country)) throw new IdentityError('INVALID_COUNTRY');
   for (const text of [filters.q,filters.industry,filters.service]) if (text&&text.length>100) throw new IdentityError('INVALID_QUERY');
@@ -57,17 +55,36 @@ export async function listPublishedCompanies(db:D1Database,filters:{page:number;
     AND (? IS NULL OR LOWER(c.display_name) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(c.industry,'')) LIKE ? ESCAPE '\\'
          OR LOWER(COALESCE(c.public_summary,'')) LIKE ? ESCAPE '\\')`;
   const args=[filters.country||null,filters.country||null,industry,industry,service,service,q,q,q,q];
-  const count=await db.prepare(`SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE ${where}`)
-    .bind(...args).first<{total:number}>();
-  const res=await db.prepare(`SELECT c.slug,c.display_name AS name,c.country,c.industry,${localizedSummary(filters.language)} AS summary,s.number AS position
-    FROM companies c JOIN slots s ON s.company_id=c.id WHERE ${where} ORDER BY s.number ASC LIMIT 24 OFFSET ?`)
-    .bind(...args,(filters.page-1)*24).all<PublicCompanyCard>();
-  return {items:res.results,page:filters.page,pageSize:24,total:count?.total??0};
+  const columns=`c.slug,c.display_name AS name,c.country,c.industry,${localizedSummary(filters.language)} AS summary,s.number AS position`;
+  if (!filters.country&&!q&&!industry&&!service) {
+    // No filter: the positions of the page are already known, so only those rows are read, whichever the page.
+    const {positionMap}=knownCatalog??await readCatalog(db);
+    const listed:number[]=[];
+    for (let i=0;i<positionMap.length;i++) if (positionMap[i]==='p') listed.push(i+1);
+    const numbers=listed.slice((filters.page-1)*PAGE_SIZE,filters.page*PAGE_SIZE);
+    if (!numbers.length) return {items:[] as PublicCompanyCard[],page:filters.page,pageSize:PAGE_SIZE,total:listed.length};
+    const res=await db.prepare(`SELECT ${columns} FROM slots s NOT INDEXED CROSS JOIN companies c ON c.id=s.company_id
+      WHERE s.number IN (${numbers.map(()=>'?').join(',')}) AND ${where} ORDER BY s.number ASC`)
+      .bind(...numbers,...args).all<PublicCompanyCard>();
+    return {items:res.results,page:filters.page,pageSize:PAGE_SIZE,total:listed.length};
+  }
+  // A filter has to look at every published company anyway; one pass gives both the page and the total.
+  const res=await db.prepare(`SELECT ${columns},COUNT(*) OVER() AS total
+    FROM companies c JOIN slots s ON s.company_id=c.id WHERE ${where} ORDER BY s.number ASC LIMIT ${PAGE_SIZE} OFFSET ?`)
+    .bind(...args,(filters.page-1)*PAGE_SIZE).all<PublicCompanyCard&{total:number}>();
+  let total=res.results[0]?.total??0;
+  if (!res.results.length&&filters.page>1) {
+    // Past the last page there is no row to carry the total.
+    const count=await db.prepare(`SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE ${where}`)
+      .bind(...args).first<{total:number}>();
+    total=count?.total??0;
+  }
+  return {items:res.results.map(({total:_,...card})=>card),page:filters.page,pageSize:PAGE_SIZE,total};
 }
 /** Decision 29: exact text; nothing identifies the company that held the position. */
 export const RETIRED_LABEL_ES='Cupo retirado — No disponible';
 export const RETIRED_LABEL_EN='Position retired — Not available';
+export const retiredItems=(positions:number[])=>positions.map(position=>({position,label:RETIRED_LABEL_EN,labelEs:RETIRED_LABEL_ES}));
 export async function listRetiredPositions(db:D1Database) {
-  const rows=await db.prepare(`SELECT number AS position FROM slots WHERE status='retired' ORDER BY number`).all<{position:number}>();
-  return {items:rows.results.map(r=>({position:r.position,label:RETIRED_LABEL_EN,labelEs:RETIRED_LABEL_ES}))};
+  return {items:retiredItems((await readCatalog(db)).retired)};
 }

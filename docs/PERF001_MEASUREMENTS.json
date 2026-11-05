@@ -1,0 +1,3343 @@
+{
+ "demo/before": {
+  "counts": {
+   "published": 9,
+   "assigned": 11,
+   "retired": 1
+  },
+  "routes": {
+   "/": {
+    "cold": {
+     "read": 5098,
+     "written": 0,
+     "queries": 9,
+     "repeated": 0,
+     "ms": 20.9
+    },
+    "warm": {
+     "read": 5098,
+     "written": 0,
+     "queries": 9,
+     "repeated": 0,
+     "ms": 17.5
+    },
+    "digest": "68bbf379defdc5a7",
+    "statements": [
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,s.number AS position FROM companies c JOIN slots s ON s.compan",
+      "read": 37,
+      "ret": 9
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT s.number,s.status,(s.status='assigned' AND c.publication_status='published' AND EXISTS( SELECT 1 FROM profile_ver",
+      "read": 36,
+      "ret": 12
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/es/": {
+    "cold": {
+     "read": 5098,
+     "written": 0,
+     "queries": 9,
+     "repeated": 0,
+     "ms": 15.7
+    },
+    "warm": {
+     "read": 5098,
+     "written": 0,
+     "queries": 9,
+     "repeated": 0,
+     "ms": 14.4
+    },
+    "digest": "e291d6c0690540bc",
+    "statements": [
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,s.number AS position FROM companies c JOIN slots s ON s.compan",
+      "read": 37,
+      "ret": 9
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT s.number,s.status,(s.status='assigned' AND c.publication_status='published' AND EXISTS( SELECT 1 FROM profile_ver",
+      "read": 36,
+      "ret": 12
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/unirse": {
+    "cold": {
+     "read": 5102,
+     "written": 0,
+     "queries": 10,
+     "repeated": 1,
+     "ms": 17.2
+    },
+    "warm": {
+     "read": 5102,
+     "written": 0,
+     "queries": 10,
+     "repeated": 1,
+     "ms": 16.5
+    },
+    "digest": "8e4c555b1e67a72e",
+    "statements": [
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,s.number AS position FROM companies c JOIN slots s ON s.compan",
+      "read": 37,
+      "ret": 9
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT s.number,s.status,(s.status='assigned' AND c.publication_status='published' AND EXISTS( SELECT 1 FROM profile_ver",
+      "read": 36,
+      "ret": 12
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/es/unirse": {
+    "cold": {
+     "read": 5102,
+     "written": 0,
+     "queries": 10,
+     "repeated": 1,
+     "ms": 16.6
+    },
+    "warm": {
+     "read": 5102,
+     "written": 0,
+     "queries": 10,
+     "repeated": 1,
+     "ms": 17
+    },
+    "digest": "62ef8fbb1fcc6415",
+    "statements": [
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,s.number AS position FROM companies c JOIN slots s ON s.compan",
+      "read": 37,
+      "ret": 9
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT s.number,s.status,(s.status='assigned' AND c.publication_status='published' AND EXISTS( SELECT 1 FROM profile_ver",
+      "read": 36,
+      "ret": 12
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/empresas": {
+    "cold": {
+     "read": 5086,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 14
+    },
+    "warm": {
+     "read": 5086,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 14.1
+    },
+    "digest": "079ff201dbc78ddc",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 28,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 37,
+      "ret": 9
+     }
+    ]
+   },
+   "/es/empresas": {
+    "cold": {
+     "read": 5095,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 12.8
+    },
+    "warm": {
+     "read": 5095,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 13
+    },
+    "digest": "87d3bbde1b85c79f",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 28,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,COALESCE((SELECT json_extract(v.canonical_json,'$.descriptionE",
+      "read": 46,
+      "ret": 9
+     }
+    ]
+   },
+   "/empresas?page=40": {
+    "cold": {
+     "read": 5086,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 11.9
+    },
+    "warm": {
+     "read": 5086,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 12.5
+    },
+    "digest": "44751bd4d7e89a27",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 28,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 37,
+      "ret": 0
+     }
+    ]
+   },
+   "/empresas?query=simulated (matches all)": {
+    "cold": {
+     "read": 5086,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 12.9
+    },
+    "warm": {
+     "read": 5086,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 13.2
+    },
+    "digest": "079ff201dbc78ddc",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 28,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 37,
+      "ret": 9
+     }
+    ]
+   },
+   "/empresas?query=simulated 7 (matches few)": {
+    "cold": {
+     "read": 5046,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 13.5
+    },
+    "warm": {
+     "read": 5046,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 11.9
+    },
+    "digest": "7ffb64c7543889ad",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 12,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 13,
+      "ret": 1
+     }
+    ]
+   },
+   "/empresas?query=nomatch": {
+    "cold": {
+     "read": 5042,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 10.9
+    },
+    "warm": {
+     "read": 5042,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 11.8
+    },
+    "digest": "ed887d837896546f",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 11,
+      "ret": 0
+     }
+    ]
+   },
+   "/empresas?country=CO": {
+    "cold": {
+     "read": 5051,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 13.8
+    },
+    "warm": {
+     "read": 5051,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 11.6
+    },
+    "digest": "d4cbf63c875ad20b",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 14,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 16,
+      "ret": 2
+     }
+    ]
+   },
+   "/api/v1/public/stats": {
+    "cold": {
+     "read": 5019,
+     "written": 0,
+     "queries": 5,
+     "repeated": 0,
+     "ms": 6.7
+    },
+    "warm": {
+     "read": 5019,
+     "written": 0,
+     "queries": 5,
+     "repeated": 0,
+     "ms": 6.6
+    },
+    "digest": "f54839f8abcf5527",
+    "statements": [
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 10,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 1999,
+      "ret": 1
+     }
+    ]
+   },
+   "/api/v1/public/companies": {
+    "cold": {
+     "read": 65,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 5
+    },
+    "warm": {
+     "read": 65,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 4.1
+    },
+    "digest": "17561900f8a3a789",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 28,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 37,
+      "ret": 9
+     }
+    ]
+   },
+   "/api/v1/public/retired-positions": {
+    "cold": {
+     "read": 2,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.4
+    },
+    "warm": {
+     "read": 2,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 1.4
+    },
+    "digest": "a43726dbb11b1d45",
+    "statements": [
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 2,
+      "ret": 1
+     }
+    ]
+   },
+   "/empresas/:slug": {
+    "cold": {
+     "read": 4,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2
+    },
+    "warm": {
+     "read": 4,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2
+    },
+    "digest": "a74642bdc77dea48",
+    "statements": [
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/api/v1/public/search?query=freight (matches all)": {
+    "cold": {
+     "read": 70,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 3.4
+    },
+    "warm": {
+     "read": 70,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.2
+    },
+    "digest": "e573800d20960db4",
+    "statements": [
+     {
+      "sql": "SELECT c.id AS companyId,c.slug,c.display_name AS name, c.industry,c.country,c.public_summary AS summary,s.number AS pos",
+      "read": 70,
+      "ret": 8
+     }
+    ]
+   },
+   "/api/v1/public/search?query=7 (matches one)": {
+    "cold": {
+     "read": 8,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.5
+    },
+    "warm": {
+     "read": 8,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2
+    },
+    "digest": "76971884d6354cc3",
+    "statements": [
+     {
+      "sql": "SELECT c.id AS companyId,c.slug,c.display_name AS name, c.industry,c.country,c.public_summary AS summary,s.number AS pos",
+      "read": 8,
+      "ret": 1
+     }
+    ]
+   }
+  },
+  "events": {
+   "sales": {
+    "read": 1999,
+    "queries": 1
+   },
+   "cron": {
+    "read": 16,
+    "written": 0,
+    "queries": 12
+   }
+  },
+  "http": {
+   "/": {
+    "firstMs": 30.9,
+    "p50": 8.8,
+    "p95": 17.2,
+    "cpuMsPerRequest": 9.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 81957
+   },
+   "/es/": {
+    "firstMs": 10,
+    "p50": 8,
+    "p95": 8.9,
+    "cpuMsPerRequest": 8,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 82300
+   },
+   "/unirse": {
+    "firstMs": 6.4,
+    "p50": 5.6,
+    "p95": 7.3,
+    "cpuMsPerRequest": 5.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 65098
+   },
+   "/es/unirse": {
+    "firstMs": 7.1,
+    "p50": 5.4,
+    "p95": 7,
+    "cpuMsPerRequest": 5.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 65272
+   },
+   "/empresas": {
+    "firstMs": 6.2,
+    "p50": 4.9,
+    "p95": 8.9,
+    "cpuMsPerRequest": 5,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 49460
+   },
+   "/es/empresas": {
+    "firstMs": 5.3,
+    "p50": 4.8,
+    "p95": 7.3,
+    "cpuMsPerRequest": 5,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 49836
+   },
+   "/empresas?query=simulated%207": {
+    "firstMs": 5.6,
+    "p50": 5.2,
+    "p95": 6.5,
+    "cpuMsPerRequest": 4.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 37520
+   },
+   "/api/v1/public/stats": {
+    "firstMs": 3.5,
+    "p50": 2.7,
+    "p95": 3.7,
+    "cpuMsPerRequest": 2.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "public, max-age=15",
+    "cacheControlSigned": "public, max-age=15",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 351
+   },
+   "/api/v1/public/search?query=freight": {
+    "firstMs": 4.3,
+    "p50": 1.9,
+    "p95": 2.8,
+    "cpuMsPerRequest": 1.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "no-store",
+    "cacheControlSigned": "no-store",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 2523
+   }
+  }
+ },
+ "demo/after": {
+  "counts": {
+   "published": 9,
+   "assigned": 11,
+   "retired": 1
+  },
+  "routes": {
+   "/": {
+    "cold": {
+     "read": 1570,
+     "written": 6,
+     "queries": 10,
+     "repeated": 0,
+     "ms": 26.1
+    },
+    "warm": {
+     "read": 11,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 8
+    },
+    "digest": "68bbf379defdc5a7",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 5,
+      "ret": 2
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/es/": {
+    "cold": {
+     "read": 11,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 6.8
+    },
+    "warm": {
+     "read": 11,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.3
+    },
+    "digest": "e291d6c0690540bc",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 5,
+      "ret": 2
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/unirse": {
+    "cold": {
+     "read": 8,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 8.3
+    },
+    "warm": {
+     "read": 8,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7
+    },
+    "digest": "2251d585524de0eb",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/es/unirse": {
+    "cold": {
+     "read": 8,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 6.5
+    },
+    "warm": {
+     "read": 8,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 6.5
+    },
+    "digest": "7f0f917bd702f006",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/empresas": {
+    "cold": {
+     "read": 40,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.6
+    },
+    "warm": {
+     "read": 40,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 6.9
+    },
+    "digest": "079ff201dbc78ddc",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM slots s ",
+      "read": 36,
+      "ret": 9
+     }
+    ]
+   },
+   "/es/empresas": {
+    "cold": {
+     "read": 49,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.4
+    },
+    "warm": {
+     "read": 49,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.3
+    },
+    "digest": "87d3bbde1b85c79f",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,COALESCE((SELECT json_extract(v.canonical_json,'$.descriptionE",
+      "read": 45,
+      "ret": 9
+     }
+    ]
+   },
+   "/empresas?page=40": {
+    "cold": {
+     "read": 4,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 4.2
+    },
+    "warm": {
+     "read": 4,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 4
+    },
+    "digest": "44751bd4d7e89a27",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     }
+    ]
+   },
+   "/empresas?query=simulated (matches all)": {
+    "cold": {
+     "read": 60,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 6.9
+    },
+    "warm": {
+     "read": 60,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.1
+    },
+    "digest": "079ff201dbc78ddc",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position,COUNT(*) OVER",
+      "read": 56,
+      "ret": 9
+     }
+    ]
+   },
+   "/empresas?query=simulated 7 (matches few)": {
+    "cold": {
+     "read": 20,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.4
+    },
+    "warm": {
+     "read": 20,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.8
+    },
+    "digest": "7ffb64c7543889ad",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position,COUNT(*) OVER",
+      "read": 16,
+      "ret": 1
+     }
+    ]
+   },
+   "/empresas?query=nomatch": {
+    "cold": {
+     "read": 16,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.7
+    },
+    "warm": {
+     "read": 16,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 6.3
+    },
+    "digest": "ed887d837896546f",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position,COUNT(*) OVER",
+      "read": 12,
+      "ret": 0
+     }
+    ]
+   },
+   "/empresas?country=CO": {
+    "cold": {
+     "read": 25,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.2
+    },
+    "warm": {
+     "read": 25,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 6.5
+    },
+    "digest": "d4cbf63c875ad20b",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position,COUNT(*) OVER",
+      "read": 21,
+      "ret": 2
+     }
+    ]
+   },
+   "/api/v1/public/stats": {
+    "cold": {
+     "read": 4,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 4.7
+    },
+    "warm": {
+     "read": 4,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 4.2
+    },
+    "digest": "f54839f8abcf5527",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     }
+    ]
+   },
+   "/api/v1/public/companies": {
+    "cold": {
+     "read": 38,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 4.4
+    },
+    "warm": {
+     "read": 38,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 4.4
+    },
+    "digest": "17561900f8a3a789",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM slots s ",
+      "read": 36,
+      "ret": 9
+     }
+    ]
+   },
+   "/api/v1/public/retired-positions": {
+    "cold": {
+     "read": 2,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.8
+    },
+    "warm": {
+     "read": 2,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.3
+    },
+    "digest": "a43726dbb11b1d45",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     }
+    ]
+   },
+   "/empresas/:slug": {
+    "cold": {
+     "read": 4,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.3
+    },
+    "warm": {
+     "read": 4,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.9
+    },
+    "digest": "a74642bdc77dea48",
+    "statements": [
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/api/v1/public/search?query=freight (matches all)": {
+    "cold": {
+     "read": 70,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 3.7
+    },
+    "warm": {
+     "read": 70,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 3.1
+    },
+    "digest": "e573800d20960db4",
+    "statements": [
+     {
+      "sql": "SELECT c.id AS companyId,c.slug,c.display_name AS name, c.industry,c.country,c.public_summary AS summary,s.number AS pos",
+      "read": 70,
+      "ret": 8
+     }
+    ]
+   },
+   "/api/v1/public/search?query=7 (matches one)": {
+    "cold": {
+     "read": 8,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.6
+    },
+    "warm": {
+     "read": 8,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.3
+    },
+    "digest": "76971884d6354cc3",
+    "statements": [
+     {
+      "sql": "SELECT c.id AS companyId,c.slug,c.display_name AS name, c.industry,c.country,c.public_summary AS summary,s.number AS pos",
+      "read": 8,
+      "ret": 1
+     }
+    ]
+   }
+  },
+  "events": {
+   "sqlOnly": {
+    "commerce": {
+     "read": 1504,
+     "queries": 2
+    }
+   },
+   "noopWrite": {
+    "written": 0
+   },
+   "afterCommerceChange": {
+    "read": 1516,
+    "written": 1,
+    "queries": 6
+   },
+   "afterCatalogChange": {
+    "read": 71,
+    "written": 2,
+    "queries": 7
+   },
+   "sales": {
+    "read": 4,
+    "queries": 1
+   },
+   "cron": {
+    "read": 16,
+    "written": 0,
+    "queries": 12
+   }
+  },
+  "http": {
+   "/": {
+    "firstMs": 28,
+    "p50": 6.5,
+    "p95": 7.9,
+    "cpuMsPerRequest": 7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 81957
+   },
+   "/es/": {
+    "firstMs": 7,
+    "p50": 6.4,
+    "p95": 7.1,
+    "cpuMsPerRequest": 6.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 82301
+   },
+   "/unirse": {
+    "firstMs": 6.1,
+    "p50": 4,
+    "p95": 5.1,
+    "cpuMsPerRequest": 3.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 65098
+   },
+   "/es/unirse": {
+    "firstMs": 4.1,
+    "p50": 3.8,
+    "p95": 4.8,
+    "cpuMsPerRequest": 3.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 65272
+   },
+   "/empresas": {
+    "firstMs": 4.7,
+    "p50": 3.7,
+    "p95": 5.2,
+    "cpuMsPerRequest": 3.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 49460
+   },
+   "/es/empresas": {
+    "firstMs": 4.1,
+    "p50": 3.8,
+    "p95": 4.7,
+    "cpuMsPerRequest": 3.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 49836
+   },
+   "/empresas?query=simulated%207": {
+    "firstMs": 3.8,
+    "p50": 3.6,
+    "p95": 4.3,
+    "cpuMsPerRequest": 3.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 37521
+   },
+   "/api/v1/public/stats": {
+    "firstMs": 2.3,
+    "p50": 2.5,
+    "p95": 3.8,
+    "cpuMsPerRequest": 2.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "public, max-age=15",
+    "cacheControlSigned": "public, max-age=15",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 351
+   },
+   "/api/v1/public/search?query=freight": {
+    "firstMs": 4.5,
+    "p50": 2.2,
+    "p95": 3.8,
+    "cpuMsPerRequest": 2.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "no-store",
+    "cacheControlSigned": "no-store",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 2523
+   }
+  }
+ },
+ "full/before": {
+  "counts": {
+   "published": 1500,
+   "assigned": 1500,
+   "retired": 0
+  },
+  "routes": {
+   "/": {
+    "cold": {
+     "read": 16516,
+     "written": 0,
+     "queries": 9,
+     "repeated": 0,
+     "ms": 22.1
+    },
+    "warm": {
+     "read": 16516,
+     "written": 0,
+     "queries": 9,
+     "repeated": 0,
+     "ms": 24.8
+    },
+    "digest": "92e9b5059a95c317",
+    "statements": [
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,s.number AS position FROM companies c JOIN slots s ON s.compan",
+      "read": 6000,
+      "ret": 1500
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT s.number,s.status,(s.status='assigned' AND c.publication_status='published' AND EXISTS( SELECT 1 FROM profile_ver",
+      "read": 4502,
+      "ret": 1500
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/es/": {
+    "cold": {
+     "read": 16516,
+     "written": 0,
+     "queries": 9,
+     "repeated": 0,
+     "ms": 34.1
+    },
+    "warm": {
+     "read": 16516,
+     "written": 0,
+     "queries": 9,
+     "repeated": 0,
+     "ms": 19.3
+    },
+    "digest": "a27bf6b5751a258a",
+    "statements": [
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,s.number AS position FROM companies c JOIN slots s ON s.compan",
+      "read": 6000,
+      "ret": 1500
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT s.number,s.status,(s.status='assigned' AND c.publication_status='published' AND EXISTS( SELECT 1 FROM profile_ver",
+      "read": 4502,
+      "ret": 1500
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/unirse": {
+    "cold": {
+     "read": 16520,
+     "written": 0,
+     "queries": 10,
+     "repeated": 1,
+     "ms": 21.9
+    },
+    "warm": {
+     "read": 16520,
+     "written": 0,
+     "queries": 10,
+     "repeated": 1,
+     "ms": 20
+    },
+    "digest": "f071610d67e434d7",
+    "statements": [
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,s.number AS position FROM companies c JOIN slots s ON s.compan",
+      "read": 6000,
+      "ret": 1500
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT s.number,s.status,(s.status='assigned' AND c.publication_status='published' AND EXISTS( SELECT 1 FROM profile_ver",
+      "read": 4502,
+      "ret": 1500
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/es/unirse": {
+    "cold": {
+     "read": 16520,
+     "written": 0,
+     "queries": 10,
+     "repeated": 1,
+     "ms": 22.9
+    },
+    "warm": {
+     "read": 16520,
+     "written": 0,
+     "queries": 10,
+     "repeated": 1,
+     "ms": 23
+    },
+    "digest": "894406da473cfce1",
+    "statements": [
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,s.number AS position FROM companies c JOIN slots s ON s.compan",
+      "read": 6000,
+      "ret": 1500
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT s.number,s.status,(s.status='assigned' AND c.publication_status='published' AND EXISTS( SELECT 1 FROM profile_ver",
+      "read": 4502,
+      "ret": 1500
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/empresas": {
+    "cold": {
+     "read": 16510,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 11.9
+    },
+    "warm": {
+     "read": 16510,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 12.3
+    },
+    "digest": "692da5843b0f3e1c",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 4500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 6000,
+      "ret": 24
+     }
+    ]
+   },
+   "/es/empresas": {
+    "cold": {
+     "read": 16598,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 12.6
+    },
+    "warm": {
+     "read": 16598,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 12
+    },
+    "digest": "f43492945b9cf9c3",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 4500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,COALESCE((SELECT json_extract(v.canonical_json,'$.descriptionE",
+      "read": 6088,
+      "ret": 24
+     }
+    ]
+   },
+   "/empresas?page=40": {
+    "cold": {
+     "read": 16510,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 12.2
+    },
+    "warm": {
+     "read": 16510,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 11.9
+    },
+    "digest": "8b164499e1862244",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 4500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 6000,
+      "ret": 24
+     }
+    ]
+   },
+   "/empresas?query=simulated (matches all)": {
+    "cold": {
+     "read": 16510,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 11.9
+    },
+    "warm": {
+     "read": 16510,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 11.6
+    },
+    "digest": "692da5843b0f3e1c",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 4500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 6000,
+      "ret": 24
+     }
+    ]
+   },
+   "/empresas?query=simulated 7 (matches few)": {
+    "cold": {
+     "read": 9565,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 12.1
+    },
+    "warm": {
+     "read": 9565,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 11.1
+    },
+    "digest": "f8de9fb81cbb0cfb",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 1722,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 1833,
+      "ret": 24
+     }
+    ]
+   },
+   "/empresas?query=nomatch": {
+    "cold": {
+     "read": 9011,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 10.9
+    },
+    "warm": {
+     "read": 9011,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 10.9
+    },
+    "digest": "66407aa100170f46",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 1501,
+      "ret": 0
+     }
+    ]
+   },
+   "/empresas?country=CO": {
+    "cold": {
+     "read": 10510,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 10.5
+    },
+    "warm": {
+     "read": 10510,
+     "written": 0,
+     "queries": 8,
+     "repeated": 0,
+     "ms": 10.3
+    },
+    "digest": "40234a1847f34621",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 2100,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 2400,
+      "ret": 24
+     }
+    ]
+   },
+   "/api/v1/public/stats": {
+    "cold": {
+     "read": 6009,
+     "written": 0,
+     "queries": 5,
+     "repeated": 0,
+     "ms": 5.6
+    },
+    "warm": {
+     "read": 6009,
+     "written": 0,
+     "queries": 5,
+     "repeated": 0,
+     "ms": 5.8
+    },
+    "digest": "4d12a6ffa305a200",
+    "statements": [
+     {
+      "sql": "SELECT SUM(CASE WHEN status IN ('assigned','retired') THEN 1 ELSE 0 END) occupied, SUM(CASE WHEN status='held' THEN 1 EL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT phase,SUM(CASE WHEN status IN('available','held') THEN 1 ELSE 0 END) remaining, SUM(CASE WHEN status IN('availabl",
+      "read": 1500,
+      "ret": 4
+     },
+     {
+      "sql": "SELECT COUNT(*) total FROM companies WHERE publication_status='published'",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT COUNT(DISTINCT industry) total FROM companies WHERE publication_status='published' AND industry IS NOT NULL",
+      "read": 1500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT (SELECT MIN(phase) FROM slots WHERE status IN('available','held')) AS phase,(SELECT COUNT(*) FROM slots WHERE pha",
+      "read": 9,
+      "ret": 1
+     }
+    ]
+   },
+   "/api/v1/public/companies": {
+    "cold": {
+     "read": 10500,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 5.3
+    },
+    "warm": {
+     "read": 10500,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 5.1
+    },
+    "digest": "c35ef6c798241997",
+    "statements": [
+     {
+      "sql": "SELECT COUNT(*) AS total FROM companies c JOIN slots s ON s.company_id=c.id WHERE c.publication_status='published' AND s",
+      "read": 4500,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM companie",
+      "read": 6000,
+      "ret": 24
+     }
+    ]
+   },
+   "/api/v1/public/retired-positions": {
+    "cold": {
+     "read": 1,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 1.2
+    },
+    "warm": {
+     "read": 1,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 1.2
+    },
+    "digest": "eef46741adfc3a9f",
+    "statements": [
+     {
+      "sql": "SELECT number AS position FROM slots WHERE status='retired' ORDER BY number",
+      "read": 1,
+      "ret": 0
+     }
+    ]
+   },
+   "/empresas/:slug": {
+    "cold": {
+     "read": 4,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.4
+    },
+    "warm": {
+     "read": 4,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 1.9
+    },
+    "digest": "a74642bdc77dea48",
+    "statements": [
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/api/v1/public/search?query=freight (matches all)": {
+    "cold": {
+     "read": 9052,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 6.3
+    },
+    "warm": {
+     "read": 9052,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 4.4
+    },
+    "digest": "484dd53f5ecfe4c3",
+    "statements": [
+     {
+      "sql": "SELECT c.id AS companyId,c.slug,c.display_name AS name, c.industry,c.country,c.public_summary AS summary,s.number AS pos",
+      "read": 9052,
+      "ret": 8
+     }
+    ]
+   },
+   "/api/v1/public/search?query=7 (matches one)": {
+    "cold": {
+     "read": 8,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.1
+    },
+    "warm": {
+     "read": 8,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2
+    },
+    "digest": "76971884d6354cc3",
+    "statements": [
+     {
+      "sql": "SELECT c.id AS companyId,c.slug,c.display_name AS name, c.industry,c.country,c.public_summary AS summary,s.number AS pos",
+      "read": 8,
+      "ret": 1
+     }
+    ]
+   }
+  },
+  "events": {
+   "sales": {
+    "read": 9,
+    "queries": 1
+   },
+   "cron": {
+    "read": 16,
+    "written": 0,
+    "queries": 12
+   }
+  },
+  "http": {
+   "/": {
+    "firstMs": 55.9,
+    "p50": 33,
+    "p95": 41.4,
+    "cpuMsPerRequest": 37.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 922525
+   },
+   "/es/": {
+    "firstMs": 35.8,
+    "p50": 29.8,
+    "p95": 35.4,
+    "cpuMsPerRequest": 33,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 928540
+   },
+   "/unirse": {
+    "firstMs": 9.8,
+    "p50": 9,
+    "p95": 17,
+    "cpuMsPerRequest": 9.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 64404
+   },
+   "/es/unirse": {
+    "firstMs": 9,
+    "p50": 9.6,
+    "p95": 13,
+    "cpuMsPerRequest": 9.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 64576
+   },
+   "/empresas": {
+    "firstMs": 8.7,
+    "p50": 6.6,
+    "p95": 7.4,
+    "cpuMsPerRequest": 6.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 71811
+   },
+   "/es/empresas": {
+    "firstMs": 10.1,
+    "p50": 6.8,
+    "p95": 11.9,
+    "cpuMsPerRequest": 7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 72513
+   },
+   "/empresas?query=simulated%207": {
+    "firstMs": 6.6,
+    "p50": 6.3,
+    "p95": 8.3,
+    "cpuMsPerRequest": 6,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": null,
+    "cacheControlSigned": null,
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 72021
+   },
+   "/api/v1/public/stats": {
+    "firstMs": 3.6,
+    "p50": 2.7,
+    "p95": 3.7,
+    "cpuMsPerRequest": 2.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "public, max-age=15",
+    "cacheControlSigned": "public, max-age=15",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 799
+   },
+   "/api/v1/public/search?query=freight": {
+    "firstMs": 14,
+    "p50": 4.3,
+    "p95": 5.5,
+    "cpuMsPerRequest": 4.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "no-store",
+    "cacheControlSigned": "no-store",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 2611
+   }
+  }
+ },
+ "full/after": {
+  "counts": {
+   "published": 1500,
+   "assigned": 1500,
+   "retired": 0
+  },
+  "routes": {
+   "/": {
+    "cold": {
+     "read": 9012,
+     "written": 6,
+     "queries": 10,
+     "repeated": 0,
+     "ms": 34.4
+    },
+    "warm": {
+     "read": 11,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.6
+    },
+    "digest": "92e9b5059a95c317",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 5,
+      "ret": 2
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/es/": {
+    "cold": {
+     "read": 11,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.2
+    },
+    "warm": {
+     "read": 11,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 7.2
+    },
+    "digest": "a27bf6b5751a258a",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 5,
+      "ret": 2
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/unirse": {
+    "cold": {
+     "read": 8,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.9
+    },
+    "warm": {
+     "read": 8,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 5.7
+    },
+    "digest": "51f28fbcb6375fcc",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/es/unirse": {
+    "cold": {
+     "read": 8,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.3
+    },
+    "warm": {
+     "read": 8,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.7
+    },
+    "digest": "3f1a91376a37f73d",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/empresas": {
+    "cold": {
+     "read": 100,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 5
+    },
+    "warm": {
+     "read": 100,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.9
+    },
+    "digest": "692da5843b0f3e1c",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM slots s ",
+      "read": 96,
+      "ret": 24
+     }
+    ]
+   },
+   "/es/empresas": {
+    "cold": {
+     "read": 124,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.9
+    },
+    "warm": {
+     "read": 124,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.4
+    },
+    "digest": "f43492945b9cf9c3",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,COALESCE((SELECT json_extract(v.canonical_json,'$.descriptionE",
+      "read": 120,
+      "ret": 24
+     }
+    ]
+   },
+   "/empresas?page=40": {
+    "cold": {
+     "read": 100,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.8
+    },
+    "warm": {
+     "read": 100,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.3
+    },
+    "digest": "8b164499e1862244",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM slots s ",
+      "read": 96,
+      "ret": 24
+     }
+    ]
+   },
+   "/empresas?query=simulated (matches all)": {
+    "cold": {
+     "read": 9005,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 6.4
+    },
+    "warm": {
+     "read": 9005,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 6.1
+    },
+    "digest": "692da5843b0f3e1c",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position,COUNT(*) OVER",
+      "read": 9001,
+      "ret": 24
+     }
+    ]
+   },
+   "/empresas?query=simulated 7 (matches few)": {
+    "cold": {
+     "read": 2060,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 5.2
+    },
+    "warm": {
+     "read": 2060,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 5.2
+    },
+    "digest": "f8de9fb81cbb0cfb",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position,COUNT(*) OVER",
+      "read": 2056,
+      "ret": 24
+     }
+    ]
+   },
+   "/empresas?query=nomatch": {
+    "cold": {
+     "read": 1506,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.8
+    },
+    "warm": {
+     "read": 1506,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 12.6
+    },
+    "digest": "66407aa100170f46",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position,COUNT(*) OVER",
+      "read": 1502,
+      "ret": 0
+     }
+    ]
+   },
+   "/empresas?country=CO": {
+    "cold": {
+     "read": 3005,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.9
+    },
+    "warm": {
+     "read": 3005,
+     "written": 0,
+     "queries": 3,
+     "repeated": 0,
+     "ms": 4.9
+    },
+    "digest": "40234a1847f34621",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position,COUNT(*) OVER",
+      "read": 3001,
+      "ret": 24
+     }
+    ]
+   },
+   "/api/v1/public/stats": {
+    "cold": {
+     "read": 4,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 2.7
+    },
+    "warm": {
+     "read": 4,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 3
+    },
+    "digest": "4d12a6ffa305a200",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     }
+    ]
+   },
+   "/api/v1/public/companies": {
+    "cold": {
+     "read": 98,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 3.3
+    },
+    "warm": {
+     "read": 98,
+     "written": 0,
+     "queries": 2,
+     "repeated": 0,
+     "ms": 3.4
+    },
+    "digest": "c35ef6c798241997",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     },
+     {
+      "sql": "SELECT c.slug,c.display_name AS name,c.country,c.industry,c.public_summary AS summary,s.number AS position FROM slots s ",
+      "read": 96,
+      "ret": 24
+     }
+    ]
+   },
+   "/api/v1/public/retired-positions": {
+    "cold": {
+     "read": 2,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 1.6
+    },
+    "warm": {
+     "read": 2,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 1.4
+    },
+    "digest": "eef46741adfc3a9f",
+    "statements": [
+     {
+      "sql": "SELECT r.revision AS current,m.key,m.revision AS built,m.payload FROM read_model_revisions r LEFT JOIN read_models m ON ",
+      "read": 2,
+      "ret": 1
+     }
+    ]
+   },
+   "/empresas/:slug": {
+    "cold": {
+     "read": 4,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 1.5
+    },
+    "warm": {
+     "read": 4,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 1.6
+    },
+    "digest": "a74642bdc77dea48",
+    "statements": [
+     {
+      "sql": "SELECT c.id,c.slug,c.display_name,c.country,c.industry,c.website, c.public_summary,v.version,v.public_jsonld,v.public_js",
+      "read": 4,
+      "ret": 1
+     }
+    ]
+   },
+   "/api/v1/public/search?query=freight (matches all)": {
+    "cold": {
+     "read": 9052,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 5.3
+    },
+    "warm": {
+     "read": 9052,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 4.1
+    },
+    "digest": "484dd53f5ecfe4c3",
+    "statements": [
+     {
+      "sql": "SELECT c.id AS companyId,c.slug,c.display_name AS name, c.industry,c.country,c.public_summary AS summary,s.number AS pos",
+      "read": 9052,
+      "ret": 8
+     }
+    ]
+   },
+   "/api/v1/public/search?query=7 (matches one)": {
+    "cold": {
+     "read": 8,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 2.6
+    },
+    "warm": {
+     "read": 8,
+     "written": 0,
+     "queries": 1,
+     "repeated": 0,
+     "ms": 1.7
+    },
+    "digest": "76971884d6354cc3",
+    "statements": [
+     {
+      "sql": "SELECT c.id AS companyId,c.slug,c.display_name AS name, c.industry,c.country,c.public_summary AS summary,s.number AS pos",
+      "read": 8,
+      "ret": 1
+     }
+    ]
+   }
+  },
+  "events": {
+   "sqlOnly": {
+    "commerce": {
+     "read": 1502,
+     "queries": 2
+    }
+   },
+   "noopWrite": {
+    "written": 0
+   },
+   "afterCommerceChange": {
+    "read": 1514,
+    "written": 1,
+    "queries": 6
+   },
+   "afterCatalogChange": {
+    "read": 7515,
+    "written": 2,
+    "queries": 7
+   },
+   "sales": {
+    "read": 2,
+    "queries": 1
+   },
+   "cron": {
+    "read": 16,
+    "written": 0,
+    "queries": 12
+   }
+  },
+  "http": {
+   "/": {
+    "firstMs": 59.3,
+    "p50": 26.6,
+    "p95": 32.4,
+    "cpuMsPerRequest": 32.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 922525
+   },
+   "/es/": {
+    "firstMs": 31.6,
+    "p50": 25.9,
+    "p95": 32.1,
+    "cpuMsPerRequest": 29,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 928541
+   },
+   "/unirse": {
+    "firstMs": 5,
+    "p50": 3.9,
+    "p95": 5,
+    "cpuMsPerRequest": 3.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 64404
+   },
+   "/es/unirse": {
+    "firstMs": 4.3,
+    "p50": 3.9,
+    "p95": 8.2,
+    "cpuMsPerRequest": 3.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 64576
+   },
+   "/empresas": {
+    "firstMs": 5.4,
+    "p50": 3.9,
+    "p95": 4.7,
+    "cpuMsPerRequest": 3.7,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 71811
+   },
+   "/es/empresas": {
+    "firstMs": 4.2,
+    "p50": 4,
+    "p95": 5,
+    "cpuMsPerRequest": 4,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 72513
+   },
+   "/empresas?query=simulated%207": {
+    "firstMs": 4.9,
+    "p50": 4.5,
+    "p95": 4.9,
+    "cpuMsPerRequest": 4.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "private, no-cache",
+    "cacheControlSigned": "private, no-cache",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 72022
+   },
+   "/api/v1/public/stats": {
+    "firstMs": 2.5,
+    "p50": 1.9,
+    "p95": 2.5,
+    "cpuMsPerRequest": 2,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "public, max-age=15",
+    "cacheControlSigned": "public, max-age=15",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 799
+   },
+   "/api/v1/public/search?query=freight": {
+    "firstMs": 6.4,
+    "p50": 4.3,
+    "p95": 5.3,
+    "cpuMsPerRequest": 4.3,
+    "non200": 0,
+    "status": 200,
+    "cacheControl": "no-store",
+    "cacheControlSigned": "no-store",
+    "setCookie": null,
+    "setCookieSigned": null,
+    "bytes": 2611
+   }
+  }
+ }
+}

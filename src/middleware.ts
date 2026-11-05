@@ -7,6 +7,8 @@ export const onRequest=defineMiddleware(async({request},next)=>{
   response.headers.set('X-Content-Type-Options','nosniff');
   response.headers.set('Referrer-Policy',response.headers.get('Referrer-Policy')??'strict-origin-when-cross-origin');
   response.headers.set('X-Frame-Options','DENY');
+  // Shell.astro changes the navigation for a signed-in visitor, so no page may land in a shared cache.
+  if (!response.headers.has('Cache-Control')&&response.headers.get('content-type')?.includes('text/html')) response.headers.set('Cache-Control','private, no-cache');
   if (!path.startsWith('/api/')||response.status<400) return response;
   if (!response.headers.get('content-type')?.includes('application/json')) return response;
   const body=await response.clone().json().catch(()=>null) as {error?:{code?:string}}|null;

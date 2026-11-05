@@ -1,7 +1,8 @@
 import type {Locale} from '../lib/contracts/api';
 import type {MosaicCompany,PositionRange} from '../lib/mosaic';
-import {findPublicProfile,listMosaicCompanies,listRetiredPositions,publicProfileDto,RETIRED_LABEL_EN,RETIRED_LABEL_ES} from './directory';
-import {getPositionMap,getPublicStats,type PublicStats} from './public';
+import {findPublicProfile,publicProfileDto,type PublicCompanyRow,RETIRED_LABEL_EN,RETIRED_LABEL_ES} from './directory';
+import type {PublicStats} from './public';
+import {composeStats,readCatalogWithMosaic,readCommerce} from './read-model';
 
 export interface HomeSample {profile:ReturnType<typeof publicProfileDto>;machine:Record<string,unknown>;}
 export interface HomeData {
@@ -16,19 +17,22 @@ function machineExcerpt(jsonld:string):Record<string,unknown> {
   for (const key of ['name','description','knowsAbout','areaServed','identifier']) if (org[key]!==undefined) excerpt[key]=org[key];
   return excerpt;
 }
+export function homeSample(row:PublicCompanyRow,language:Locale):HomeSample {
+  return {profile:publicProfileDto(row,language),machine:machineExcerpt((language==='es'?row.public_jsonld_es:row.public_jsonld)??'{"@graph":[]}')};
+}
+export function currentRange(stats:PublicStats):PositionRange|null {
+  const current=stats.phases.find(p=>p.status==='current');
+  return current?{first:current.firstPosition,last:current.lastPosition}:null;
+}
 export async function loadHome(db:D1Database,language:Locale):Promise<HomeData> {
   const retiredLabel=language==='es'?RETIRED_LABEL_ES:RETIRED_LABEL_EN;
   const empty:HomeData={stats:null,companies:[],retiredPositions:[],positionMap:null,currentRange:null,retiredLabel,sample:null};
   try {
-    const [stats,companies,retired,positionMap]=await Promise.all([
-      getPublicStats(db),listMosaicCompanies(db),listRetiredPositions(db),getPositionMap(db),
-    ]);
-    const first=companies[0];
-    const row=first?await findPublicProfile(db,first.slug):null;
-    const sample=row?{profile:publicProfileDto(row,language),machine:machineExcerpt((language==='es'?row.public_jsonld_es:row.public_jsonld)??'{"@graph":[]}')}:null;
-    const current=stats.phases.find(p=>p.status==='current');
-    return {stats,companies,retiredPositions:retired.items.map(r=>r.position),positionMap,
-      currentRange:current?{first:current.firstPosition,last:current.lastPosition}:null,retiredLabel,sample};
+    const [commerce,{catalog,mosaic}]=await Promise.all([readCommerce(db),readCatalogWithMosaic(db)]);
+    const stats=composeStats(commerce,catalog);
+    const row=catalog.firstSlug?await findPublicProfile(db,catalog.firstSlug):null;
+    return {stats,companies:mosaic,retiredPositions:catalog.retired,positionMap:catalog.positionMap,
+      currentRange:currentRange(stats),retiredLabel,sample:row?homeSample(row,language):null};
   } catch(e) {
     // The page renders without numbers rather than with invented ones.
     console.error('home_data_unavailable',e instanceof Error?e.message:String(e));

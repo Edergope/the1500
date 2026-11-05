@@ -213,7 +213,13 @@ export default function AccountWorkspace({ initialEmail, lang = 'en' }: Props) {
       });
       return;
     }
+    // A confirmation normally arrives within seconds; a page left open must not keep asking for ever.
+    let polls = 0;
     const timer = setInterval(() => {
+      if (++polls > 60) {
+        setCheckoutReturnedPolling(false);
+        return;
+      }
       loadCompanyDetails(selectedCompanyId);
     }, 3500);
     return () => clearInterval(timer);

@@ -2,8 +2,7 @@
 import { env } from 'cloudflare:workers';
 import Shell from '../../layouts/Shell.astro';
 import DirectoryPageView from '../../components/DirectoryPageView.astro';
-import { listPublishedCompanies, listRetiredPositions } from '../../core/directory';
-import { getPublicStats } from '../../core/public';
+import { loadDirectory } from '../../core/public';
 import type { DirectoryResponse } from '../../lib/contracts/api';
 
 const rawPage = Number(Astro.url.searchParams.get('page') || '1');
@@ -19,14 +18,10 @@ let stats = null;
 let retiredItems: Array<{ position: number; label: string; labelEs: string }> = [];
 
 try {
-  const [dir, s, ret] = await Promise.all([
-    listPublishedCompanies(env.DB, { page, q, country, industry, service, language: 'en' }),
-    getPublicStats(env.DB),
-    listRetiredPositions(env.DB),
-  ]);
-  result = dir as DirectoryResponse;
-  stats = s;
-  retiredItems = ret.items;
+  const dir = await loadDirectory(env.DB, { page, q, country, industry, service, language: 'en' });
+  result = dir.result as DirectoryResponse;
+  stats = dir.stats;
+  retiredItems = dir.retired;
 } catch {
   result = { items: [], total: 0, page: 1, pageSize: 24 };
 }

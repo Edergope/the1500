@@ -47,9 +47,14 @@ export interface SalesState {
   mode:SalesMode; currentPhase:SlotPhase|null; priceUsdCents:number|null; checkoutOpen:boolean;
 }
 export async function getSalesState(db:D1Database):Promise<SalesState> {
-  const row=await db.prepare(`SELECT ${CURRENT_PHASE} AS phase,(SELECT COUNT(*) FROM slots WHERE phase=1 AND status='available' AND number>=${FIRST_PAID_NUMBER}) AS paid_free,
-    (SELECT price_usd_cents FROM slots WHERE phase=${CURRENT_PHASE} LIMIT 1) AS price,
-    (SELECT COUNT(*) FROM slots WHERE number<${FIRST_PAID_NUMBER} AND status='available') AS founder_free`)
+  // Each subquery stops at its first index entry, so the cost does not grow with the inventory.
+  // Founder places are all in phase 1 (schema CHECK); filtering by it keeps the seek on idx_slots_phase_open.
+  const row=await db.prepare(`WITH a(p) AS (SELECT phase FROM slots WHERE status='available' ORDER BY phase LIMIT 1),
+      h(p) AS (SELECT phase FROM slots WHERE status='held' ORDER BY phase LIMIT 1),
+      c(p) AS (SELECT MIN(p) FROM (SELECT p FROM a UNION ALL SELECT p FROM h))
+    SELECT c.p AS phase,(SELECT price_usd_cents FROM slots WHERE phase=c.p LIMIT 1) AS price,
+      EXISTS(SELECT 1 FROM slots WHERE phase=1 AND status='available' AND number>=${FIRST_PAID_NUMBER}) AS paid_free,
+      EXISTS(SELECT 1 FROM slots WHERE phase=1 AND status='available' AND number<${FIRST_PAID_NUMBER}) AS founder_free FROM c`)
     .first<{phase:SlotPhase|null;paid_free:number;price:number|null;founder_free:number}>();
   const phase=row?.phase??null;
   if (phase===null) return {mode:'closed_archive',currentPhase:null,priceUsdCents:null,checkoutOpen:false};
@@ -121,7 +126,8 @@ export async function createCheckoutHold(
     if (active) throw new InventoryError('ACTIVE_HOLD_EXISTS','Company already has a hold');
     throw new InventoryError('SLOT_CONFLICT','Position changed; retry');
   }
-  if (results[0]?.meta?.changes!==1) {
+  // The statement touches one row at most (a primary key). D1 also counts what triggers write, so this asks for any change, not exactly one.
+  if (!results[0]?.meta?.changes) {
     const state=await getSalesState(db);
     if (state.mode==='closed_archive') throw new InventoryError('SALES_CLOSED');
     if (state.mode==='premium_admission') throw new InventoryError('PREMIUM_ADMISSION_REQUIRED');

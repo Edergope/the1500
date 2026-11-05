@@ -236,6 +236,15 @@ async function buy(owner,companyId){
   const persisted=await api('GET',`/api/v1/public/companies/${fReg.data.slug}`);assert.equal(persisted.data.name,'Andes Cargo SAS');
   const s9=await api('GET','/api/v1/public/stats');assert.equal(s9.data.occupied,2);assert.equal(s9.data.held,12);
   step('Data survives a Worker restart',`occupied=${s9.data.occupied}, held=${s9.data.held}, published=${s9.data.published}`);
+  // ---- PERF-001: the same public data for everyone, and no page in a shared cache
+  const anon=await fetch(BASE+'/');const withSession=await fetch(BASE+'/',{headers:{cookie:owner.cookie}});
+  assert.equal(anon.headers.get('cache-control'),'private, no-cache');assert.equal(withSession.headers.get('cache-control'),'private, no-cache');
+  const [anonHtml,signedHtml]=await Promise.all([anon.text(),withSession.text()]);
+  assert.ok(anonHtml.includes('Sign in'));assert.ok(signedHtml.includes('My account'));assert.equal(anonHtml.includes('My account'),false);
+  const statsAnon=await fetch(BASE+'/api/v1/public/stats'),statsSigned=await fetch(BASE+'/api/v1/public/stats',{headers:{cookie:owner.cookie}});
+  assert.equal(statsSigned.headers.get('set-cookie'),null);assert.match(statsSigned.headers.get('cache-control'),/^public/);
+  assert.equal(await statsSigned.text(),await statsAnon.text());
+  step('A page never goes to a shared cache; public statistics are the same with or without a session');
   // ---- Sessions
   const out=await api('POST','/api/v1/auth/logout-all',{cookie:stranger.cookie});assert.equal(out.status,200);
   assert.equal((await api('GET','/api/v1/auth/me',{cookie:stranger.cookie})).status,401);
