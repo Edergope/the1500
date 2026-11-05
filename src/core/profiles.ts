@@ -366,7 +366,8 @@ export async function publishProfile(db:D1Database,companyId:string,version:numb
         [...canonical.problemSolutions,...(canonical.problemSolutionsEs??[])].map(x=>x.solution).join('\n'),companyId,version)
   ]);
   // Do not assert on the FTS insert: D1 counts FTS5 shadow-table writes, so `changes` is 3 for one row.
-  if (result[0]?.meta?.changes!==1||result[1]?.meta?.changes!==1)
+  // The same goes for the first statement and its read-model trigger; it touches one primary key at most.
+  if (!result[0]?.meta?.changes||result[1]?.meta?.changes!==1)
     throw new IdentityError('PUBLICATION_CONFLICT',409);
   // Immutable object copy. D1 stays the source of truth, so a storage failure never undoes publication.
   if (env.SNAPSHOTS) {

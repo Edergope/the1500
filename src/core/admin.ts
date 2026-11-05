@@ -386,7 +386,8 @@ export async function awardFounder(db:D1Database,adminId:string,invitationId:str
       onboardingStart(db,companyId,'founder',now,awarded,awardId),
       adminEvent(db,adminId,'founder_awarded','company',companyId,reasonCode,(evidence as string).trim(),{invitationId,awardId},now),
     ]);
-    if (result[0]?.meta?.changes!==1) throw new AdminError('FOUNDER_ASSIGNMENT_CONFLICT');
+    // The statement touches one row at most (a primary key). D1 also counts what triggers write, so this asks for any change, not exactly one.
+    if (!result[0]?.meta?.changes) throw new AdminError('FOUNDER_ASSIGNMENT_CONFLICT');
   } catch(e) {if (e instanceof AdminError) throw e;throw new AdminError('FOUNDER_ASSIGNMENT_CONFLICT');}
   const slot=await db.prepare(`SELECT number FROM slots WHERE company_id=?`).bind(companyId).first<{number:number}>();
   await notifyOwners(db,companyId,'founder_awarded',l=>founderAwardedEmail(l,invite.display_name,slot!.number,baseUrl),`founder_award:${awardId}`,now);
@@ -462,7 +463,8 @@ export async function assignPremium(db:D1Database,adminId:string,requestId:strin
       onboardingStart(db,request.company_id,'premium',now,`EXISTS(SELECT 1 FROM slots WHERE company_id=? AND assignment_kind='premium')`,request.company_id),
       adminEvent(db,adminId,'premium_assigned','premium_request',requestId,reasonCode,(fundsEvidence as string).trim(),{},now),
     ]);
-    if (result[0]?.meta?.changes!==1) throw new AdminError('PAYMENT_STATE_CONFLICT');
+    // The statement touches one row at most (a primary key). D1 also counts what triggers write, so this asks for any change, not exactly one.
+    if (!result[0]?.meta?.changes) throw new AdminError('PAYMENT_STATE_CONFLICT');
   } catch(e) {if (e instanceof AdminError) throw e;throw new AdminError('PAYMENT_STATE_CONFLICT');}
   const slot=await db.prepare(`SELECT number FROM slots WHERE company_id=?`).bind(request.company_id).first<{number:number}>();
   return {requestId,companyId:request.company_id,position:slot?.number,status:'assigned'};

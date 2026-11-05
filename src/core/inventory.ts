@@ -121,7 +121,8 @@ export async function createCheckoutHold(
     if (active) throw new InventoryError('ACTIVE_HOLD_EXISTS','Company already has a hold');
     throw new InventoryError('SLOT_CONFLICT','Position changed; retry');
   }
-  if (results[0]?.meta?.changes!==1) {
+  // The statement touches one row at most (a primary key). D1 also counts what triggers write, so this asks for any change, not exactly one.
+  if (!results[0]?.meta?.changes) {
     const state=await getSalesState(db);
     if (state.mode==='closed_archive') throw new InventoryError('SALES_CLOSED');
     if (state.mode==='premium_admission') throw new InventoryError('PREMIUM_ADMISSION_REQUIRED');
