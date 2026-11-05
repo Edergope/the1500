@@ -310,8 +310,9 @@ const metaDesc =
         margin-bottom: 1rem;
       }
 
+      /* Inner pages keep a smaller heading inside their cards. The Home's sections use --fs-h2. */
       h2 {
-        font-size: var(--fs-h2);
+        font-size: clamp(1.45rem, 1.1rem + 1.1vw, 2rem);
         margin-bottom: 0.65rem;
       }
 
