@@ -277,7 +277,7 @@ El plan de Cloudflare no necesita cambiar por las lecturas de D1. Sí sigue pend
 
 ## 9. Commit publicado
 
-Rama `feature/core-claude`. El informe de AUDIT-001 se conservó primero en `b7bb7d1`. El commit de este sprint es el que incluye este documento, con el mensaje `PERF-001: read public data from models validated by revision`. Consulta su hash en el historial de esa rama; `package.json` queda en la versión 0.16.0.
+Rama `feature/core-claude`. El informe de AUDIT-001 se conservó primero en `b7bb7d1`. El commit de este sprint es `2803d1e`, y `package.json` queda en la versión 0.16.0.
 
 **Suites:**
 
