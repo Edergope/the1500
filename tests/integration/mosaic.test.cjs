@@ -46,3 +46,15 @@ test('Status comes from the map: reserved is not for sale, and only the open ran
   const c=m.countPositions(mapOf(0,{101:'p',102:'o',103:'x'}),range);
   assert.deepEqual(c,{published:1,assigned:1,retired:1,reserved:100,open:497,unreleased:900});
 });
+
+const {offerState}=require('../../.core-js-tests/core/join.js');
+const homeWith=stats=>({stats});
+test('What a visitor is offered follows the sales mode and whether payment is enabled',()=>{
+  const selling={salesMode:'selling',checkoutOpen:true};
+  assert.equal(offerState(homeWith(selling),true),'open');
+  assert.equal(offerState(homeWith(selling),false),'open_no_payment','payment off is never presented as a sale');
+  assert.equal(offerState(homeWith({salesMode:'awaiting_founder_allocation',checkoutOpen:false}),true),'paused');
+  assert.equal(offerState(homeWith({salesMode:'premium_admission',checkoutOpen:false}),true),'premium');
+  assert.equal(offerState(homeWith({salesMode:'closed_archive',checkoutOpen:false}),true),'closed');
+  assert.equal(offerState(homeWith(null),true),'unknown','no data, no offer');
+});

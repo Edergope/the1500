@@ -78,7 +78,7 @@ async function buy(owner,companyId){
   }
   assert.deepEqual(s0.data.phases.map(p=>p.phase),[1],'only the open phase is public');
   const phase1=s0.data.phases[0];assert.equal(phase1.reservedByInvitation,100);assert.equal(phase1.forSale,500);
-  for(const p of ['/unirse','/es/unirse']){const join=await (await fetch(BASE+p)).text();assert.doesNotMatch(join,/\$400|\$1,000|\$1\.000|\$5,066|\$5\.066|4-Tier|4 tramos/,p);}
+  for(const p of ['/unirse','/es/unirse']){const join=await (await fetch(BASE+p)).text();assert.match(join,/id="terms"/,p);assert.match(join,/data-offer="(open|open_no_payment)"/,p);assert.doesNotMatch(join,/\$400|\$1,000|\$1\.000|\$5,066|\$5\.066|4-Tier|4 tramos/,p);}
   step('Home is the wall of 1,500; only the open phase and its price are public; no technical jargon');
   // ---- 1 Company registers
   const owner=await login('ana@oceanline.example');

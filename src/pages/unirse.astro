@@ -1,16 +1,11 @@
 ---
+import { env } from 'cloudflare:workers';
 import Shell from '../layouts/Shell.astro';
 import JoinPageView from '../components/JoinPageView.astro';
-import { env } from 'cloudflare:workers';
-import { getPublicStats } from '../core/public';
+import { loadJoin } from '../core/join';
 
-let stats = null;
-try {
-  stats = await getPublicStats(env.DB);
-} catch {
-  /* never fabricate data */
-}
+const data = await loadJoin(env.DB, env, 'en');
 ---
-<Shell title="Join & Membership Tiers" lang="en">
-  <JoinPageView lang="en" stats={stats} />
+<Shell title="Join THE1500" lang="en" hideJoin>
+  <JoinPageView lang="en" data={data} />
 </Shell>

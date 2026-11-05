@@ -1,214 +1,360 @@
 ---
-import type { InventorySummary, Locale } from '../lib/contracts/api';
-import InventoryTelemetry from './InventoryTelemetry.astro';
-import { formatUsdCents, salesModeCopy } from '../ui/i18n';
+import type { Locale } from '../lib/contracts/api';
+import type { JoinData, OfferState } from '../core/join';
+import { formatPosition, formatUsdCents } from '../ui/i18n';
+import { isDemoName, monogram, tileLook } from '../lib/mosaic';
+import '../styles/home.css';
+import '../styles/join.css';
 
 interface Props {
   lang: Locale;
-  stats: InventorySummary | null;
+  data: JoinData;
 }
 
-const { lang, stats } = Astro.props;
+const { lang, data } = Astro.props;
+const { home, offer, priceUsdCents, openPositions, profile } = data;
 const es = lang === 'es';
-const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
+const prefix = es ? '/es' : '';
+const number = (n: number) => n.toLocaleString(es ? 'de-DE' : 'en-US');
+const account = `${prefix}/mi-cuenta`;
+const directory = `${prefix}/empresas`;
+const price = priceUsdCents !== null ? formatUsdCents(priceUsdCents, lang) : null;
+const open = openPositions !== null ? number(openPositions) : null;
+
+const countryName = (code: string) => {
+  try {
+    return new Intl.DisplayNames([lang], { type: 'region' }).of(code) || code;
+  } catch {
+    return code;
+  }
+};
+
+/** One action per state. Each one goes where the backend will actually allow it. */
+const actions: Record<OfferState, { label: string; href: string }> = {
+  open: { label: es ? 'Registrar mi empresa y reservar' : 'Register and reserve', href: account },
+  open_no_payment: { label: es ? 'Registrar mi empresa' : 'Register my company', href: account },
+  paused: { label: es ? 'Registrar mi empresa' : 'Register my company', href: account },
+  premium: { label: es ? 'Solicitar admisión' : 'Apply for admission', href: account },
+  closed: { label: es ? 'Ver el directorio' : 'View the directory', href: directory },
+  unknown: { label: es ? 'Volver a intentar' : 'Try again', href: `${prefix}/unirse` },
+};
+const action = actions[offer];
+
+const offerCopy: Record<OfferState, { title: string; text: string }> = {
+  open: {
+    title: es ? 'Fase abierta ahora' : 'Open now',
+    text: es
+      ? 'Reservas tu lugar durante 20 minutos, pagas, y tu número se asigna al confirmarse el pago.'
+      : 'You hold your place for 20 minutes, pay, and your number is assigned when payment is confirmed.',
+  },
+  open_no_payment: {
+    title: es ? 'Fase abierta, pagos aún sin activar' : 'Open, with payment not active yet',
+    text: es
+      ? 'Este entorno de pruebas no acepta pagos y no se te cobrará nada. Puedes registrar tu empresa y preparar su información desde ahora.'
+      : 'This test environment does not accept payment and you will not be charged. You can register your company and prepare its information now.',
+  },
+  paused: {
+    title: es ? 'Venta en pausa' : 'Sales are paused',
+    text: es
+      ? 'Las posiciones en venta de esta fase se agotaron y la siguiente aún no abre. Puedes registrar tu empresa para tenerla lista. Registrarse no reserva una posición.'
+      : 'The positions for sale in this release are gone and the next one is not open yet. You can register your company so it is ready. Registering does not hold a position.',
+  },
+  premium: {
+    title: es ? 'Últimas posiciones, por solicitud' : 'Final positions, by application',
+    text: es
+      ? 'No hay pago en línea. Presentas tu solicitud desde tu cuenta y la revisa una persona. Solicitar no reserva una posición, y nunca se exige una reunión.'
+      : 'There is no online payment. You apply from your account and a person reviews it. Applying holds no position, and a meeting is never required.',
+  },
+  closed: {
+    title: es ? 'Las 1.500 posiciones están asignadas' : 'All 1,500 positions are taken',
+    text: es
+      ? 'Ya no se vende ninguna. El directorio, su buscador y su asistente siguen abiertos.'
+      : 'None are for sale. The directory, its search and its assistant stay open.',
+  },
+  unknown: {
+    title: es ? 'No pudimos cargar la disponibilidad' : 'Availability could not be loaded',
+    text: es
+      ? 'No mostramos precios ni cupos estimados. Inténtalo de nuevo en unos minutos.'
+      : 'We never show estimated prices or availability. Try again in a few minutes.',
+  },
+};
+const showsPrice = offer === 'open' || offer === 'open_no_payment' || offer === 'premium';
+
+const process = es
+  ? [
+      ['Solicitud o adquisición', 'Registras tu empresa con tu correo corporativo y adquieres o solicitas tu lugar.', 'Tú'],
+      ['Información empresarial', 'Nos cuentas qué haces, a quién atiendes y qué problemas resuelves.', 'Tú'],
+      ['Preparación del perfil', 'Ordenamos esa información en un perfil bilingüe e indicamos de dónde salió cada dato.', 'THE1500'],
+      ['Aprobación del titular', 'Revisas el contenido exacto. No responder no cuenta como aprobar.', 'Tú'],
+      ['Publicación', 'Tu pieza se enciende en el muro y tu perfil entra en el directorio.', 'THE1500'],
+    ]
+  : [
+      ['Application or purchase', 'You register your company with a work email and acquire or apply for your place.', 'You'],
+      ['Company information', 'You tell us what you do, who you serve and the problems you solve.', 'You'],
+      ['Profile preparation', 'We structure it into a bilingual profile that shows where each detail came from.', 'THE1500'],
+      ['Owner approval', 'You review the exact content. Not responding does not count as approval.', 'You'],
+      ['Publication', 'Your piece lights up on the wall and your profile enters the directory.', 'THE1500'],
+    ];
+
+const demo = profile ? profile[lang] : null;
+const demoIsDemo = demo ? isDemoName(demo.name) : false;
+const look = demo ? tileLook(demo.slug) : { color: { bg: '#1f43b0', ink: '#f5f2eb' }, variant: 0 };
+const demoName = demo?.name ?? (es ? 'Tu empresa' : 'Your company');
+const demoProblem = demo?.problemSolutions[0];
+const machine = home.sample?.machine ?? { '@type': 'Organization', name: demoName };
+const demoHref = demo ? demo.html : directory;
+
+const tabs = es
+  ? [
+      ['position', 'Posición numerada', 'Un número del 1 al 1.500, y una pieza en el muro.'],
+      ['page', 'Perfil público', 'Una página propia con lo que tu empresa hace y resuelve.'],
+      ['bilingual', 'Página bilingüe', 'En inglés y español, con la misma información.'],
+      ['data', 'Datos estructurados', 'En un formato estándar que el software lee y tú puedes exportar.'],
+      ['search', 'Directorio y buscador', 'Te encuentran por el problema que resuelves.'],
+      ['assistant', 'Asistente interno', 'Puede citar tu perfil publicado al responder.'],
+      ['term', '12 meses de publicación', 'Garantizados desde la primera publicación, según las condiciones aplicables.'],
+    ]
+  : [
+      ['position', 'A numbered position', 'A number from 1 to 1,500, and a piece on the wall.'],
+      ['page', 'A public profile', 'A page of its own saying what your company does and solves.'],
+      ['bilingual', 'A bilingual page', 'In English and Spanish, with the same information.'],
+      ['data', 'Structured data', 'In a standard format that software reads and you can export.'],
+      ['search', 'Directory and search', 'People find you by the problem you solve.'],
+      ['assistant', 'Internal assistant', 'It can cite your published profile when it answers.'],
+      ['term', '12 months of publication', 'Guaranteed from first publication, under the applicable conditions.'],
+    ];
+
+const clientJson = JSON.stringify({ map: home.positionMap, current: home.currentRange, position: demo?.position ?? null }).replace(/</g, '\\u003c');
 ---
-<main>
-  <section style="padding:clamp(1rem,3vw,2rem) 0 1.5rem 0">
-    <div class="eyebrow">
-      {es ? '1.500 posiciones. Un solo muro.' : '1,500 positions. One wall.'}
+<main class="home join">
+  <section class="jn-hero" aria-labelledby="jn-title">
+    <div class="jn-hero-wall" aria-hidden="true">
+      <canvas class="jn-glass"></canvas>
+      <div class="jn-hero-shade"></div>
+      <div class="jn-piece">
+        <span class="jn-piece-mark">1<small>/{es ? '1.500' : '1,500'}</small></span>
+        <span class="jn-piece-name">{es ? 'Tu empresa' : 'Your company'}</span>
+      </div>
     </div>
-    <h1>
-      {es
-        ? 'Ocupa tu lugar entre las 1.500.'
-        : 'Take your place among the 1,500.'}
-    </h1>
-    <p style="font-size:1.08rem;max-width:66ch">
-      {es
-        ? 'THE1500 convierte la información de tu empresa en un perfil público ordenado, aprobado por ti: qué haces, qué problemas resuelves y a quién atiendes, en una forma que personas y software pueden leer.'
-        : 'THE1500 turns your company information into a structured public profile that you approve: what you do, the problems you solve and who you serve, in a form people and software can read.'}
-    </p>
+    <div class="jn-hero-copy">
+      <h1 id="jn-title">{es ? 'Una de las 1.500 puede ser la tuya.' : 'One of the 1,500 could be yours.'}</h1>
+      <p>
+        {es
+          ? 'THE1500 es un registro público que nunca tendrá más de 1.500 empresas. Tu empresa recibe una posición numerada y un perfil público, en inglés y español, que explica qué hace y qué resuelve, con contenido que tú apruebas.'
+          : 'THE1500 is a public register that will never hold more than 1,500 companies. Yours gets a numbered position and a public profile, in English and Spanish, saying what it does and what it solves, with content you approve.'}
+      </p>
+      <a class="button btn-lg" href={action.href}>{action.label}</a>
+    </div>
   </section>
 
-  <!-- Live SalesMode Action Card -->
-  <section class="surface-card surface-card-gold" aria-label={es ? 'Estado comercial actual' : 'Current commercial status'}>
-    {stats && modeInfo ? (
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem">
-        <div style="flex:1 1 480px">
-          <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.5rem">
-            <span class={`badge badge-${modeInfo.tone}`}>{modeInfo.badge}</span>
-            {stats.currentPhase && (
-              <span class="badge badge-slate mono">
-                {es ? 'Fase actual' : 'Current release'}
-              </span>
-            )}
+  <canvas class="seam" data-a="#070b14" data-b="#14297a" aria-hidden="true" style="--a:#070b14;--b:#14297a"></canvas>
+
+  <section class="jn-get" aria-labelledby="jn-get-title">
+    <div class="wrap">
+      <h2 id="jn-get-title" class="display">{es ? 'Qué recibe tu empresa' : 'What your company receives'}</h2>
+      <div class="jn-demo" id="jn-demo" style={`--bg:${look.color.bg};--ink:${look.color.ink}`}>
+        <div class="jn-tabs" role="tablist" aria-label={es ? 'Qué incluye' : 'What is included'}>
+          {tabs.map(([id, title, text], i) => (
+            <button type="button" role="tab" id={`jn-tab-${id}`} aria-controls={`jn-panel-${id}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>
+              <strong>{title}</strong>
+              <span>{text}</span>
+            </button>
+          ))}
+        </div>
+        <div class="jn-stage">
+          <div class="jn-panels">
+            <div class="jn-panel is-on" role="tabpanel" id="jn-panel-position" aria-labelledby="jn-tab-position">
+              <div class="jn-position">
+                <div class="jn-tile">
+                  <b>{monogram(demoName)}</b>
+                  <span>{demo ? formatPosition(demo.position) : '#----'}</span>
+                </div>
+                <canvas class="jn-mini" width="500" height="300" role="img" aria-label={es ? 'Las 1.500 posiciones, con esta empresa resaltada' : 'The 1,500 positions, with this company highlighted'}></canvas>
+              </div>
+              <p class="jn-caption">{es ? 'El número se asigna en orden al confirmarse el pago y no se elige.' : 'The number is assigned in order when payment is confirmed, and cannot be chosen.'}</p>
+            </div>
+
+            <div class="jn-panel" role="tabpanel" id="jn-panel-page" aria-labelledby="jn-tab-page">
+              <p class="jn-url">{`the1500${demoHref}`.slice(0, 54)}</p>
+              <h3 class="jn-serif">{demoName}</h3>
+              {demo && <p class="jn-meta">{formatPosition(demo.position)}, {demo.industry}, {countryName(demo.country)}</p>}
+              <p>{demo?.summary ?? (es ? 'Qué hace tu empresa, en palabras que tú apruebas.' : 'What your company does, in words you approve.')}</p>
+              {demoProblem && <p class="jn-solves"><strong>{es ? 'Resuelve:' : 'Solves:'}</strong> {demoProblem.problem}</p>}
+              {demo && <a class="jn-link" href={demoHref}>{es ? 'Abrir este perfil' : 'Open this profile'}</a>}
+            </div>
+
+            <div class="jn-panel" role="tabpanel" id="jn-panel-bilingual" aria-labelledby="jn-tab-bilingual">
+              <div class="jn-two">
+                <div>
+                  <span class="jn-lang">English</span>
+                  <p>{profile?.en.summary ?? 'What your company does, in words you approve.'}</p>
+                </div>
+                <div>
+                  <span class="jn-lang">Español</span>
+                  <p>{profile?.es.summary ?? 'Qué hace tu empresa, en palabras que tú apruebas.'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="jn-panel" role="tabpanel" id="jn-panel-data" aria-labelledby="jn-tab-data">
+              <pre tabindex="0"><code>{JSON.stringify(machine, null, 2)}</code></pre>
+            </div>
+
+            <div class="jn-panel" role="tabpanel" id="jn-panel-search" aria-labelledby="jn-tab-search">
+              <p class="jn-query">{(demoProblem?.problem ?? (es ? 'el problema que resuelves' : 'the problem you solve')).slice(0, 60)}</p>
+              <div class="jn-result">
+                <span class="jn-result-mark">{monogram(demoName)}</span>
+                <div>
+                  <strong>{demoName}</strong>
+                  <p>{demo?.summary}</p>
+                </div>
+              </div>
+              <p class="jn-caption">{es ? 'Busca tus palabras en los perfiles publicados. No interpreta sinónimos.' : 'It searches for your words in published profiles. It does not interpret synonyms.'}</p>
+            </div>
+
+            <div class="jn-panel" role="tabpanel" id="jn-panel-assistant" aria-labelledby="jn-tab-assistant">
+              <p class="jn-ask">{es ? '¿Quién puede ayudarme con esto?' : 'Who can help me with this?'}</p>
+              <blockquote>«{demoProblem?.solution ?? demo?.summary ?? (es ? 'Una cita de tu perfil publicado.' : 'A quote from your published profile.')}»</blockquote>
+              <p class="jn-cite">{es ? 'Cita de' : 'Quote from'} {demoName}</p>
+              <p class="jn-caption">{es ? 'Ejemplo ilustrativo. El asistente solo responde con perfiles publicados, y se abstiene si no hay evidencia.' : 'Illustrative example. The assistant only answers from published profiles, and abstains without evidence.'}</p>
+            </div>
+
+            <div class="jn-panel" role="tabpanel" id="jn-panel-term" aria-labelledby="jn-tab-term">
+              <div class="jn-time">
+                <div class="jn-time-bar"><i></i></div>
+                <div class="jn-time-labels">
+                  <span><strong>{es ? 'Primera publicación' : 'First publication'}</strong></span>
+                  <span><strong>{es ? '12 meses' : '12 months'}</strong>{es ? 'Garantía contractual' : 'Contractual guarantee'}</span>
+                  <span><strong>{es ? '10 años' : '10 years'}</strong>{es ? 'Objetivo técnico, no garantía' : 'Technical goal, not a guarantee'}</span>
+                </div>
+              </div>
+              <p class="jn-caption">{es ? 'Además, 15 días tras publicar para correcciones iniciales.' : 'Also, 15 days after publishing for initial corrections.'}</p>
+            </div>
           </div>
-          <h2 style="margin:0 0 0.4rem 0">{modeInfo.title}</h2>
-          <p style="margin:0">{modeInfo.description}</p>
-
-          {stats.salesMode === 'selling' && (
-            <p class="muted" style="margin:0.65rem 0 0 0;font-size:0.84rem">
-              {es
-                ? 'Precio base antes de impuestos (los impuestos se determinan al facturar). La posición numerada se adjudica al confirmarse el pago.'
-                : 'Base price before tax (tax shown at checkout). Your position number is assigned upon payment confirmation.'}
-            </p>
-          )}
-
-          {stats.salesMode === 'awaiting_founder_allocation' && (
-            <div class="notice" style="margin-top:0.85rem;margin-bottom:0">
-              {es
-                ? 'La siguiente fase aún no está abierta. Abrirá cuando las posiciones de la fase actual estén definitivamente adjudicadas.'
-                : 'The next release is not open yet. It opens once all positions in the current release are definitively allocated.'}
-            </div>
-          )}
-
-          {stats.salesMode === 'premium_admission' && (
-            <div className="notice" style="margin-top:0.85rem;margin-bottom:0">
-              {es
-                ? 'Admisión Premium (posiciones 1351–1500): No hay checkout automático. Las empresas interesadas presentan su solicitud desde su portal de cuenta. Enviar la solicitud no reserva posición y una reunión nunca es obligatoria.'
-                : 'Premium Admission (positions 1351–1500): Automatic checkout is not available. Interested companies apply from their account portal. Applying holds no position and a meeting is never required.'}
-            </div>
-          )}
-
-          {stats.salesMode === 'closed_archive' && (
-            <div class="notice" style="margin-top:0.85rem;margin-bottom:0">
-              {es
-                ? 'Las 1.500 posiciones han sido adjudicadas. No hay posiciones en venta; el directorio público permanece disponible.'
-                : 'All 1,500 positions have been allocated. Sales are closed; the public directory remains fully available.'}
-            </div>
-          )}
-        </div>
-
-        <div
-          style="flex:0 1 300px;padding:1.25rem;border-radius:var(--radius-md);background:var(--bg-surface);border:1px solid var(--border-subtle);text-align:center"
-        >
-          {stats.salesMode === 'selling' && stats.checkoutOpen ? (
-            <>
-              <div class="mono muted" style="font-size:0.75rem">
-                {es ? 'Precio base de la fase actual' : 'Base price of the current release'}
-              </div>
-              <div class="mono" style="font-size:2rem;font-weight:800;color:var(--gold-primary);margin:0.25rem 0">
-                {formatUsdCents(stats.currentPriceUsdCents, lang)}
-              </div>
-              <div class="muted" style="font-size:0.78rem;margin-bottom:1rem">
-                {es ? 'Antes de impuestos · Reserva de 20 min' : 'Before tax · 20-minute hold'}
-              </div>
-              <a class="button" href={es ? '/es/mi-cuenta' : '/mi-cuenta'} style="width:100%">
-                {es ? 'Registrar empresa y reservar cupo' : 'Register company & hold position'}
-              </a>
-            </>
-          ) : stats.salesMode === 'premium_admission' ? (
-            <>
-              <div class="mono muted" style="font-size:0.75rem">
-                {es ? 'Admisión con revisión de una persona' : 'Admission with human review'}
-              </div>
-              <div class="mono" style="font-size:1.7rem;font-weight:800;color:var(--gold-primary);margin:0.35rem 0">
-                {formatUsdCents(stats.currentPriceUsdCents, lang)}
-              </div>
-              <a class="button" href={es ? '/es/mi-cuenta' : '/mi-cuenta'} style="width:100%;margin-top:0.5rem">
-                {es ? 'Solicitar admisión en Mi Cuenta' : 'Apply in Member Portal'}
-              </a>
-            </>
-          ) : stats.salesMode === 'awaiting_founder_allocation' ? (
-            <>
-              <span class="badge badge-amber" style="margin-bottom:0.65rem">
-                {es ? 'Ventas en pausa entre fases' : 'Sales paused between releases'}
-              </span>
-              <p class="muted" style="font-size:0.84rem;margin-bottom:0.85rem">
-                {es
-                  ? 'Puedes crear tu cuenta y registrar tu empresa ahora para estar listo cuando abra la siguiente fase.'
-                  : 'You may sign in and register your company now to be ready when the next release opens.'}
-              </p>
-              <a class="btn-secondary" href={es ? '/es/login' : '/login'} style="width:100%">
-                {es ? 'Crear cuenta / Registrar empresa' : 'Sign in / Register company'}
-              </a>
-            </>
-          ) : (
-            <>
-              <span class="badge badge-slate" style="margin-bottom:0.65rem">
-                {es ? 'Capacidad agotada' : 'Sold out'}
-              </span>
-              <a class="btn-secondary" href={es ? '/es/empresas' : '/empresas'} style="width:100%">
-                {es ? 'Consultar el directorio' : 'Explore the directory'}
-              </a>
-            </>
-          )}
+          {demoIsDemo && <p class="jn-demo-note">{es ? 'Empresa de demostración, no es un negocio real.' : 'Demonstration company, not a real business.'}</p>}
         </div>
       </div>
-    ) : (
-      <p class="notice" style="margin:0">
-        {es
-          ? 'El precio y la disponibilidad no se pudieron cargar. No mostramos precios ni cupos estimados.'
-          : 'Price and availability could not be loaded. We never display estimated prices or availability.'}
-      </p>
-    )}
+    </div>
   </section>
 
-  <!-- Live inventory: only the release that is open -->
-  <InventoryTelemetry stats={stats} lang={lang} />
+  <canvas class="seam" data-a="#14297a" data-b="#070b14" aria-hidden="true" style="--a:#14297a;--b:#070b14"></canvas>
 
-  <!-- Deliverables & Contractual Scope -->
-  <div class="grid-2" style="margin-top:1.75rem">
-    <section class="surface-card" style="margin:0">
-      <div class="eyebrow">{es ? 'ENTREGABLES ESTRUCTURADOS' : 'WHAT YOUR COMPANY RECEIVES'}</div>
-      <h2 style="font-size:1.4rem">
-        {es ? 'Qué recibe cada miembro de THE1500' : 'What every THE1500 member receives'}
-      </h2>
-      <ul style="padding-left:1.1rem;color:var(--text-secondary);display:grid;gap:0.65rem;font-size:0.92rem">
-        <li>
-          <strong style="color:var(--text-primary)">
-            {es ? 'Posición numerada única (1–1.500):' : 'Unique numbered position (1–1,500):'}
-          </strong>{' '}
-          {es
-            ? 'Asignada tras la confirmación y conservada durante toda la vigencia de la publicación.'
-            : 'Assigned upon confirmation and tied to your company’s public record.'}
-        </li>
-        <li>
-          <strong style="color:var(--text-primary)">
-            {es ? 'Perfil bilingüe (EN/ES):' : 'Bilingual profile (EN/ES):'}
-          </strong>{' '}
-          {es
-            ? 'Descripción estructurada, servicios, audiencias objetivo y pares problema-solución revisados y aprobados expresamente por el titular.'
-            : 'Structured description, services, target audiences, and problem-solution pairs reviewed and explicitly approved by the business owner.'}
-        </li>
-        <li>
-          <strong style="color:var(--text-primary)">
-            {es ? 'Datos en un formato estándar que puedes exportar:' : 'Your data in a standard format you can export:'}
-          </strong>{' '}
-          {es
-            ? 'Un documento que el software puede leer, disponible en una dirección propia y descargable desde tu cuenta.'
-            : 'A document software can read, available at its own address and downloadable from your account.'}
-        </li>
-        <li>
-          <strong style="color:var(--text-primary)">
-            {es ? 'Presencia en el buscador y el asistente:' : 'A place in search and the assistant:'}
-          </strong>{' '}
-          {es
-            ? 'Tu empresa aparece al publicar en el buscador y en el asistente con citas verificables del propio directorio.'
-            : 'Your company appears on publication in THE1500’s own search and in its assistant, which cites its sources.'}
-        </li>
-      </ul>
-    </section>
+  <section class="jn-process" id="jn-process" aria-labelledby="jn-process-title">
+    <div class="wrap">
+      <h2 id="jn-process-title" class="display">{es ? 'Cómo te incorporas' : 'How you join'}</h2>
+      <ol>
+        {process.map(([title, text, who], i) => (
+          <li style={`--i:${i}`}>
+            <span class="jn-step-piece" aria-hidden="true"></span>
+            <h3>{title}</h3>
+            <p>{text}</p>
+            <small>{es ? 'Actúa:' : 'Who acts:'} {who}</small>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
 
-    <section id="terms" class="surface-card" style="margin:0">
-      <div class="eyebrow">{es ? 'CONDICIONES DE PUBLICACIÓN' : 'PUBLICATION & ARCHIVE TERMS'}</div>
-      <h2 style="font-size:1.4rem">
-        {es ? 'Garantías contractuales y límites claros' : 'Contractual commitments & transparent limits'}
-      </h2>
-      <p style="font-size:0.92rem">
-        {es
-          ? 'La publicación está garantizada contractualmente durante 12 meses a partir de la primera publicación del perfil, sujeta a los términos aceptados. La conservación técnica como archivo por 10 años es un objetivo técnico de la plataforma, no una promesa contractual.'
-          : 'Publication is contractually guaranteed for 12 months from first publication, subject to agreed terms. The 10-year archive is a technical goal, not a contractual promise.'}
-      </p>
-      <p style="font-size:0.92rem">
-        {es
-          ? 'Después de la primera publicación, el titular cuenta con una ventana de 15 días para correcciones iniciales.'
-          : 'Following first publication, the owner has a 15-day window for initial profile corrections.'}
-      </p>
-      <div class="notice" style="margin-bottom:0">
-        {es
-          ? 'THE1500 no garantiza que ChatGPT, Gemini, Claude, buscadores u otras plataformas externas indexen, recomienden o citen a ninguna empresa.'
-          : 'THE1500 does not guarantee that ChatGPT, Gemini, Claude, search engines or other external systems will index, recommend or cite your business.'}
+  <canvas class="seam" data-a="#070b14" data-b="#ece7db" aria-hidden="true" style="--a:#070b14;--b:#ece7db"></canvas>
+
+  <section class="jn-offer" id="offer" data-offer={offer} aria-labelledby="jn-offer-title">
+    <div class="wrap jn-offer-grid">
+      <div>
+        <h2 id="jn-offer-title" class="display">{offerCopy[offer].title}</h2>
+        <p class="jn-offer-text">{offerCopy[offer].text}</p>
+        <a class="button btn-lg jn-offer-cta" href={action.href}>{action.label}</a>
       </div>
-    </section>
-  </div>
+      <div class="jn-offer-facts">
+        {showsPrice && price && (
+          <div class="jn-price">
+            <strong>{price}</strong>
+            <span>{es ? 'Precio base de la fase actual, antes de los impuestos aplicables' : 'Base price of the current release, before applicable tax'}</span>
+          </div>
+        )}
+        {showsPrice && open !== null && (
+          <div class="jn-open">
+            <strong>{open}</strong>
+            <span>{offer === 'premium' ? (es ? 'posiciones disponibles por solicitud' : 'positions available by application') : (es ? 'posiciones abiertas en esta fase' : 'positions open in this release')}</span>
+          </div>
+        )}
+        {offer === 'open' || offer === 'open_no_payment' ? (
+          <ul>
+            <li>{es ? 'Reserva de 20 minutos: guarda capacidad, sin asignar número.' : '20-minute hold: it keeps capacity, with no number assigned.'}</li>
+            <li>{es ? 'El número se asigna en orden al confirmarse el pago, y no se elige.' : 'The number is assigned in order when payment is confirmed, and cannot be chosen.'}</li>
+            <li>{es ? 'Las posiciones 1 a 100 son por invitación y no están en venta.' : 'Positions 1 to 100 are by invitation and not for sale.'}</li>
+            <li>{es ? 'Antes de pagar verás el total, los impuestos y las condiciones.' : 'You will see the total, tax and terms before you pay.'}</li>
+          </ul>
+        ) : null}
+      </div>
+    </div>
+  </section>
+
+  <canvas class="seam" data-a="#ece7db" data-b="#10090f" aria-hidden="true" style="--a:#ece7db;--b:#10090f"></canvas>
+
+  <section class="jn-trust" id="terms" aria-labelledby="jn-trust-title">
+    <div class="wrap">
+      <h2 id="jn-trust-title" class="display">{es ? 'Condiciones de publicación' : 'Publication terms'}</h2>
+      <dl class="jn-terms">
+        <div>
+          <dt>{es ? 'Tú apruebas' : 'You approve'}</dt>
+          <dd>{es ? 'Nada se publica sin que un representante autorizado apruebe el contenido exacto.' : 'Nothing is published until an authorized representative approves the exact content.'}</dd>
+        </div>
+        <div>
+          <dt>{es ? '12 meses garantizados' : '12 months guaranteed'}</dt>
+          <dd>{es ? 'La publicación está garantizada contractualmente durante 12 meses desde la primera publicación, según los términos aceptados.' : 'Publication is contractually guaranteed for 12 months from first publication, subject to agreed terms.'}</dd>
+        </div>
+        <div>
+          <dt>{es ? '10 años es un objetivo' : '10 years is a goal'}</dt>
+          <dd>{es ? 'Conservar los perfiles 10 años es un objetivo técnico, no una promesa contractual.' : 'Keeping profiles for 10 years is a technical goal, not a contractual promise.'}</dd>
+        </div>
+        <div>
+          <dt>{es ? 'Sin garantías en IA externa' : 'No guarantee on external AI'}</dt>
+          <dd>{es ? 'THE1500 no garantiza que ChatGPT, Gemini, Claude, buscadores u otras plataformas externas indexen, recomienden o citen a ninguna empresa.' : 'THE1500 does not guarantee that ChatGPT, Gemini, Claude, search engines or other external systems will index, recommend or cite any company.'}</dd>
+        </div>
+        <div>
+          <dt>{es ? 'No certificamos empresas' : 'We do not certify companies'}</dt>
+          <dd>{es ? 'La información la declara y aprueba cada titular.' : 'Each owner declares and approves its own information.'}</dd>
+        </div>
+        <div>
+          <dt>{es ? 'Antes de contratar' : 'Before you contract'}</dt>
+          <dd>{es ? 'La entidad vendedora, los términos de servicio y la política de privacidad están en preparación. Se indicarán antes de habilitar los pagos.' : 'The selling entity, terms of service and privacy policy are in preparation. They will be stated before payment is enabled.'}</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <canvas class="seam" data-a="#10090f" data-b="#04060b" aria-hidden="true" style="--a:#10090f;--b:#04060b"></canvas>
+
+  <section class="finale" aria-labelledby="jn-close-title">
+    <div class="finale-wall">
+      <canvas class="finale-glass" aria-hidden="true"></canvas>
+      <div class="finale-shade" aria-hidden="true"></div>
+      <div class="finale-copy">
+        <h2 id="jn-close-title">
+          {offer === 'closed'
+            ? es ? 'Las 1.500 ya tienen dueño.' : 'All 1,500 are taken.'
+            : es ? 'Cuando se asigne la última, el muro se cierra.' : 'When the last one goes, the wall is closed.'}
+        </h2>
+        <div class="cta">
+          <a class="button btn-lg" href={action.href}>{action.label}</a>
+          {offer !== 'closed' && <a class="btn-secondary btn-lg" href={directory}>{es ? 'Ver directorio' : 'View Directory'}</a>}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script type="application/json" id="join-data" set:html={clientJson}></script>
 </main>
+
+<noscript>
+  <style is:inline>
+    .jn-panel { visibility: visible; opacity: 1; grid-area: auto; }
+    .finale { min-height: auto; }
+    .finale-wall { position: relative; height: auto; }
+  </style>
+</noscript>
+
+<script>
+  import '../ui/join-page';
+  import '../ui/home-scenes';
+</script>

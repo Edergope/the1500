@@ -12,6 +12,8 @@ interface Props {
   altPath?: string;
   /** For pages with one job: the header keeps only the name and the language. */
   focused?: boolean;
+  /** On the join page itself the header does not repeat its action. */
+  hideJoin?: boolean;
 }
 
 const {
@@ -21,6 +23,7 @@ const {
   forceNoIndex = false,
   altPath,
   focused = false,
+  hideJoin = false,
 } = Astro.props;
 
 const es = lang === 'es';
@@ -811,9 +814,11 @@ const metaDesc =
 
           <!-- Mobile Drawer CTAs -->
           <div class="mobile-drawer-actions">
-            <a class="btn-primary" href={es ? '/es/unirse' : '/unirse'}>
-              {es ? 'Unirse a THE1500' : 'Join THE1500'}
-            </a>
+            {!hideJoin && (
+              <a class="btn-primary" href={es ? '/es/unirse' : '/unirse'}>
+                {es ? 'Unirse a THE1500' : 'Join THE1500'}
+              </a>
+            )}
             <a class="btn-secondary" href={signedIn ? accountHref : es ? '/es/login' : '/login'}>
               {signedIn ? accountLabel : es ? 'Iniciar sesión' : 'Sign in'}
             </a>
@@ -835,9 +840,11 @@ const metaDesc =
           <a class="nav-signin-btn" href={signedIn ? accountHref : es ? '/es/login' : '/login'}>
             {signedIn ? accountLabel : es ? 'Iniciar sesión' : 'Sign in'}
           </a>
-          <a class="btn-primary btn-sm" href={es ? '/es/unirse' : '/unirse'}>
-            {es ? 'Unirse a THE1500' : 'Join THE1500'}
-          </a>
+          {!hideJoin && (
+            <a class="btn-primary btn-sm" href={es ? '/es/unirse' : '/unirse'}>
+              {es ? 'Unirse a THE1500' : 'Join THE1500'}
+            </a>
+          )}
         </div>
           </>
         )}
