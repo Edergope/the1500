@@ -1,14 +1,29 @@
 # THE1500: despliegue escalonado de PERF-001 y ADMIN-001
 
-Nada de este documento se ha ejecutado en remoto. Staging sigue en la versión `97707a44`, commit `5dd7122`. Cada paso remoto necesita tu autorización expresa, y entre un paso y el siguiente me detengo a informar.
+Nada de este documento se ha ejecutado en remoto. Staging sigue en la versión `97707a44`, commit `5dd7122`. La lista de tareas remotas pendientes está en la sección 0. Cada paso remoto necesita tu autorización expresa, y entre un paso y el siguiente me detengo a informar.
 
 Todo ocurre en la cuenta Cloudflare actual (`25765199…`), sobre el Worker `the1500-staging`, la base D1 `the1500-staging` (`05012b7a-…`) y el bucket R2 `the1500-staging-snapshots`. Ningún paso toca recursos de Palmera ni de otros proyectos.
+
+## 0. Tareas remotas pendientes
+
+Ninguna se ejecuta sin tu instrucción expresa. Antes de cada una: `wrangler whoami`, base `05012b7a-…` y analíticas del día por debajo de 1.000.000 de filas.
+
+1. Desplegar la versión puente `c45b40e`, rama `deploy/perf001-bridge` (sección 1.1).
+2. Aplicar la migración `0010` de PERF-001, con punto de Time Travel y exportación previos.
+3. Desplegar `c3387c4` y verificar PERF-001 con 10 solicitudes como máximo, una por minuto fuera de los minutos del cron.
+4. Desplegar ADMIN-001.
+5. Aplicar la migración de índices `0011`.
+6. Configurar el correo real de staging.
+7. Activar al superadministrador con autorización (sección 4).
+8. Validar el dashboard.
+
+ADMIN-002 y su migración `0012` tienen un despliegue propio, después de estos pasos y con autorización (`docs/ADMIN002_INTEGRATIONS.md`).
 
 ## 1. Orden obligatorio
 
 | # | Paso | Código | Cambio remoto | Solicitudes HTTP |
 |---|---|---|---|---|
-| 1 | PERF-001: migración `0010` y Worker compatible, uno tras otro | `c3387c4` | Migración y despliegue | 0 |
+| 1 | PERF-001 en tres tiempos: Worker puente, migración `0010`, Worker de PERF-001 (sección 1.1) | `c45b40e`, después `c3387c4` | Dos despliegues y una migración | 0 |
 | 2 | Verificación funcional y de consumo de D1 | — | Ninguno | ≤ 10, según la sección 10 de `PERF001_D1_OPTIMIZATION.md` |
 | 3 | ADMIN-001: interfaz y API administrativas | Commit de esta entrega | Solo despliegue, sin migración | 0 |
 | 4 | Control de acceso sin administradores reales | — | Ninguno | ≤ 8 |
@@ -24,6 +39,29 @@ Todo ocurre en la cuenta Cloudflare actual (`25765199…`), sobre el Worker `the
 **Condición de parada en cualquier paso:** un 5xx, un error 7500, o cifras distintas de las esperadas. Se para y no se reintenta.
 
 **Por qué el paso 1 despliega `c3387c4` y no el último commit:** para que un fallo del paso 2 se atribuya solo a PERF-001. El despliegue se hace desde una copia limpia de ese commit, con `git worktree add`, no desde la carpeta de trabajo.
+
+### 1.1 Transición de PERF-001 sin ventana incompatible
+
+Ningún Worker queda sirviendo con un esquema que no admite:
+- El Worker actual (`5dd7122`) comprueba `changes!==1` en cuatro sentencias que los triggers de `0010` también cuentan. Con `0010`, reservaría la posición y respondería al comprador que falló.
+- El de PERF-001 (`c3387c4`) necesita las tablas de `0010`.
+- El **puente**, rama `deploy/perf001-bridge`, commit `c45b40e`, es `5dd7122` con solo esas cuatro comprobaciones tolerantes de PERF-001. Funciona antes, durante y después de la migración.
+
+| Tiempo | Acción | Worker sirviendo | Esquema |
+|---|---|---|---|
+| a | Desplegar el puente | Puente | 0001–0009 |
+| b | Aplicar `0010` | Puente | 0010 |
+| c | Desplegar `c3387c4` | PERF-001 | 0010 |
+
+Entre a, b y c puede pasar el tiempo que haga falta. La seguridad no depende de la rapidez.
+
+**Prueba local:** `tests/deploy/perf001-transition.cjs`. Una sola base local, con datos, una reserva activa y una sesión, recorre los tres tiempos, la reversión y la reaplicación. En cada etapa comprueba que no se pierden filas y que las cifras públicas coinciden con las tablas. También demuestra el fallo que evita el puente.
+
+| Código | Sin `0010` | Con `0010` |
+|---|---|---|
+| Actual `5dd7122` | 132/132 | **54 fallos** |
+| Puente `c45b40e` | 132/132 | 132/132 |
+| PERF-001 `c3387c4` | **36 fallos** | 164/164 |
 
 **Por qué `0011` no está en `db/migrations/`:** `wrangler d1 migrations apply --remote` aplica todas las pendientes. Si `0011` estuviera ahí, el paso 1 la aplicaría junto con `0010`. Una prueba falla si aparece antes de tiempo.
 
@@ -147,13 +185,13 @@ Las pruebas cubren todos los rechazos, el alta con el administrador demo activo,
 | 6. Alta del propietario | `UPDATE platform_admins SET revoked_at=…` y un `admin_revoked` en `admin_events`, solo con tu autorización. El evento de alta no se borra | Ninguno sobre los datos de negocio |
 | 5. `0011` | Cinco `DROP INDEX IF EXISTS`. Además, borrar la fila `0011_admin_indexes.sql` de `d1_migrations` si se va a volver a aplicar | No toca datos ni triggers. Las lecturas vuelven a la columna «Consultas nuevas» de la sección 3 |
 | 3. ADMIN-001 | `wrangler rollback` a la versión del paso 1 | El panel desaparece; no hay cambio de esquema. Los `admin_events` escritos se conservan porque son inmutables. `platform_admins` no cambia |
-| 1. PERF-001 | Volver al Worker `97707a44` **y** eliminar los ocho triggers `trg_rm_*`, en ese orden y sin intervalo | Ver el párrafo siguiente |
+| 1. PERF-001 | **1)** `wrangler rollback` a la versión del puente. Es inmediato y seguro con los triggers. **2)** Si además se quiere retirar `0010`: borrar los ocho `trg_rm_*`, las dos tablas y su fila en `d1_migrations`. **3)** Solo después, si hiciera falta, volver a `97707a44` | Ver el párrafo siguiente |
 
-**Por qué PERF-001 necesita las dos cosas:** con los triggers de `0010` activos, D1 cuenta sus escrituras en `meta.changes`. El Worker anterior comprueba `changes!==1` en reservas y pagos, y leería como fallida una reserva correcta. Por eso, volver solo al Worker anterior rompe las reservas hasta que se eliminan los triggers.
+**Por qué no se vuelve directamente a `97707a44`:** con los triggers de `0010` activos, D1 cuenta sus escrituras en `meta.changes`. Ese Worker comprueba `changes!==1` y leería como fallida una reserva correcta. El puente no tiene ese problema: sirve con y sin triggers. Cada paso de la reversión deja un Worker compatible con el esquema que encuentra. La prueba local recorre esta reversión completa.
 
-En sentido contrario, eliminar los triggers dejando el Worker nuevo hace que sus modelos de lectura queden desactualizados. Muestra cifras viejas hasta que su verificación por revisión los reconstruye.
+Eliminar los triggers con el Worker de PERF-001 todavía activo es lo único que no se debe hacer: sus modelos dejarían de invalidarse. Por eso el orden es primero el Worker, luego el esquema.
 
-Las tablas `read_models` y `read_model_revisions` pueden quedarse: no afectan al Worker anterior. Ningún paso de reversión borra datos de negocio.
+Las tablas `read_models` y `read_model_revisions` solo contienen datos derivados. Borrarlas no toca datos de negocio, y volver a aplicar `0010` las recrea.
 
 **Restaurar D1 a un punto anterior (Time Travel):** devolvería también cualquier dato escrito después. Solo se haría como último recurso, con tu autorización y tras comprobar la base de destino.
 
