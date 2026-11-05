@@ -1,7 +1,8 @@
 ---
-import '@fontsource/libre-caslon-display/latin-400.css';
-import '@fontsource/libre-caslon-display/latin-ext-400.css';
-import '@fontsource-variable/hanken-grotesk/index.css';
+import '@fontsource-variable/schibsted-grotesk/wght.css';
+import '@fontsource/instrument-serif/400.css';
+import sansLatin from '@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2?url';
+import serifLatin from '@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff2?url';
 
 interface Props {
   lang?: 'en' | 'es';
@@ -54,6 +55,8 @@ const metaDesc =
     <meta name="robots" content={indexingEnabled ? 'index, follow' : 'noindex, nofollow'} />
     <meta name="description" content={metaDesc} />
     <title>{title.includes('THE1500') ? title : `${title} — THE1500`}</title>
+    <link rel="preload" href={sansLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={serifLatin} as="font" type="font/woff2" crossorigin />
     <slot name="head" />
     <style is:global>
       :root {
@@ -83,9 +86,22 @@ const metaDesc =
         --radius-sm: 6px;
         --radius-md: 10px;
         --radius-lg: 14px;
-        --font-display: 'Libre Caslon Display', Georgia, 'Times New Roman', serif;
-        --font-sans: 'Hanken Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        /* Two families. Schibsted Grotesk does the work; Instrument Serif is an accent for narrative moments and monograms. */
+        --font-display: 'Instrument Serif', 'Times New Roman', serif;
+        --font-sans: 'Schibsted Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        /* Code samples only, with the system's own face: nothing to download. */
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        --fs-narrative: clamp(2.7rem, 6vw, 5.6rem);
+        --fs-h1: clamp(2rem, 1.2rem + 2.6vw, 3.25rem);
+        --fs-h2: clamp(1.75rem, 1rem + 2.1vw, 2.875rem);
+        --fs-h3: clamp(1.06rem, 1rem + 0.3vw, 1.25rem);
+        --fs-lead: clamp(1.03rem, 1rem + 0.25vw, 1.2rem);
+        --fs-body: 1rem;
+        --fs-small: 0.9rem;
+        --fs-caption: 0.8125rem;
+        --lh-tight: 1.1;
+        --lh-text: 1.55;
+        --measure: 62ch;
         color-scheme: dark;
       }
 
@@ -169,7 +185,7 @@ const metaDesc =
         border-radius: 6px;
         background: linear-gradient(135deg, rgba(238, 198, 121, 0.24), rgba(238, 198, 121, 0.05));
         border: 1px solid var(--border-gold);
-        font-family: var(--font-mono);
+        font-family: var(--font-sans);
         font-size: 0.7rem;
         font-weight: 700;
         color: var(--gold-primary);
@@ -231,7 +247,7 @@ const metaDesc =
       }
 
       .lang-pill {
-        font-family: var(--font-mono);
+        font-family: var(--font-sans);
         font-size: 0.74rem;
         font-weight: 600;
         padding: 0.38rem 0.6rem;
@@ -282,25 +298,27 @@ const metaDesc =
 
       h1,
       h2 {
-        font-family: var(--font-display);
-        font-weight: 400;
+        font-weight: 600;
         font-variant-numeric: lining-nums;
-        letter-spacing: -0.012em;
+        letter-spacing: -0.022em;
+        line-height: var(--lh-tight);
+        text-wrap: balance;
       }
 
       h1 {
-        font-size: clamp(2.3rem, 4.8vw, 3.9rem);
+        font-size: var(--fs-h1);
         margin-bottom: 1rem;
       }
 
       h2 {
-        font-size: clamp(1.7rem, 3vw, 2.45rem);
+        font-size: var(--fs-h2);
         margin-bottom: 0.65rem;
       }
 
       h3 {
-        font-size: clamp(1.1rem, 1.8vw, 1.32rem);
+        font-size: var(--fs-h3);
         font-weight: 600;
+        letter-spacing: -0.012em;
         margin-bottom: 0.5rem;
       }
 
@@ -315,7 +333,7 @@ const metaDesc =
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        font-family: var(--font-mono);
+        font-family: var(--font-sans);
         letter-spacing: 0.14em;
         text-transform: uppercase;
         color: var(--gold-primary);
@@ -573,7 +591,7 @@ const metaDesc =
 
       .stat-tile strong {
         display: block;
-        font-family: var(--font-mono);
+        font-family: var(--font-sans);
         font-size: clamp(1.65rem, 3vw, 2.25rem);
         font-weight: 700;
         color: var(--gold-primary);
@@ -586,12 +604,11 @@ const metaDesc =
         color: var(--text-secondary);
       }
 
-      /* The footer ends on the name itself, cut by the edge of the page. */
+      /* The close of every page: the name, what it is, and where to go next, in one balanced composition. */
       .site-footer {
         margin-top: auto;
         background: #04060b;
-        padding: clamp(2.5rem, 6vw, 5rem) 0 0;
-        overflow: hidden;
+        padding: clamp(2.5rem, 5vw, 4rem) 0 clamp(1.5rem, 3vw, 2.25rem);
         border-top: 1px solid rgba(238, 198, 121, 0.22);
       }
 
@@ -601,28 +618,41 @@ const metaDesc =
         padding-inline: clamp(1rem, 4vw, 3rem);
       }
 
-      .footer-claim {
-        max-width: 26ch;
-        margin: 0 0 clamp(2rem, 5vw, 3.5rem);
+      .footer-top {
+        display: grid;
+        grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+        gap: clamp(2rem, 5vw, 5rem);
+      }
+
+      .footer-name {
+        display: block;
+        margin-bottom: 0.6rem;
         font-family: var(--font-display);
-        font-size: clamp(1.6rem, 3vw, 2.6rem);
-        line-height: 1.12;
-        color: var(--text-primary);
-        text-wrap: balance;
+        font-size: clamp(2.5rem, 2rem + 1.8vw, 3.25rem);
+        line-height: 1;
+        color: var(--gold-primary);
+      }
+
+      .footer-brand p {
+        max-width: 34ch;
+        margin: 0;
+        font-size: var(--fs-small);
+        line-height: var(--lh-text);
       }
 
       .footer-columns {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 2rem;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 0.7fr);
+        gap: 1.5rem clamp(1.25rem, 2.5vw, 2.5rem);
       }
 
       .footer-col-title {
-        margin: 0 0 0.8rem;
+        margin: 0 0 0.7rem;
         font-family: var(--font-sans);
-        font-size: 0.86rem;
+        font-size: var(--fs-caption);
         font-weight: 600;
         letter-spacing: 0;
+        line-height: 1.3;
         color: var(--gold-primary);
       }
 
@@ -632,8 +662,9 @@ const metaDesc =
         margin: 0;
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
-        font-size: 0.98rem;
+        gap: 0.45rem;
+        font-size: var(--fs-small);
+        line-height: 1.35;
       }
 
       .footer-col-list a {
@@ -652,31 +683,17 @@ const metaDesc =
 
       .footer-pending {
         color: var(--text-muted);
-        font-size: 0.9rem;
+        font-size: var(--fs-caption);
       }
 
       .footer-note {
-        margin: clamp(2rem, 4vw, 3rem) 0 0;
-        max-width: 70ch;
-        font-size: 0.84rem;
+        margin: clamp(1.75rem, 3vw, 2.5rem) 0 0;
+        padding-top: 1rem;
+        max-width: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: var(--fs-caption);
         line-height: 1.5;
         color: var(--text-muted);
-      }
-
-      .footer-mark {
-        margin: clamp(1.5rem, 3vw, 2.5rem) 0 -0.17em;
-        text-align: center;
-        font-family: var(--font-display);
-        font-size: 25.5vw;
-        line-height: 0.86;
-        letter-spacing: -0.02em;
-        white-space: nowrap;
-        color: var(--gold-primary);
-        background: linear-gradient(rgba(238, 198, 121, 0.95), rgba(238, 198, 121, 0.25));
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        user-select: none;
       }
 
       /* Responsive Rules (Desktop vs Mobile) */
@@ -734,6 +751,11 @@ const metaDesc =
         .grid-2,
         .grid-3,
         .grid-4,
+        .footer-top {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 2rem;
+        }
+
         .footer-columns {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
@@ -817,39 +839,44 @@ const metaDesc =
     <!-- 10. FOOTER (4 Columns + Bottom Line) -->
     <footer class="site-footer">
       <div class="footer-inner">
-        <p class="footer-claim">
-          {es ? 'Un registro público limitado a 1.500 empresas, con perfiles aprobados por sus titulares.' : 'A public register limited to 1,500 companies, with profiles approved by their owners.'}
-        </p>
-        <div class="footer-columns">
-          <nav aria-label={es ? 'Explorar' : 'Explore'}>
-            <h2 class="footer-col-title">{es ? 'Explorar' : 'Explore'}</h2>
-            <ul class="footer-col-list">
-              <li><a href={es ? '/es/empresas' : '/empresas'}>{es ? 'Directorio' : 'Directory'}</a></li>
-              <li><a href={es ? '/es/#how-it-works' : '/#how-it-works'}>{es ? 'Cómo funciona' : 'How it works'}</a></li>
-              <li><a href={es ? '/es/#faq' : '/#faq'}>{es ? 'Preguntas frecuentes' : 'Questions'}</a></li>
-            </ul>
-          </nav>
-          <nav aria-label={es ? 'Tu cuenta' : 'Your account'}>
-            <h2 class="footer-col-title">{es ? 'Tu empresa' : 'Your company'}</h2>
-            <ul class="footer-col-list">
-              <li><a href={es ? '/es/unirse' : '/unirse'}>{es ? 'Unirse a THE1500' : 'Join THE1500'}</a></li>
-              <li><a href={signedIn ? accountHref : es ? '/es/login' : '/login'}>{signedIn ? accountLabel : es ? 'Iniciar sesión' : 'Sign in'}</a></li>
-            </ul>
-          </nav>
-          <div>
-            <h2 class="footer-col-title">Legal</h2>
-            <ul class="footer-col-list">
-              <li><a href={es ? '/es/unirse#terms' : '/unirse#terms'}>{es ? 'Condiciones de publicación' : 'Publication terms'}</a></li>
-              <li class="footer-pending">{es ? 'Términos de servicio: en preparación' : 'Terms of service: in preparation'}</li>
-              <li class="footer-pending">{es ? 'Política de privacidad: en preparación' : 'Privacy policy: in preparation'}</li>
-            </ul>
+        <div class="footer-top">
+          <div class="footer-brand">
+            <a class="footer-name" href={es ? '/es/' : '/'}>THE1500</a>
+            <p>
+              {es ? 'Un registro público limitado a 1.500 empresas, con perfiles aprobados por sus titulares.' : 'A public register limited to 1,500 companies, with profiles approved by their owners.'}
+            </p>
           </div>
-          <div>
-            <h2 class="footer-col-title">{es ? 'Idioma' : 'Language'}</h2>
-            <ul class="footer-col-list">
-              <li><a href={es ? switchHref : currentPath} hreflang="en" aria-current={es ? undefined : 'true'}>English</a></li>
-              <li><a href={es ? currentPath : switchHref} hreflang="es" aria-current={es ? 'true' : undefined}>Español</a></li>
-            </ul>
+          <div class="footer-columns">
+            <nav aria-label={es ? 'Explorar' : 'Explore'}>
+              <h2 class="footer-col-title">{es ? 'Explorar' : 'Explore'}</h2>
+              <ul class="footer-col-list">
+                <li><a href={es ? '/es/empresas' : '/empresas'}>{es ? 'Directorio' : 'Directory'}</a></li>
+                <li><a href={es ? '/es/#how-it-works' : '/#how-it-works'}>{es ? 'Cómo funciona' : 'How it works'}</a></li>
+                <li><a href={es ? '/es/#faq' : '/#faq'}>{es ? 'Preguntas frecuentes' : 'Questions'}</a></li>
+              </ul>
+            </nav>
+            <nav aria-label={es ? 'Tu empresa' : 'Your company'}>
+              <h2 class="footer-col-title">{es ? 'Tu empresa' : 'Your company'}</h2>
+              <ul class="footer-col-list">
+                <li><a href={es ? '/es/unirse' : '/unirse'}>{es ? 'Unirse a THE1500' : 'Join THE1500'}</a></li>
+                <li><a href={signedIn ? accountHref : es ? '/es/login' : '/login'}>{signedIn ? accountLabel : es ? 'Iniciar sesión' : 'Sign in'}</a></li>
+              </ul>
+            </nav>
+            <div>
+              <h2 class="footer-col-title">Legal</h2>
+              <ul class="footer-col-list">
+                <li><a href={es ? '/es/unirse#terms' : '/unirse#terms'}>{es ? 'Condiciones de publicación' : 'Publication terms'}</a></li>
+                <li class="footer-pending">{es ? 'Términos de servicio: en preparación' : 'Terms of service: in preparation'}</li>
+                <li class="footer-pending">{es ? 'Política de privacidad: en preparación' : 'Privacy policy: in preparation'}</li>
+              </ul>
+            </div>
+            <div>
+              <h2 class="footer-col-title">{es ? 'Idioma' : 'Language'}</h2>
+              <ul class="footer-col-list">
+                <li><a href={es ? switchHref : currentPath} hreflang="en" aria-current={es ? undefined : 'true'}>English</a></li>
+                <li><a href={es ? currentPath : switchHref} hreflang="es" aria-current={es ? 'true' : undefined}>Español</a></li>
+              </ul>
+            </div>
           </div>
         </div>
         <p class="footer-note">
@@ -858,7 +885,6 @@ const metaDesc =
             : 'Test environment: no real charges are processed. We do not guarantee inclusion or recommendation on external AI platforms.'}
         </p>
       </div>
-      <div class="footer-mark" aria-hidden="true">THE1500</div>
     </footer>
 
     <script is:inline>

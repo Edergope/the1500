@@ -482,17 +482,19 @@ const clientJson = JSON.stringify(clientData).replace(/</g, '\\u003c');
     <canvas class="seam" data-a={SEAM.lapis} data-b={SEAM.night} aria-hidden="true" style={`--a:${SEAM.lapis};--b:${SEAM.night}`}></canvas>
 
     <section id="how-it-works" class="onboard" aria-labelledby="how-title">
-      <div class="wrap">
-        <h2 id="how-title" class="display">{es ? 'De información suelta a una pieza del muro.' : 'From loose information to a piece of the wall.'}</h2>
-        <div class="ob-layout">
-          <ol class="ob-steps">
-            {steps.map(([title, text], i) => (
-              <li class:list={['ob-step', { 'is-active': i === 0 }]}>
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </li>
-            ))}
-          </ol>
+      <div class="ob-pin">
+        <div class="wrap ob-layout">
+          <div class="ob-text">
+            <h2 id="how-title" class="display">{es ? 'De información suelta a una pieza del muro.' : 'From loose information to a piece of the wall.'}</h2>
+            <ol class="ob-steps">
+              {steps.map(([title, text], i) => (
+                <li class:list={['ob-step', { 'is-active': i === 0 }]}>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
           <div class="ob-scene" aria-hidden="true" style={`--bg:${exampleLook.color.bg};--ink:${exampleLook.color.ink}`}>
             <div class="ob-frame">
               <div class="ob-ticket">
@@ -566,16 +568,18 @@ const clientJson = JSON.stringify(clientData).replace(/</g, '\\u003c');
     <canvas class="seam" data-a={SEAM.stone} data-b={SEAM.wine} aria-hidden="true" style={`--a:${SEAM.stone};--b:${SEAM.wine}`}></canvas>
 
     <section id="faq" class="trust" aria-labelledby="faq-title">
-      <div class="wrap">
-        <h2 id="faq-title" class="display">{es ? 'Las reglas no cambian según quién pregunte.' : 'The rules do not change depending on who asks.'}</h2>
-        <dl class="facts">
-          {facts.map(([value, label]) => (
-            <div>
-              <dd>{value}</dd>
-              <dt>{label}</dt>
-            </div>
-          ))}
-        </dl>
+      <div class="wrap trust-layout">
+        <div class="trust-rules">
+          <h2 id="faq-title" class="display">{es ? 'Las mismas reglas para todos.' : 'The same rules for everyone.'}</h2>
+          <dl class="facts">
+            {facts.map(([value, label]) => (
+              <div>
+                <dd>{value}</dd>
+                <dt>{label}</dt>
+              </div>
+            ))}
+          </dl>
+        </div>
         <div class="faq">
           {faqs.map(([question, answer]) => (
             <details>
@@ -622,6 +626,10 @@ const clientJson = JSON.stringify(clientData).replace(/</g, '\\u003c');
     .ignite-text { position: static; }
     .finale { min-height: auto; }
     .finale-wall { position: relative; height: auto; }
+    .onboard { height: auto; }
+    .ob-pin { position: static; height: auto; }
+    .ob-steps { display: block; position: static; }
+    .ob-step { position: static; opacity: 1; }
   </style>
 </noscript>
 

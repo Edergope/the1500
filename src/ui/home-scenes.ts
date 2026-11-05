@@ -65,13 +65,8 @@ function onboarding(root:HTMLElement) {
   if (!scene||!steps.length||reduced.matches) return;
   root.classList.add('is-scrubbed');
   add({el:root,update(){
-    const mid=innerHeight*(portrait.matches?0.72:0.5);
-    const centres=steps.map(s=>{const r=s.getBoundingClientRect();return r.top+r.height/2;});
-    let i=0;
-    while (i<centres.length-1&&centres[i+1]!<=mid) i++;
-    const next=centres[i+1];
-    const at=next===undefined||centres[i]!>mid?0:clamp((mid-centres[i]!)/(next-centres[i]!),0,1);
-    const s=i+clamp((at-0.25)/0.5,0,1);
+    const r=root.getBoundingClientRect();
+    const s=clamp(-r.top/Math.max(1,r.height-innerHeight),0,1)*(steps.length-1);
     for (let q=1;q<=4;q++) scene.style.setProperty(`--q${q}`,clamp(s-(q-1),0,1).toFixed(3));
     steps.forEach((el,n)=>{el.classList.toggle('is-active',n===Math.round(s));});
   }});
