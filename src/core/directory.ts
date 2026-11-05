@@ -30,6 +30,15 @@ export function publicProfileDto(row:PublicCompanyRow,language:'en'|'es'='en') {
     version:row.version,publishedAt:row.published_at,firstPublishedAt:row.first_published_at,
     html:`${es?'/es':''}/empresas/${row.slug}`,jsonld:`/api/v1/public/companies/${row.slug}.json${es?'?lang=es':''}`};
 }
+/** Every published company, as the wall on the Home needs it. Same conditions as the directory. */
+export async function listMosaicCompanies(db:D1Database):Promise<import('../lib/mosaic').MosaicCompany[]> {
+  const res=await db.prepare(`SELECT c.slug,c.display_name AS name,c.country,c.industry,s.number AS position
+    FROM companies c JOIN slots s ON s.company_id=c.id
+    WHERE c.publication_status='published' AND s.status='assigned' AND EXISTS(
+      SELECT 1 FROM profile_versions v WHERE v.company_id=c.id AND v.published_at IS NOT NULL)
+    ORDER BY s.number ASC`).all<import('../lib/mosaic').MosaicCompany>();
+  return res.results;
+}
 /** SQL for a company's summary in the visitor's language, read from its latest published version. */
 export const localizedSummary=(language:'en'|'es'='en')=>language==='es'
   ?`COALESCE((SELECT json_extract(v.canonical_json,'$.descriptionEs') FROM profile_versions v WHERE v.company_id=c.id AND v.published_at IS NOT NULL ORDER BY v.version DESC LIMIT 1),c.public_summary)`

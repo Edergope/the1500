@@ -1,10 +1,11 @@
 ---
 import type { Locale } from '../lib/contracts/api';
 import type { HomeData } from '../core/home';
-import HomeRegister from './HomeRegister';
 import DiscoveryHub from './DiscoveryHub';
 import { formatPosition, formatUsdCents } from '../ui/i18n';
-import { phaseBreakdown } from '../ui/register';
+import {
+  baseTileSize, CAPACITY, countPositions, focusOf, isDemoName, layoutTiles, LANDSCAPE, monogram, PORTRAIT, tileLook,
+} from '../lib/mosaic';
 import '../styles/home.css';
 
 interface Props {
@@ -13,27 +14,109 @@ interface Props {
 }
 
 const { lang, data } = Astro.props;
-const { stats, businesses, totalPublished, retiredPositions, positionMap, retiredLabel, sample } = data;
+const { stats, companies, retiredPositions, positionMap, currentRange, retiredLabel, sample } = data;
 const es = lang === 'es';
 const prefix = es ? '/es' : '';
-const closed = stats?.salesMode === 'closed_archive';
+const mode = stats?.salesMode ?? null;
+const closed = mode === 'closed_archive';
 const number = (n: number) => n.toLocaleString(es ? 'de-DE' : 'en-US');
-const shownCompanies = businesses.slice(0, 6);
+const countryName = (code: string) => {
+  try {
+    return new Intl.DisplayNames([lang], { type: 'region' }).of(code) || code;
+  } catch {
+    return code;
+  }
+};
+
+const counts = positionMap ? countPositions(positionMap, currentRange) : null;
+const map = positionMap ?? 'a'.repeat(1500);
+const wide = layoutTiles(companies, map, LANDSCAPE);
+const tall = layoutTiles(companies, map, PORTRAIT);
+const focusWide = focusOf(wide.values(), LANDSCAPE);
+const focusTall = focusOf(tall.values(), PORTRAIT);
+// From here on pieces lie flat on the wall: 1,500 raised layers would cost more than they show.
+const dense = baseTileSize(companies.length) <= 2;
+const density = (companies.length / CAPACITY).toFixed(3);
+const hasDemo = companies.some((c) => isDemoName(c.name));
+const openNow = counts?.open ?? 0;
+const price = mode === 'selling' && stats?.checkoutOpen ? formatUsdCents(stats.currentPriceUsdCents, lang) : null;
+
+const heroStatus = (() => {
+  switch (mode) {
+    case 'selling':
+      return es ? `${number(openNow)} posiciones abiertas en la fase actual.` : `${number(openNow)} positions open in the current release.`;
+    case 'awaiting_founder_allocation':
+      return es ? 'La venta está en pausa entre fases. El directorio sigue abierto.' : 'Sales are paused between releases. The directory stays open.';
+    case 'premium_admission':
+      return es ? 'Las últimas posiciones se asignan por solicitud.' : 'The final positions are allocated by application.';
+    case 'closed_archive':
+      return es ? 'Las 1.500 posiciones están asignadas. El directorio sigue abierto.' : 'All 1,500 positions are taken. The directory stays open.';
+    default:
+      return null;
+  }
+})();
+
+const belong = (() => {
+  switch (mode) {
+    case 'selling':
+      return {
+        title: es ? 'Todavía hay lugar.' : 'There is still room.',
+        text: es
+          ? `${number(openNow)} posiciones están abiertas en la fase actual${price ? `, a ${price} antes de los impuestos aplicables` : ''}.`
+          : `${number(openNow)} positions are open in the current release${price ? `, at ${price} before applicable tax` : ''}.`,
+      };
+    case 'awaiting_founder_allocation':
+      return {
+        title: es ? 'La siguiente fase aún no abre.' : 'The next release is not open yet.',
+        text: es
+          ? 'Puedes registrar tu empresa ahora para estar lista cuando abra. Registrarse no reserva una posición.'
+          : 'You can register your company now so it is ready when it opens. Registering does not hold a position.',
+      };
+    case 'premium_admission':
+      return {
+        title: es ? 'Quedan las últimas.' : 'These are the last ones.',
+        text: es
+          ? `${number(openNow)} posiciones por solicitud y revisión de una persona, sin pago en línea.`
+          : `${number(openNow)} positions by application and human review, with no online checkout.`,
+      };
+    case 'closed_archive':
+      return {
+        title: es ? 'El muro está completo.' : 'The wall is complete.',
+        text: es ? 'Las 1.500 posiciones están asignadas. Ya no se vende ninguna.' : 'All 1,500 positions are taken. None are for sale.',
+      };
+    default:
+      return {
+        title: es ? 'Un lugar entre 1.500.' : 'A place among 1,500.',
+        text: es ? 'La disponibilidad no se pudo cargar. Inténtalo de nuevo en unos minutos.' : 'Availability could not be loaded. Try again in a few minutes.',
+      };
+  }
+})();
+
+const legend = counts
+  ? [
+      [counts.published, 'published', es ? 'con perfil publicado' : 'with a published profile'],
+      [counts.assigned, 'assigned', es ? 'asignadas, aún sin publicar' : 'assigned, not yet published'],
+      [counts.open, 'open', es ? 'abiertas en la fase actual' : 'open in the current release'],
+      [counts.reserved, 'reserved', es ? 'reservadas por invitación, no en venta' : 'reserved by invitation, not for sale'],
+      [counts.unreleased, 'unreleased', es ? 'aún sin abrir' : 'not yet released'],
+      [counts.retired, 'retired', es ? 'retiradas' : 'retired'],
+    ] as const
+  : [];
 
 const steps = es
   ? [
-      ['Únete o recibe una invitación', 'Registra tu empresa con tu correo corporativo y asegura una posición en la fase abierta.'],
-      ['Cuéntanos qué hace tu empresa', 'Describe tus servicios, a quién atiendes y qué problemas resuelves.'],
-      ['Revisa el perfil', 'Preparamos un perfil estructurado y te mostramos exactamente lo que se publicará.'],
-      ['Apruébalo y publícalo', 'Nada se publica sin tu aprobación expresa. Recibes una página pública y tus datos estructurados.'],
-      ['Aparece en THE1500', 'Tu empresa entra en el directorio, en su buscador y en su asistente.'],
+      ['Únete o recibe una invitación', 'Registra tu empresa con tu correo corporativo.'],
+      ['Cuéntanos qué hace tu empresa', 'Tus servicios, a quién atiendes y qué problemas resuelves.'],
+      ['Revisa el perfil', 'Preparamos un perfil ordenado y te mostramos exactamente lo que se publicará.'],
+      ['Apruébalo', 'Nada se publica sin tu aprobación expresa.'],
+      ['Ocupa tu lugar', 'Tu pieza aparece en el muro, en el directorio, en su buscador y en su asistente.'],
     ]
   : [
-      ['Join or get invited', 'Register your company with your work email and secure a position in the open phase.'],
-      ['Tell us what your company does', 'Describe your services, who you serve and the problems you solve.'],
+      ['Join or get invited', 'Register your company with your work email.'],
+      ['Tell us what your company does', 'Your services, who you serve and the problems you solve.'],
       ['Review the profile', 'We prepare a structured profile and show you exactly what will be published.'],
-      ['Approve and publish', 'Nothing goes live without your explicit approval. You get a public page and your structured data.'],
-      ['Appear in THE1500', 'Your company joins the directory, its search and its assistant.'],
+      ['Approve it', 'Nothing goes live without your explicit approval.'],
+      ['Take your place', 'Your piece appears on the wall, in the directory, its search and its assistant.'],
     ];
 
 const promises = es
@@ -69,295 +152,341 @@ const faqs = es
       ['¿Cuándo recibe mi empresa su número?', 'Al confirmarse el pago, en orden ascendente. Una reserva de 20 minutos guarda capacidad, pero no asigna un número, y los números no se pueden elegir.'],
       ['¿Qué pasa si una empresa publicada se retira?', 'Su identidad desaparece de todas las superficies públicas y la posición queda retirada de forma permanente. No vuelve a venderse.'],
       ['¿Se publica algo sin mi aprobación?', 'Nunca. No responder no cuenta como aprobar: un representante autorizado debe aprobar el contenido exacto antes de publicarlo.'],
-      ['¿Qué son las posiciones reservadas para fundadores?', 'Las posiciones 1 a 100 se asignan solo por invitación y no están a la venta. Las empresas que compran reciben posiciones desde la 101.'],
-      ['¿Por qué cambia el precio?', 'Hay cuatro fases con precio fijo. Cuando una se completa, abre la siguiente a su precio. Los precios son base, antes de los impuestos aplicables.'],
+      ['¿Por qué algunas posiciones no están en venta?', 'Las posiciones 1 a 100 se asignan solo por invitación. Las empresas que compran reciben posiciones desde la 101.'],
+      ['¿El precio será siempre el mismo?', 'Las posiciones se abren por fases y cada fase tiene su propio precio. El que ves aquí es el de la fase abierta ahora, antes de los impuestos aplicables. Siempre verás el precio y las condiciones antes de pagar.'],
     ]
   : [
       ['When does my company get its number?', 'When payment is confirmed, in ascending order. A 20-minute hold keeps capacity but assigns no number, and numbers cannot be chosen.'],
       ['What happens if a published company withdraws?', 'Its identity is removed from every public surface and the position is permanently retired. It is never sold again.'],
       ['Is anything published without my approval?', 'Never. Not responding does not count as approval: an authorized representative must approve the exact content before it goes live.'],
-      ['What are the positions reserved for founders?', 'Positions 1 to 100 are allocated by invitation only and are not for sale. Companies that buy receive positions from 101 onward.'],
-      ['Why does the price change?', 'There are four phases, each at a fixed price. When one fills, the next opens at its price. Prices are base prices, before applicable tax.'],
+      ['Why are some positions not for sale?', 'Positions 1 to 100 are allocated by invitation only. Companies that buy receive positions from 101 onward.'],
+      ['Will the price always be the same?', 'Positions are released in stages, and each stage has its own price. The one shown here is for the stage open now, before applicable tax. You always see the price and terms before you pay.'],
     ];
 
-const countryName = (code: string) => {
-  try {
-    return new Intl.DisplayNames([lang], { type: 'region' }).of(code) || code;
-  } catch {
-    return code;
-  }
+const clientData = {
+  lang,
+  map: positionMap,
+  current: currentRange,
+  retiredLabel,
+  labels: {
+    published: es ? 'Perfil publicado' : 'Published profile',
+    assigned: es ? 'Asignada, aún sin publicar' : 'Assigned, not yet published',
+    open: es ? 'Abierta en la fase actual. El número se asigna en orden al pagar.' : 'Open in the current release. Numbers are assigned in order at payment.',
+    reserved: es ? 'Reservada por invitación, no en venta' : 'Reserved by invitation, not for sale',
+    unreleased: es ? 'Aún sin abrir' : 'Not yet released',
+    demo: es ? 'Empresa de demostración, no es un negocio real.' : 'Demonstration company, not a real business.',
+  },
 };
-const sampleIsDemo = sample ? sample.profile.name.toLowerCase().startsWith('demo ') : false;
+const clientJson = JSON.stringify(clientData).replace(/</g, '\\u003c');
+
+const sampleLook = sample ? tileLook(sample.profile.slug) : null;
+const sampleProblem = sample?.profile.problemSolutions[0];
 ---
-<main class="home">
-  <HomeRegister
-    client:load
-    lang={lang}
-    stats={stats}
-    businesses={businesses}
-    positionMap={positionMap}
-    retiredLabel={retiredLabel}
-  />
-
-  <section id="why" class="home-block two-readers" aria-labelledby="why-title">
-    <div class="home-lead">
-      <h2 id="why-title">{es ? 'Un perfil, dos lectores' : 'One profile, two readers'}</h2>
-      <p>
-        {es
-          ? 'Cada vez más, tus clientes y los sistemas que usan intentan entender qué hace una empresa a partir de lo que encuentran publicado. Si esa información está dispersa o es genérica, tienen poco con qué trabajar. THE1500 la ordena en un solo perfil aprobado por ti.'
-          : 'More and more, your customers and the systems they use try to work out what a company does from what they find published. If that information is scattered or generic, they have little to go on. THE1500 puts it into one profile you approve.'}
-      </p>
-    </div>
-
-    {sample && (
-      <div class="readers">
-        <article class="reader reader-person">
-          <p class="reader-tag">{es ? 'Lo que lee una persona' : 'What a person reads'}</p>
-          <h3>{sample.profile.name}</h3>
-          <p class="reader-meta">
-            {formatPosition(sample.profile.position)}, {sample.profile.industry}, {countryName(sample.profile.country)}
-            {sampleIsDemo && <span class="demo-tag">{es ? 'Demostración' : 'Demo'}</span>}
+<main class="home" id="home">
+  <div class="story" id="story">
+    <div class="chapters">
+      <section class="ch ch-hero" data-cam="hero" aria-labelledby="hero-title">
+        <div class="ch-body">
+          <h1 id="hero-title" class="hero-title">
+            {es ? <><span>Ocupa tu lugar</span> <span>entre las 1.500.</span></> : <><span>Take your place</span> <span>among the 1,500.</span></>}
+          </h1>
+          <p class="hero-text">
+            {es
+              ? 'Un registro público que nunca tendrá más de 1.500 empresas. Cada una enciende una pieza de este muro, con su número y un perfil que aprobó su titular.'
+              : 'A public register that will never hold more than 1,500 companies. Each one lights up a piece of this wall, with its number and a profile its owner approved.'}
           </p>
-          <p>{sample.profile.summary}</p>
-          {sample.profile.problemSolutions[0] && (
-            <dl>
-              <dt>{es ? 'Problema' : 'Problem'}</dt>
-              <dd>{sample.profile.problemSolutions[0].problem}</dd>
-              <dt>{es ? 'Solución' : 'Solution'}</dt>
-              <dd>{sample.profile.problemSolutions[0].solution}</dd>
-            </dl>
-          )}
-        </article>
-        <article class="reader reader-machine">
-          <p class="reader-tag">{es ? 'Lo que lee el software' : 'What software reads'}</p>
-          <pre tabindex="0"><code>{JSON.stringify(sample.machine, null, 2)}</code></pre>
-        </article>
-      </div>
-    )}
+          <div class="cta" id="hero-cta">
+            {!closed && <a class="button btn-lg" href={`${prefix}/unirse`}>{es ? 'Unirse a THE1500' : 'Join THE1500'}</a>}
+            <a class={closed ? 'button btn-lg' : 'btn-secondary btn-lg'} href={`${prefix}/empresas`}>{es ? 'Ver directorio' : 'View Directory'}</a>
+          </div>
+          {heroStatus && <p class="hero-status">{heroStatus}</p>}
+        </div>
+      </section>
 
-    <div class="benefits">
-      <div>
-        <h3>{es ? 'Un lugar propio' : 'A place of your own'}</h3>
-        <p>
-          {es
-            ? 'Una posición numerada en un directorio que nunca superará las 1.500 empresas. Una posición publicada no vuelve a venderse.'
-            : 'A numbered position in a directory that will never exceed 1,500 companies. A published position is never sold again.'}
-        </p>
-      </div>
-      <div>
-        <h3>{es ? 'Tus palabras, tu aprobación' : 'Your words, your approval'}</h3>
-        <p>
-          {es
-            ? 'Ves exactamente lo que se publicará y de dónde salió cada dato. Sin tu aprobación, nada sale.'
-            : 'You see exactly what will be published and where each detail came from. Without your approval, nothing goes out.'}
-        </p>
-      </div>
-      <div>
-        <h3>{es ? 'Claridad, no posicionamiento' : 'Clarity, not rankings'}</h3>
-        <p>
-          {es
-            ? 'Esto no es SEO: es presentar con claridad quién eres y qué resuelves. No garantizamos inclusión ni recomendación en plataformas externas de inteligencia artificial.'
-            : 'This is not SEO: it is a clear account of who you are and what you solve. We do not guarantee inclusion or recommendation on external AI platforms.'}
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <section id="explore" class="home-block" aria-labelledby="explore-title">
-    <div class="home-lead home-lead-split">
-      <div>
-        <h2 id="explore-title">{es ? 'Quién está ya en el registro' : 'Who is already in the register'}</h2>
-        {shownCompanies.some((c) => c.name.toLowerCase().startsWith('demo ')) && (
+      <section class="ch" data-cam="finite" aria-labelledby="finite-title">
+        <div class="ch-body">
+          <h2 id="finite-title">{es ? 'Exactamente 1.500. No habrá un segundo muro.' : 'Exactly 1,500. There is no second wall.'}</h2>
           <p>
             {es
-              ? 'Las empresas marcadas como demostración son ejemplos de prueba, no negocios reales.'
-              : 'Companies marked as demo are test examples, not real businesses.'}
+              ? 'Cada pieza es una posición: un número del 1 al 1.500. El muro tiene un borde y ese borde no se mueve. Una posición publicada no vuelve a venderse.'
+              : 'Every piece is one position: one number from 1 to 1,500. The wall has an edge, and the edge does not move. A published position is never sold again.'}
           </p>
-        )}
-      </div>
-      <a class="btn-secondary" href={`${prefix}/empresas`}>
-        {es ? `Ver las ${number(totalPublished)} empresas` : `View all ${number(totalPublished)} companies`}
-      </a>
+          {legend.length > 0 && (
+            <dl class="legend">
+              {legend.map(([value, kind, label]) => (
+                <div class={`legend-${kind}`}>
+                  <dt>{label}</dt>
+                  <dd>{number(value)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {retiredPositions.length > 0 && (
+            <p class="ch-note">
+              {retiredPositions.slice(0, 3).map(formatPosition).join(', ')}: {retiredLabel}
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section class="ch" data-cam="shape" aria-labelledby="shape-title">
+        <div class="ch-body">
+          <h2 id="shape-title">{es ? 'Cada empresa cambia lo que ves.' : 'Every company changes what you see.'}</h2>
+          <p>
+            {companies.length > 0
+              ? es
+                ? `Hoy ${number(companies.length)} ${companies.length === 1 ? 'pieza tiene' : 'piezas tienen'} una empresa detrás. Cada empresa aprobada convierte vidrio oscuro en una marca propia, cerca de su número. Cuantas más lleguen, más pequeña será cada pieza, hasta que el muro entero sean empresas.`
+                : `Today ${number(companies.length)} ${companies.length === 1 ? 'piece has' : 'pieces have'} a company behind them. Each approved company turns dark glass into a mark of its own, close to its number. The more that arrive, the smaller each piece gets, until the whole wall is companies.`
+              : es
+                ? 'Todavía no hay perfiles publicados. Cada empresa aprobada convertirá vidrio oscuro en una marca propia, y el muro cambiará con cada llegada.'
+                : 'No profiles are published yet. Each approved company will turn dark glass into a mark of its own, and the wall will change with every arrival.'}
+          </p>
+          {hasDemo && (
+            <p class="ch-note ch-note-demo">
+              {es
+                ? 'Las empresas de hoy son demostraciones, marcadas como «Demo». No son negocios reales.'
+                : 'The companies here today are demonstrations, marked “Demo”. They are not real businesses.'}
+            </p>
+          )}
+          {companies.length > 0 && (
+            <p class="ch-note">
+              {es
+                ? 'Los monogramas los genera THE1500 a partir del nombre; no son logotipos de las empresas. El tamaño y el color no indican rango.'
+                : 'Monograms are generated by THE1500 from each name; they are not company logos. Size and colour carry no rank.'}
+            </p>
+          )}
+        </div>
+      </section>
+
+      {sample && sampleLook && (
+        <section class="ch ch-profile" data-cam="useful" aria-labelledby="useful-title">
+          <div class="ch-body">
+            <h2 id="useful-title">{es ? 'Detrás de cada marca, una respuesta clara.' : 'Behind each mark, a straight answer.'}</h2>
+            <article class="profile" id="profile-card" style={`--bg:${sampleLook.color.bg};--ink:${sampleLook.color.ink}`}>
+              <header class="profile-head">
+                <span class="profile-mark" data-field="mark">{monogram(sample.profile.name)}</span>
+                <div>
+                  <h3 data-field="name">{sample.profile.name}</h3>
+                  <p data-field="meta">
+                    {formatPosition(sample.profile.position)}, {sample.profile.industry}, {countryName(sample.profile.country)}
+                  </p>
+                </div>
+                <span class="demo-tag" data-field="demo" hidden={!isDemoName(sample.profile.name)}>{es ? 'Demo' : 'Demo'}</span>
+              </header>
+              <dl class="profile-facts">
+                <div>
+                  <dt>{es ? 'Qué hace' : 'What it does'}</dt>
+                  <dd data-field="summary">{sample.profile.summary}</dd>
+                </div>
+                <div>
+                  <dt>{es ? 'Qué problema resuelve' : 'What it solves'}</dt>
+                  <dd data-field="problem">{sampleProblem ? `${sampleProblem.problem}\n${sampleProblem.solution}` : '—'}</dd>
+                </div>
+                <div>
+                  <dt>{es ? 'A quién atiende' : 'Who it serves'}</dt>
+                  <dd data-field="audience">{sample.profile.audiences.join(', ') || '—'}</dd>
+                </div>
+              </dl>
+              <footer class="profile-foot">
+                <a class="profile-link" data-field="link" href={sample.profile.html}>{es ? 'Ver perfil completo' : 'View full profile'}</a>
+                <div class="profile-nav">
+                  <button type="button" data-step="-1">{es ? 'Anterior' : 'Previous'}</button>
+                  <button type="button" data-step="1">{es ? 'Siguiente' : 'Next'}</button>
+                </div>
+              </footer>
+            </article>
+          </div>
+        </section>
+      )}
+
+      {sample && (
+        <section class="ch ch-identity" data-cam="identity" aria-labelledby="identity-title">
+          <div class="ch-body">
+            <h2 id="identity-title">{es ? 'Una sola versión, que personas y software entienden.' : 'One version, that people and software both understand.'}</h2>
+            <ol class="flow">
+              <li>{es ? 'La empresa cuenta qué hace.' : 'The company says what it does.'}</li>
+              <li>{es ? 'THE1500 lo ordena y muestra de dónde salió cada dato.' : 'THE1500 structures it and shows where each detail came from.'}</li>
+              <li>{es ? 'Su titular lo revisa y lo aprueba. Sin aprobación, no sale nada.' : 'Its owner reviews and approves it. Without approval, nothing goes out.'}</li>
+            </ol>
+            <div class="readers">
+              <article class="reader">
+                <p class="reader-tag">{es ? 'Lo que lee una persona' : 'What a person reads'}</p>
+                <h3 data-field="name">{sample.profile.name}</h3>
+                <p data-field="meta">{formatPosition(sample.profile.position)}, {sample.profile.industry}, {countryName(sample.profile.country)}</p>
+                <p data-field="summary">{sample.profile.summary}</p>
+                <dl class="reader-facts">
+                  <dt>{es ? 'Qué problema resuelve' : 'What it solves'}</dt>
+                  <dd data-field="problem">{sampleProblem ? `${sampleProblem.problem}\n${sampleProblem.solution}` : '—'}</dd>
+                  <dt>{es ? 'A quién atiende' : 'Who it serves'}</dt>
+                  <dd data-field="audience">{sample.profile.audiences.join(', ') || '—'}</dd>
+                </dl>
+              </article>
+              <article class="reader reader-machine">
+                <p class="reader-tag">{es ? 'Lo que lee el software' : 'What software reads'}</p>
+                <pre tabindex="0"><code data-field="machine">{JSON.stringify(sample.machine, null, 2)}</code></pre>
+              </article>
+            </div>
+            <p class="ch-note">
+              {es
+                ? 'No garantizamos inclusión ni recomendación en plataformas externas de inteligencia artificial.'
+                : 'We do not guarantee inclusion or recommendation on external AI platforms.'}
+            </p>
+          </div>
+        </section>
+      )}
+
+      <section class="ch" id="availability" data-cam="belong" aria-labelledby="belong-title">
+        <div class="ch-body">
+          <h2 id="belong-title">{belong.title}</h2>
+          <p>{belong.text}</p>
+          <div class="cta">
+            {!closed && <a class="button btn-lg" href={`${prefix}/unirse`}>{es ? 'Unirse a THE1500' : 'Join THE1500'}</a>}
+            <a class={closed ? 'button btn-lg' : 'btn-secondary btn-lg'} href={`${prefix}/empresas`}>{es ? 'Ver directorio' : 'View Directory'}</a>
+          </div>
+          {mode === 'selling' && (
+            <p class="ch-note">
+              {es
+                ? 'El número se asigna en orden al confirmarse el pago y no se elige. Las posiciones 1 a 100 son por invitación y no están en venta.'
+                : 'Your number is assigned in order when payment is confirmed, and cannot be chosen. Positions 1 to 100 are by invitation and not for sale.'}
+            </p>
+          )}
+        </div>
+      </section>
     </div>
 
-    {shownCompanies.length > 0 ? (
-      <ol class="roster">
-        {shownCompanies.map((c) => (
+    <div class="stage" id="stage" style={`--fx:${focusWide.x};--fy:${focusWide.y};--pfx:${focusTall.x};--pfy:${focusTall.y};--density:${density}`}>
+      <div class="wall" id="wall">
+        <canvas class="wall-glass" id="wall-glass" role="img" aria-label={counts
+          ? es
+            ? `Muro de 1.500 posiciones: ${legend.map(([v, , l]) => `${number(v)} ${l}`).join(', ')}.`
+            : `Wall of 1,500 positions: ${legend.map(([v, , l]) => `${number(v)} ${l}`).join(', ')}.`
+          : es ? 'Muro de 1.500 posiciones.' : 'Wall of 1,500 positions.'}></canvas>
+        <ol class:list={['tiles', { 'is-dense': dense }]} id="tiles" aria-label={es ? 'Empresas publicadas en el muro' : 'Companies published on the wall'}>
+          {companies.map((c) => {
+            const a = wide.get(c.slug);
+            const b = tall.get(c.slug);
+            if (!a || !b) return null;
+            const look = tileLook(c.slug);
+            const demo = isDemoName(c.name);
+            const style = `--c:${a.col};--r:${a.row};--w:${a.w};--h:${a.h};--ac:${a.anchorCol};--ar:${a.anchorRow};--pc:${b.col};--pr:${b.row};--pw:${b.w};--ph:${b.h};--pac:${b.anchorCol};--par:${b.anchorRow};--bg:${look.color.bg};--ink:${look.color.ink}`;
+            return (
+              <li>
+                <a
+                  class={`tile v${look.variant} size-${Math.min(4, a.w, a.h)}`}
+                  href={`${prefix}/empresas/${c.slug}`}
+                  style={style}
+                  data-slug={c.slug}
+                  data-n={c.position}
+                  data-name={c.name}
+                  data-meta={`${formatPosition(c.position)}, ${c.industry ?? ''}, ${countryName(c.country)}`}
+                  data-demo={demo ? '1' : undefined}
+                  data-mark={monogram(c.name)}
+                  aria-label={`${formatPosition(c.position)} ${c.name}${c.industry ? `, ${c.industry}` : ''}, ${countryName(c.country)}`}
+                >
+                  <span class="tile-face">
+                    <span class="tile-mark" aria-hidden="true">{monogram(c.name)}</span>
+                    <span class="tile-no" aria-hidden="true">{formatPosition(c.position)}</span>
+                    {demo && <span class="tile-demo" aria-hidden="true">Demo</span>}
+                    <span class="tile-name" aria-hidden="true">{c.name}</span>
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+      <div class="stage-shade" aria-hidden="true"></div>
+      <div class="cell-tip" id="cell-tip" hidden></div>
+    </div>
+  </div>
+
+  <aside class="plate" id="plate" hidden aria-live="polite" aria-label={es ? 'Empresa seleccionada' : 'Selected company'}>
+    <button type="button" class="plate-close" data-action="close" aria-label={es ? 'Cerrar' : 'Close'}>×</button>
+    <p class="plate-meta" data-field="meta"></p>
+    <h2 class="plate-name" data-field="name"></h2>
+    <p class="plate-demo" data-field="demo-note" hidden>{clientData.labels.demo}</p>
+    <p class="plate-summary" data-field="summary"></p>
+    <div class="plate-foot">
+      <a class="button" data-field="link" href="#">{es ? 'Ver perfil' : 'View profile'}</a>
+      <div class="profile-nav">
+        <button type="button" data-step="-1">{es ? 'Anterior' : 'Previous'}</button>
+        <button type="button" data-step="1">{es ? 'Siguiente' : 'Next'}</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="after">
+    <section id="explore" class="home-block" aria-label={es ? 'Directorio' : 'Directory'}>
+      <div class="discovery-wrap">
+        <DiscoveryHub client:visible lang={lang} />
+      </div>
+    </section>
+
+    <section id="how-it-works" class="home-block" aria-labelledby="how-title">
+      <div class="home-lead">
+        <h2 id="how-title">{es ? 'De la solicitud a tu lugar en el muro' : 'From application to your place on the wall'}</h2>
+      </div>
+      <ol class="steps">
+        {steps.map(([title, text]) => (
           <li>
-            <a href={`${prefix}/empresas/${c.slug}`}>
-              <span class="roster-number">{formatPosition(c.position)}</span>
-              <span class="roster-name">
-                {c.name}
-                {c.name.toLowerCase().startsWith('demo ') && <span class="demo-tag">{es ? 'Demostración' : 'Demo'}</span>}
-              </span>
-              <span class="roster-sector">{c.industry}</span>
-              <span class="roster-country">{countryName(c.country)}</span>
-            </a>
-          </li>
-        ))}
-        {retiredPositions.slice(0, 1).map((position) => (
-          <li class="roster-retired">
-            <span class="roster-row">
-              <span class="roster-number">{formatPosition(position)}</span>
-              <span class="roster-name">{retiredLabel}</span>
-            </span>
+            <h3>{title}</h3>
+            <p>{text}</p>
           </li>
         ))}
       </ol>
-    ) : (
-      <p class="empty-note">
-        {es
-          ? 'Aún no hay perfiles publicados. Las primeras empresas aparecerán aquí en cuanto sus titulares los aprueben.'
-          : 'No profiles are published yet. The first companies will appear here as soon as their owners approve them.'}
-      </p>
-    )}
+    </section>
 
-    <div class="discovery-wrap">
-      <DiscoveryHub client:visible lang={lang} />
-    </div>
-  </section>
-
-  <section id="how-it-works" class="home-block" aria-labelledby="how-title">
-    <div class="home-lead">
-      <h2 id="how-title">{es ? 'De la posición al perfil publicado' : 'From position to published profile'}</h2>
-    </div>
-    <ol class="steps">
-      {steps.map(([title, text]) => (
-        <li>
-          <h3>{title}</h3>
-          <p>{text}</p>
-        </li>
-      ))}
-    </ol>
-  </section>
-
-  <section id="pricing-phases" class="home-block" aria-labelledby="phases-title">
-    <div class="home-lead">
-      <h2 id="phases-title">{es ? 'Cuatro fases, un solo límite' : 'Four phases, one limit'}</h2>
-      <p>
-        {es
-          ? 'El precio sube al completarse cada fase, así que quien entra antes paga menos. Precios base, antes de los impuestos aplicables.'
-          : 'The price rises as each phase fills, so joining earlier costs less. Base prices, before applicable tax.'}
-      </p>
-    </div>
-
-    {stats && positionMap ? (
-      <ul class="phases">
-        {stats.phases.map((phase) => {
-          const parts = phaseBreakdown(positionMap, phase);
-          const isCurrent = phase.status === 'current';
-          const state =
-            phase.phase === 4
-              ? isCurrent
-                ? es ? 'Abierta, por solicitud' : 'Open, by application'
-                : phase.status === 'sold_out'
-                  ? es ? 'Completa' : 'Full'
-                  : es ? 'Futura, por solicitud' : 'Later, by application'
-              : phase.status === 'sold_out'
-                ? es ? 'Completa' : 'Full'
-                : isCurrent
-                  ? stats.checkoutOpen
-                    ? es ? 'Abierta ahora' : 'Open now'
-                    : es ? 'Venta en pausa' : 'Sales paused'
-                  : es ? 'Futura' : 'Later';
-          return (
-            <li class:list={['phase', { 'phase-current': isCurrent }]}>
-              <div class="phase-head">
-                <span class="phase-name">{es ? 'Fase' : 'Phase'} {phase.phase}</span>
-                <span class="phase-range">
-                  {es ? 'Posiciones' : 'Positions'} {number(phase.firstPosition)}–{number(phase.lastPosition)}
-                </span>
-                <span class="phase-state">{state}</span>
-              </div>
-              <div class="phase-price">{formatUsdCents(phase.priceUsdCents, lang).replace(' USD', '')}<small>USD</small></div>
-              <div class="phase-fill" aria-hidden="true">
-                <span class="fill-gone" style={`flex-grow:${parts.gone}`}></span>
-                <span class="fill-reserved" style={`flex-grow:${parts.reserved}`}></span>
-                <span class="fill-open" style={`flex-grow:${parts.open}`}></span>
-              </div>
-              <p class="phase-note">
-                {parts.reserved > 0 && (
-                  <>
-                    {es
-                      ? `${number(parts.open)} en venta y ${number(parts.reserved)} reservadas para fundadores, por invitación.`
-                      : `${number(parts.open)} for sale and ${number(parts.reserved)} reserved for founders, by invitation.`}
-                  </>
-                )}
-                {parts.reserved === 0 && (
-                  <>
-                    {phase.phase === 4
-                      ? es
-                        ? `${number(parts.open)} posiciones por solicitud y revisión de una persona, sin pago en línea.`
-                        : `${number(parts.open)} positions by application and human review, with no online checkout.`
-                      : es
-                        ? `${number(parts.open)} de ${number(parts.total)} posiciones libres.`
-                        : `${number(parts.open)} of ${number(parts.total)} positions free.`}
-                  </>
-                )}
-              </p>
-            </li>
-          );
-        })}
-      </ul>
-    ) : (
-      <p class="empty-note">
-        {es ? 'La disponibilidad no se pudo cargar. Inténtalo de nuevo en unos minutos.' : 'Availability could not be loaded. Try again in a few minutes.'}
-      </p>
-    )}
-  </section>
-
-  <section id="trust-proof" class="home-block" aria-labelledby="promise-title">
-    <div class="home-lead">
-      <h2 id="promise-title">{es ? 'Lo que prometemos, y lo que no' : 'What we promise, and what we don’t'}</h2>
-    </div>
-    <div class="promises">
-      <div>
-        <h3>{es ? 'Recibes' : 'You get'}</h3>
-        <ul>{promises.map((item) => <li>{item}</li>)}</ul>
+    <section id="trust-proof" class="home-block" aria-labelledby="promise-title">
+      <div class="home-lead">
+        <h2 id="promise-title">{es ? 'Lo que prometemos, y lo que no' : 'What we promise, and what we don’t'}</h2>
       </div>
-      <div>
-        <h3>{es ? 'No prometemos' : 'We don’t promise'}</h3>
-        <ul>{limits.map((item) => <li>{item}</li>)}</ul>
+      <div class="promises">
+        <div>
+          <h3>{es ? 'Recibes' : 'You get'}</h3>
+          <ul>{promises.map((item) => <li>{item}</li>)}</ul>
+        </div>
+        <div>
+          <h3>{es ? 'No prometemos' : 'We don’t promise'}</h3>
+          <ul>{limits.map((item) => <li>{item}</li>)}</ul>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="faq" class="home-block" aria-labelledby="faq-title">
-    <div class="home-lead">
-      <h2 id="faq-title">{es ? 'Preguntas frecuentes' : 'Questions'}</h2>
-    </div>
-    <div class="faq">
-      {faqs.map(([question, answer]) => (
-        <details>
-          <summary>{question}</summary>
-          <p>{answer}</p>
-        </details>
-      ))}
-    </div>
-  </section>
+    <section id="faq" class="home-block" aria-labelledby="faq-title">
+      <div class="home-lead">
+        <h2 id="faq-title">{es ? 'Preguntas frecuentes' : 'Questions'}</h2>
+      </div>
+      <div class="faq">
+        {faqs.map(([question, answer]) => (
+          <details>
+            <summary>{question}</summary>
+            <p>{answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
 
-  <section class="closing" aria-labelledby="closing-title">
-    <h2 id="closing-title">
-      {closed
-        ? es ? 'Las 1.500 posiciones ya tienen dueño.' : 'All 1,500 positions are taken.'
-        : es ? 'Cuando se asigne la última, se acabó.' : 'When the last one goes, that’s it.'}
-    </h2>
-    <div class="reg-cta">
-      {!closed && (
-        <a class="button btn-lg" href={`${prefix}/unirse`}>{es ? 'Unirse a THE1500' : 'Join THE1500'}</a>
-      )}
-      <a class={closed ? 'button btn-lg' : 'btn-secondary btn-lg'} href={`${prefix}/empresas`}>
-        {es ? 'Ver directorio' : 'View Directory'}
-      </a>
-    </div>
-    <p class="closing-signin">
-      {es ? '¿Ya estás dentro?' : 'Already a member?'}
-      <a href={`${prefix}/login`}>{es ? 'Iniciar sesión' : 'Sign in'}</a>
-    </p>
-  </section>
+    <section class="closing" aria-labelledby="closing-title">
+      <h2 id="closing-title">
+        {closed
+          ? es ? 'Las 1.500 posiciones ya tienen dueño.' : 'All 1,500 positions are taken.'
+          : es ? 'Cuando se asigne la última, el muro se cierra.' : 'When the last one goes, the wall is closed.'}
+      </h2>
+      <div class="cta">
+        {!closed && <a class="button btn-lg" href={`${prefix}/unirse`}>{es ? 'Unirse a THE1500' : 'Join THE1500'}</a>}
+        <a class={closed ? 'button btn-lg' : 'btn-secondary btn-lg'} href={`${prefix}/empresas`}>{es ? 'Ver directorio' : 'View Directory'}</a>
+      </div>
+    </section>
+  </div>
 
-  <div class="mobile-cta">
+  <div class="mobile-cta" id="mobile-cta">
     {!closed && <a class="button" href={`${prefix}/unirse`}>{es ? 'Unirse a THE1500' : 'Join THE1500'}</a>}
     <a class="btn-secondary" href={`${prefix}/empresas`}>{es ? 'Ver directorio' : 'View Directory'}</a>
   </div>
+
+  <script type="application/json" id="mosaic-data" set:html={clientJson}></script>
 </main>
+
+<script>
+  import '../ui/mosaic-stage';
+</script>

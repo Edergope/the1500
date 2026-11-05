@@ -63,14 +63,17 @@ async function buy(owner,companyId){
   step('Stats come from the database',`available=${s0.data.available}, tier=${s0.data.currentPhase}, mode=${s0.data.salesMode}`);
   for(const p of ['/','/unirse','/empresas','/es/','/es/unirse','/es/empresas','/login'])assert.equal((await fetch(BASE+p)).status,200,p);
   step('Public pages respond in EN and ES');
-  // UX-002: commercial copy and inventory on the Home.
-  for(const [p,headline] of [['/','1,500 companies.'],['/es/','1.500 empresas.']]){
+  // UX-003: the wall on the Home, and no phase that is not open yet.
+  for(const [p,headline] of [['/','Take your place'],['/es/','Ocupa tu lugar']]){
     const home=await (await fetch(BASE+p)).text();assert.ok(home.includes(headline),p);
-    assert.equal((home.match(/data-n="/g)||[]).length,1500,'one cell per position');
-    assert.doesNotMatch(home,/FTS5|lifetime|vitalicia|private index|índice privado|self_declared|role: owner/i,p);
+    const client=JSON.parse(home.match(/id="mosaic-data"[^>]*>([^<]*)</)[1]);assert.equal(client.map.length,1500,'one piece per position');
+    assert.doesNotMatch(home,/FTS5|lifetime|vitalicia|private index|índice privado|self_declared|role: owner|founder badge/i,p);
+    assert.doesNotMatch(home,/\$400|\$1,000|\$1\.000|\$5,066|\$5\.066|Fase 2|Phase 2|601|1,?351/,p);
   }
+  assert.deepEqual(s0.data.phases.map(p=>p.phase),[1],'only the open phase is public');
   const phase1=s0.data.phases[0];assert.equal(phase1.reservedByInvitation,100);assert.equal(phase1.forSale,500);
-  step('Home shows the 1,500 positions; founder reservation is only an aggregate; no technical jargon');
+  for(const p of ['/unirse','/es/unirse']){const join=await (await fetch(BASE+p)).text();assert.doesNotMatch(join,/\$400|\$1,000|\$1\.000|\$5,066|\$5\.066|4-Tier|4 tramos/,p);}
+  step('Home is the wall of 1,500; only the open phase and its price are public; no technical jargon');
   // ---- 1 Company registers
   const owner=await login('ana@oceanline.example');
   const again=await fetch(`${BASE}/api/v1/auth/verify`,{method:'POST',redirect:'manual',headers:{Origin:BASE,'content-type':'application/x-www-form-urlencoded'},body:`token=${owner.token}`});

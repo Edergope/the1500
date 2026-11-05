@@ -19,6 +19,7 @@ export interface InventorySummary {
   currentPriceUsdCents: number | null;
   salesMode: SalesMode;
   checkoutOpen: boolean;
+  /** Phases already open or finished. A phase not yet open is never published here. */
   phases: PhaseSummary[];
 }
 export type InventoryFailureCode =

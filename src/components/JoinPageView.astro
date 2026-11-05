@@ -15,17 +15,17 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
 <main>
   <section style="padding:clamp(1rem,3vw,2rem) 0 1.5rem 0">
     <div class="eyebrow">
-      {es ? '1.500 POSICIONES. UN DIRECTORIO GLOBAL.' : '1,500 POSITIONS. ONE GLOBAL DIRECTORY.'}
+      {es ? '1.500 posiciones. Un solo muro.' : '1,500 positions. One wall.'}
     </div>
     <h1>
       {es
-        ? 'Tu empresa existe. ¿Pueden los sistemas de información entender qué hace?'
-        : 'Your company exists. Can information systems understand what it does?'}
+        ? 'Ocupa tu lugar entre las 1.500.'
+        : 'Take your place among the 1,500.'}
     </h1>
     <p style="font-size:1.08rem;max-width:66ch">
       {es
-        ? 'THE1500 convierte información empresarial autorizada en un perfil semántico público con descripción aprobada por su titular, servicios estructurados, matriz de problemas y soluciones, y datos JSON-LD exportables.'
-        : 'THE1500 turns authorized business information into a public semantic profile with an owner-approved description, structured services, problem-solution pairs, and exportable JSON-LD.'}
+        ? 'THE1500 convierte la información de tu empresa en un perfil público ordenado, aprobado por ti: qué haces, qué problemas resuelves y a quién atiendes, en una forma que personas y software pueden leer.'
+        : 'THE1500 turns your company information into a structured public profile that you approve: what you do, the problems you solve and who you serve, in a form people and software can read.'}
     </p>
   </section>
 
@@ -38,7 +38,7 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
             <span class={`badge badge-${modeInfo.tone}`}>{modeInfo.badge}</span>
             {stats.currentPhase && (
               <span class="badge badge-slate mono">
-                {es ? `Tramo activo: ${stats.currentPhase}` : `Active tier: ${stats.currentPhase}`}
+                {es ? 'Fase actual' : 'Current release'}
               </span>
             )}
           </div>
@@ -56,8 +56,8 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
           {stats.salesMode === 'awaiting_founder_allocation' && (
             <div class="notice" style="margin-top:0.85rem;margin-bottom:0">
               {es
-                ? 'El siguiente tramo aún no está abierto. Se habilitará automáticamente cuando todas las posiciones del primer tramo estén definitivamente adjudicadas.'
-                : 'The next tier is not open yet. It opens automatically only once all positions in Tier 1 are definitively allocated.'}
+                ? 'La siguiente fase aún no está abierta. Abrirá cuando las posiciones de la fase actual estén definitivamente adjudicadas.'
+                : 'The next release is not open yet. It opens once all positions in the current release are definitively allocated.'}
             </div>
           )}
 
@@ -84,7 +84,7 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
           {stats.salesMode === 'selling' && stats.checkoutOpen ? (
             <>
               <div class="mono muted" style="font-size:0.75rem">
-                {es ? 'PRECIO DEL TRAMO ACTIVO' : 'ACTIVE TIER BASE PRICE'}
+                {es ? 'Precio base de la fase actual' : 'Base price of the current release'}
               </div>
               <div class="mono" style="font-size:2rem;font-weight:800;color:var(--gold-primary);margin:0.25rem 0">
                 {formatUsdCents(stats.currentPriceUsdCents, lang)}
@@ -99,7 +99,7 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
           ) : stats.salesMode === 'premium_admission' ? (
             <>
               <div class="mono muted" style="font-size:0.75rem">
-                {es ? 'TRAMO 4 · ADMISIÓN HUMANA' : 'TIER 4 · HUMAN ADMISSION'}
+                {es ? 'Admisión con revisión de una persona' : 'Admission with human review'}
               </div>
               <div class="mono" style="font-size:1.7rem;font-weight:800;color:var(--gold-primary);margin:0.35rem 0">
                 {formatUsdCents(stats.currentPriceUsdCents, lang)}
@@ -111,12 +111,12 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
           ) : stats.salesMode === 'awaiting_founder_allocation' ? (
             <>
               <span class="badge badge-amber" style="margin-bottom:0.65rem">
-                {es ? 'Ventas en pausa entre tramos' : 'Sales paused between tiers'}
+                {es ? 'Ventas en pausa entre fases' : 'Sales paused between releases'}
               </span>
               <p class="muted" style="font-size:0.84rem;margin-bottom:0.85rem">
                 {es
-                  ? 'Puedes crear tu cuenta y registrar tu empresa ahora para estar listo cuando abra el siguiente tramo.'
-                  : 'You may sign in and register your company now to be ready when the next tier opens.'}
+                  ? 'Puedes crear tu cuenta y registrar tu empresa ahora para estar listo cuando abra la siguiente fase.'
+                  : 'You may sign in and register your company now to be ready when the next release opens.'}
               </p>
               <a class="btn-secondary" href={es ? '/es/login' : '/login'} style="width:100%">
                 {es ? 'Crear cuenta / Registrar empresa' : 'Sign in / Register company'}
@@ -137,14 +137,14 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
     ) : (
       <p class="notice" style="margin:0">
         {es
-          ? 'El estado en vivo de tramos y disponibilidad se consulta directamente desde el servidor. No mostramos precios ni cupos estimados.'
-          : 'Live tier pricing and availability are queried directly from the server. We never display estimated prices or availability.'}
+          ? 'El precio y la disponibilidad no se pudieron cargar. No mostramos precios ni cupos estimados.'
+          : 'Price and availability could not be loaded. We never display estimated prices or availability.'}
       </p>
     )}
   </section>
 
-  <!-- Live Inventory & 4-Phase Breakdown -->
-  <InventoryTelemetry stats={stats} lang={lang} showPhases={true} />
+  <!-- Live inventory: only the release that is open -->
+  <InventoryTelemetry stats={stats} lang={lang} />
 
   <!-- Deliverables & Contractual Scope -->
   <div class="grid-2" style="margin-top:1.75rem">
@@ -164,7 +164,7 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
         </li>
         <li>
           <strong style="color:var(--text-primary)">
-            {es ? 'Perfil semántico bilingüe (EN/ES):' : 'Bilingual semantic profile (EN/ES):'}
+            {es ? 'Perfil bilingüe (EN/ES):' : 'Bilingual profile (EN/ES):'}
           </strong>{' '}
           {es
             ? 'Descripción estructurada, servicios, audiencias objetivo y pares problema-solución revisados y aprobados expresamente por el titular.'
@@ -172,11 +172,11 @@ const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
         </li>
         <li>
           <strong style="color:var(--text-primary)">
-            {es ? 'Datos estructurados exportables (Schema.org):' : 'Exportable structured data (Schema.org):'}
+            {es ? 'Datos en un formato estándar que puedes exportar:' : 'Your data in a standard format you can export:'}
           </strong>{' '}
           {es
-            ? 'Documento legible por máquinas servido en ruta dedicada y descargable desde el portal del titular.'
-            : 'Machine-readable structured document served at a dedicated endpoint and exportable from your portal.'}
+            ? 'Un documento que el software puede leer, disponible en una dirección propia y descargable desde tu cuenta.'
+            : 'A document software can read, available at its own address and downloadable from your account.'}
         </li>
         <li>
           <strong style="color:var(--text-primary)">

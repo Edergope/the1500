@@ -38,7 +38,8 @@ export async function getPublicStats(db: D1Database): Promise<PublicStats> {
     currentPriceUsdCents: sales.priceUsdCents,
     salesMode: sales.mode,
     checkoutOpen: sales.checkoutOpen,
-    phases: summaries,
+    // Decision UX-003: phases not yet open stay private. Their price and range are read by checkout once they open.
+    phases: summaries.filter(p=>p.status!=='upcoming'),
   };
 }
 /** One character per position, 1 to 1500: p published, o otherwise assigned, x retired, a open. No company is identified. */

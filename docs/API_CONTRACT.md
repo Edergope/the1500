@@ -98,7 +98,7 @@ Preview screen must:
 
 | Method, path | Query / body | Success |
 |---|---|---|
-| GET `/public/stats` | | `InventorySummary` |
+| GET `/public/stats` | | `InventorySummary`; `phases` lists only phases already open or finished |
 | GET `/public/companies` | `page,query,country,industry,service,lang` | `DirectoryResponse` (ascending position, 24 per page) |
 | GET `/public/companies/:slug` | `lang` | `PublicProfile`; 404 `PROFILE_NOT_FOUND`, also when withdrawn |
 | GET `/public/companies/:slug.json` | `lang` | Schema.org JSON-LD (`application/ld+json`); 404 with empty body |

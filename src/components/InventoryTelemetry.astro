@@ -5,10 +5,9 @@ import { formatUsdCents, salesModeCopy } from '../ui/i18n';
 interface Props {
   stats: InventorySummary | null;
   lang?: Locale;
-  showPhases?: boolean;
 }
 
-const { stats, lang = 'en', showPhases = false } = Astro.props;
+const { stats, lang = 'en' } = Astro.props;
 const es = lang === 'es';
 const modeInfo = stats ? salesModeCopy(stats.salesMode, lang) : null;
 const occupiedPct = stats ? Math.min(100, Math.round(((stats.occupied + stats.held) / 1500) * 1000) / 10) : 0;
@@ -21,12 +20,12 @@ const occupiedPct = stats ? Math.min(100, Math.round(((stats.occupied + stats.he
           <span class={`badge badge-${modeInfo.tone}`}>{modeInfo.badge}</span>
           {stats.currentPhase && (
             <span class="badge badge-slate mono">
-              {es ? `Tramo ${stats.currentPhase}` : `Tier ${stats.currentPhase}`}
+              {es ? 'Fase actual' : 'Current release'}
               {stats.currentPriceUsdCents !== null ? ` · ${formatUsdCents(stats.currentPriceUsdCents, lang)}` : ''}
             </span>
           )}
           <span class="muted mono" style="font-size:0.76rem">
-            {es ? 'Precios base antes de impuestos' : 'Base prices before tax'}
+            {es ? 'Precio base antes de impuestos' : 'Base price before tax'}
           </span>
         </div>
         <h3 style="margin:0">{modeInfo.title}</h3>
@@ -81,73 +80,6 @@ const occupiedPct = stats ? Math.min(100, Math.round(((stats.occupied + stats.he
       </div>
     </div>
 
-    {showPhases && stats.phases && stats.phases.length > 0 && (
-      <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border-subtle)">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.85rem">
-          <h4 style="margin:0;font-size:0.95rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-secondary)">
-            {es ? 'Estructura de los 4 tramos de capacidad (1–1.500)' : '4-Tier Capacity Ledger (Positions 1–1,500)'}
-          </h4>
-          <span class="muted" style="font-size:0.78rem">
-            {es ? 'Datos actualizados' : 'Live availability'}
-          </span>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.85rem">
-          {stats.phases.map((p) => {
-            const archiveClosed = stats.salesMode === 'closed_archive';
-            const isCurrent = p.status === 'current';
-            const isSoldOut = p.status === 'sold_out' || archiveClosed || p.remaining <= 0;
-            const isPremium = p.phase === 4;
-            const isOpenSale = Boolean(!isPremium && !isSoldOut && isCurrent && stats.salesMode === 'selling' && stats.checkoutOpen);
-            const isTransition = Boolean(!isPremium && !isSoldOut && isCurrent && (!stats.checkoutOpen || stats.salesMode === 'awaiting_founder_allocation'));
-            const isPremiumOpen = Boolean(isPremium && !isSoldOut && isCurrent && stats.salesMode === 'premium_admission');
-
-            let statusText = es ? 'Fase futura' : 'Future phase';
-            let badgeTone = 'badge-blue';
-            if (isSoldOut) {
-              statusText = es ? 'Agotado' : 'Sold out';
-              badgeTone = 'badge-slate';
-            } else if (isPremiumOpen) {
-              statusText = es ? 'Admisión Premium' : 'Premium admission';
-              badgeTone = 'badge-gold';
-            } else if (isOpenSale) {
-              statusText = es ? 'Venta abierta' : 'Open sale';
-              badgeTone = 'badge-gold';
-            } else if (isTransition) {
-              statusText = es ? 'En transición' : 'In transition';
-              badgeTone = 'badge-amber';
-            }
-
-            return (
-              <div
-                style={`padding:1rem;border-radius:var(--radius-md);border:1px solid ${
-                  isCurrent && !isSoldOut ? 'var(--border-gold)' : 'var(--border-subtle)'
-                };background:${isCurrent && !isSoldOut ? 'rgba(238,198,121,0.06)' : 'rgba(255,255,255,0.015)'}`}
-              >
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
-                  <span class="mono" style="font-weight:700;color:var(--text-primary)">
-                    {es ? `Tramo ${p.phase}` : `Tier ${p.phase}`}
-                  </span>
-                  <span class={`badge ${badgeTone}`}>
-                    {statusText}
-                  </span>
-                </div>
-                <div class="mono" style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.5rem">
-                  {es ? 'Posiciones' : 'Positions'} #{String(p.firstPosition).padStart(4, '0')} – #{String(p.lastPosition).padStart(4, '0')}
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:0.5rem">
-                  <span class="mono" style="font-size:1.15rem;font-weight:700;color:var(--gold-primary)">
-                    {formatUsdCents(p.priceUsdCents, lang)}
-                  </span>
-                  <span class="muted mono" style="font-size:0.78rem">
-                    {p.remaining} {es ? 'restantes' : 'remaining'}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    )}
   </section>
 ) : (
   <p class="notice">
