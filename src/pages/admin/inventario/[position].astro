@@ -1,0 +1,9 @@
+---
+import { env } from 'cloudflare:workers';
+import PositionView from '../../../components/admin/PositionView.astro';
+import { readRecord } from '../../../core/admin-console';
+import { getPositionDossier } from '../../../core/admin-ops';
+const { record, missing } = await readRecord(() => getPositionDossier(env.DB, Number(Astro.params.position)));
+if (missing) Astro.response.status = 404;
+---
+<PositionView lang="en" dossier={record} missing={missing} />

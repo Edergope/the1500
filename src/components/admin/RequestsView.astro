@@ -1,0 +1,153 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import ActionButton from './ActionButton.astro';
+import { copy, formatDate, formatNumber, stateLabel, type AdminLang } from './copy';
+import { opsCopy } from './ops-copy';
+import { getRequestCenter } from '../../core/admin-ops';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const t = copy(lang);
+const o = opsCopy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+let c: Awaited<ReturnType<typeof getRequestCenter>> | null = null;
+try { c = await getRequestCenter(env.DB); } catch (e) { console.error('admin_requests_unavailable', e instanceof Error ? e.message : String(e)); }
+type Row = Record<string, any>;
+const company = (r: Row) => `${base}/empresas/${encodeURIComponent(r.companyId)}`;
+const queues = c ? [
+  { id: 'identity', title: o.identityQueue, n: c.identity.length },
+  { id: 'profiles', title: o.profileQueue, n: c.profiles.length },
+  { id: 'premium', title: o.premiumQueue, n: c.premium.length },
+  { id: 'service', title: o.serviceQueue, n: c.service.length },
+  { id: 'reactivation', title: o.reactivationQueue, n: c.reactivation.length },
+  { id: 'review', title: o.reviewQueue, n: c.review.length },
+  { id: 'corrections', title: o.correctionsQueue, n: c.corrections.length },
+] : [];
+---
+<AdminLayout lang={lang} title={o.requests} active="requests">
+  <header class="ad-head">
+    <h1>{o.requests}</h1>
+    <p class="ad-sub">{o.requestsIntro}</p>
+  </header>
+  {!c ? <p class="ad-empty">{t.noData}</p> : (
+    <>
+      <ul class="ad-queue ad-ops-queues">
+        {queues.map((q) => <li class={q.n ? 'has-items' : ''}><a href={`#q-${q.id}`}>{q.title}</a><strong>{formatNumber(lang, q.n)}</strong></li>)}
+      </ul>
+
+      <section class="ad-panel ad-panel-wide" id="q-identity">
+        <h2>{o.identityQueue}</h2>
+        {c.identity.length === 0 ? <p class="ad-dim">{o.empty}</p> : (
+          <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>{o.company}</th><th>{t.website}</th><th>{t.country}</th><th>{o.requestedAt}</th><th><span class="ad-sr">{t.actions}</span></th></tr></thead>
+            <tbody>{(c.identity as Row[]).map((r) => (
+              <tr><td><a href={company(r)}>{r.companyName}</a></td><td class="ad-dim">{r.website ?? '—'}</td><td>{r.country}</td><td class="ad-dim ad-nowrap">{formatDate(lang, r.createdAt)}</td>
+                <td class="ad-actions"><ActionButton lang={lang} label={o.approve} endpoint="/api/v1/admin/review-company" payload={{ companyId: r.companyId, decision: 'approved' }} summary={`${t.approveIdentity}: ${r.companyName}`} />
+                  <ActionButton lang={lang} danger label={o.reject} endpoint="/api/v1/admin/review-company" payload={{ companyId: r.companyId, decision: 'rejected' }} summary={`${t.rejectIdentity}: ${r.companyName}`} /></td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </section>
+
+      <section class="ad-panel ad-panel-wide" id="q-profiles">
+        <h2>{o.profileQueue}</h2>
+        {c.profiles.length === 0 ? <p class="ad-dim">{o.empty}</p> : (
+          <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>{o.company}</th><th>{t.version}</th><th>{o.created}</th><th><span class="ad-sr">{t.actions}</span></th></tr></thead>
+            <tbody>{(c.profiles as Row[]).map((r) => (
+              <tr><td><a href={company(r)}>{r.companyName}</a></td><td class="ad-num">v{r.version}</td><td class="ad-dim ad-nowrap">{formatDate(lang, r.createdAt)}</td>
+                <td><a class="ad-btn" href={`${base}/perfiles/${encodeURIComponent(r.companyId)}/${r.version}`}>{o.review}</a></td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </section>
+
+      <section class="ad-panel ad-panel-wide" id="q-premium">
+        <h2>{o.premiumQueue}</h2>
+        {c.premium.length === 0 ? <p class="ad-dim">{o.empty}</p> : (
+          <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>{o.company}</th><th>{o.status}</th><th>{o.note}</th><th>{o.requestedAt}</th><th><span class="ad-sr">{t.actions}</span></th></tr></thead>
+            <tbody>{(c.premium as Row[]).map((r) => (
+              <tr><td><a href={company(r)}>{r.companyName}</a></td><td><State lang={lang} value={r.status === 'accepted' ? 'approved' : 'pending'} label={o.premiumStates[r.status]} /></td>
+                <td class="ad-dim">{r.note}</td><td class="ad-dim ad-nowrap">{formatDate(lang, r.createdAt)}</td>
+                <td class="ad-actions">
+                  {r.status === 'received' && <ActionButton lang={lang} label={o.inReview} endpoint="/api/v1/admin/premium/requests" payload={{ requestId: r.id, status: 'in_review' }} summary={`${o.inReview}: ${r.companyName}`} />}
+                  {r.status !== 'accepted' && <ActionButton lang={lang} label={o.accept} endpoint="/api/v1/admin/premium/requests" payload={{ requestId: r.id, status: 'accepted' }} summary={`${o.accept}: ${r.companyName}`} />}
+                  {r.status === 'accepted' && <ActionButton lang={lang} primary label={o.assignPremium} endpoint="/api/v1/admin/premium/assign" payload={{ requestId: r.id }} summary={`${o.assignPremium}: ${r.companyName}`} />}
+                  <ActionButton lang={lang} danger label={o.reject} endpoint="/api/v1/admin/premium/requests" payload={{ requestId: r.id, status: 'rejected' }} summary={`${o.reject}: ${r.companyName}`} />
+                </td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </section>
+
+      <section class="ad-panel ad-panel-wide" id="q-service">
+        <h2>{o.serviceQueue}</h2>
+        {c.service.length === 0 ? <p class="ad-dim">{o.empty}</p> : (
+          <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>{o.company}</th><th>{o.kindLabel}</th><th>{o.legal}</th><th>{o.dueDate}</th><th>{o.reason}</th><th>{o.requestedAt}</th><th><span class="ad-sr">{t.actions}</span></th></tr></thead>
+            <tbody>{(c.service as Row[]).map((r) => (
+              <tr><td><a href={company(r)}>{r.companyName}</a></td><td>{stateLabel(lang, r.kind)}</td><td class="ad-dim">{r.legalBasis ?? '—'}</td>
+                <td class="ad-nowrap">{r.legalDueAt ? <span class={r.overdue ? 'ad-tone-bad' : ''}>{formatDate(lang, r.legalDueAt)}{r.overdue && ` · ${o.overdue}`}</span> : '—'}</td>
+                <td class="ad-dim">{r.reason}</td><td class="ad-dim ad-nowrap">{formatDate(lang, r.requestedAt)}</td>
+                <td class="ad-actions">
+                  {r.kind === 'cancellation' && <ActionButton lang={lang} label={o.complete} endpoint="/api/v1/admin/requests/resolve" payload={{ requestId: r.id, decision: 'completed' }} summary={`${o.complete}: ${r.companyName}`} />}
+                  {r.kind === 'withdrawal' && <ActionButton lang={lang} primary label={o.execute} endpoint="/api/v1/admin/withdrawals/execute" payload={{ companyId: r.companyId, requestId: r.id }} summary={`${o.execute}: ${r.companyName}`} />}
+                  {r.legalBasis && (
+                    <form class="ad-int-row-form" id={`f-legal-${r.id}`} data-admin-form method="post" action="#">
+                      <input type="date" name="legalDueAt" required aria-label={o.dueDate} />
+                      <ActionButton lang={lang} form={`f-legal-${r.id}`} label={o.legalDeadline} endpoint="/api/v1/admin/requests/legal-deadline" payload={{ requestId: r.id }} summary={`${o.legalDeadline}: ${r.companyName}`} />
+                    </form>
+                  )}
+                  <ActionButton lang={lang} danger label={o.reject} endpoint="/api/v1/admin/requests/resolve" payload={{ requestId: r.id, decision: 'rejected' }} summary={`${o.reject}: ${r.companyName}`} />
+                </td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </section>
+
+      <section class="ad-panel ad-panel-wide" id="q-reactivation">
+        <h2>{o.reactivationQueue}</h2>
+        {c.reactivation.length === 0 ? <p class="ad-dim">{o.empty}</p> : (
+          <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>{o.company}</th><th>{o.requestedAt}</th><th>{o.until}</th><th><span class="ad-sr">{t.actions}</span></th></tr></thead>
+            <tbody>{(c.reactivation as Row[]).map((r) => (
+              <tr><td><a href={company(r)}>{r.companyName}</a></td><td class="ad-dim ad-nowrap">{formatDate(lang, r.requestedAt)}</td><td class="ad-dim ad-nowrap">{formatDate(lang, r.dueAt)}</td>
+                <td class="ad-actions"><ActionButton lang={lang} label={o.approveReactivation} endpoint="/api/v1/admin/onboarding/reactivation" payload={{ companyId: r.companyId, decision: 'approved' }} summary={`${o.approveReactivation}: ${r.companyName}`} />
+                  <ActionButton lang={lang} danger label={o.rejectReactivation} endpoint="/api/v1/admin/onboarding/reactivation" payload={{ companyId: r.companyId, decision: 'rejected' }} summary={`${o.rejectReactivation}: ${r.companyName}`} /></td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </section>
+
+      <section class="ad-panel ad-panel-wide" id="q-review">
+        <h2>{o.reviewQueue}</h2>
+        {c.review.length === 0 ? <p class="ad-dim">{o.empty}</p> : (
+          <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>{o.company}</th><th>{t.since}</th><th>{o.noticeDue}</th><th>{o.response}</th><th>{o.resolutionDue}</th><th><span class="ad-sr">{t.actions}</span></th></tr></thead>
+            <tbody>{(c.review as Row[]).map((r) => (
+              <tr><td><a href={company(r)}>{r.companyName}</a></td><td class="ad-dim ad-nowrap">{formatDate(lang, r.since)}</td><td class="ad-dim ad-nowrap">{formatDate(lang, r.noticeDueAt)}</td>
+                <td class="ad-dim">{r.response ?? '—'}</td>
+                <td class="ad-nowrap">{r.resolutionDueAt ? <span class={r.overdue ? 'ad-tone-bad' : ''}>{formatDate(lang, r.resolutionDueAt)}{r.overdue && ` · ${o.overdue}`}</span> : '—'}</td>
+                <td class="ad-actions">
+                  {!r.noticeRequestedAt && <ActionButton lang={lang} label={o.finalNotice} endpoint="/api/v1/admin/onboarding/final-notice" payload={{ companyId: r.companyId }} summary={`${o.finalNotice}: ${r.companyName}`} />}
+                  <ActionButton lang={lang} label={o.continueCase} endpoint="/api/v1/admin/onboarding/resolve" payload={{ companyId: r.companyId, decision: 'continue' }} summary={`${o.continueCase}: ${r.companyName}`} />
+                  <ActionButton lang={lang} danger label={o.cancelCase} endpoint="/api/v1/admin/onboarding/resolve" payload={{ companyId: r.companyId, decision: 'cancel' }} summary={`${o.cancelCase}: ${r.companyName}`} />
+                </td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </section>
+
+      <section class="ad-panel ad-panel-wide" id="q-corrections">
+        <h2>{o.correctionsQueue}</h2>
+        {c.corrections.length === 0 ? <p class="ad-dim">{o.empty}</p> : (
+          <ul class="ad-queue">{(c.corrections as Row[]).map((r) => <li class="has-items"><a href={company(r)}>{r.companyName}</a><strong>{o.until} {formatDate(lang, r.until)}</strong></li>)}</ul>
+        )}
+        <p class="ad-note">{o.correctionsHint}</p>
+      </section>
+    </>
+  )}
+</AdminLayout>

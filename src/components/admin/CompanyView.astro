@@ -2,7 +2,6 @@
 import AdminLayout from './AdminLayout.astro';
 import State from './State.astro';
 import ActionButton from './ActionButton.astro';
-import ActionDialog from './ActionDialog.astro';
 import { copy, formatDate, formatPosition, formatUsd, stateLabel, type AdminLang } from './copy';
 import type { getCompanyDossier } from '../../core/admin-console';
 
@@ -103,7 +102,6 @@ const actionLabel = (action: string) => action.replace(/^consent_/, '').replace(
           </table></div>
         )}
       </section>
-      <ActionDialog lang={lang} />
     </>
   )}
 </AdminLayout>

@@ -1,0 +1,54 @@
+---
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import ActionButton from './ActionButton.astro';
+import { copy, formatDate, stateLabel, type AdminLang } from './copy';
+import { opsCopy } from './ops-copy';
+import type { getIncidentDossier } from '../../core/admin-ops';
+
+interface Props { lang: AdminLang; dossier: Awaited<ReturnType<typeof getIncidentDossier>> | null; missing: boolean; }
+const { lang, dossier: d, missing } = Astro.props;
+const t = copy(lang);
+const o = opsCopy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const i = d?.incident as Record<string, any> | undefined;
+type Row = Record<string, any>;
+---
+<AdminLayout lang={lang} title={o.incidents} active="incidents">
+  <a class="ad-back" href={`${base}/incidencias`}>{o.backIncidents}</a>
+  {!d || !i ? <p class="ad-empty">{missing ? o.noIncidents : t.noData}</p> : (
+    <>
+      <header class="ad-head ad-head-record">
+        <div>
+          <h1><code>{i.kind}</code></h1>
+          <p class="ad-sub"><State lang={lang} value={i.severity === 'info' ? 'plain' : i.severity} label={stateLabel(lang, i.severity)} /><State lang={lang} value={i.status} /><span>{o.opened} {formatDate(lang, i.createdAt)}</span></p>
+        </div>
+        {i.status === 'open' && <div class="ad-actions"><ActionButton lang={lang} primary label={o.resolve} endpoint="/api/v1/admin/incidents/resolve" payload={{ incidentId: i.id }} summary={`${o.resolve}: ${i.kind}`} /></div>}
+      </header>
+      <div class="ad-columns">
+        <section class="ad-panel">
+          <h2>{o.related}</h2>
+          <dl class="ad-rows ad-rows-text">
+            <div><dt>{o.company}</dt><dd>{i.companyId ? <a href={`${base}/empresas/${encodeURIComponent(i.companyId)}`}>{i.companyName ?? i.companyId}</a> : '—'}</dd></div>
+            <div><dt>{o.payment}</dt><dd>{i.attemptId ? <a href={`${base}/pagos/${encodeURIComponent(i.attemptId)}`}>{i.attemptId}</a> : '—'}</dd></div>
+            <div><dt>{o.resolvedBy}</dt><dd>{i.resolvedBy ?? '—'}</dd></div>
+            <div><dt>{o.resolution}</dt><dd>{i.resolutionCode ?? '—'} {i.resolvedAt && <small>{formatDate(lang, i.resolvedAt)}</small>}</dd></div>
+          </dl>
+        </section>
+        <section class="ad-panel">
+          <h2>{o.details}</h2>
+          <pre class="ad-ops-json">{JSON.stringify(i.details ?? {}, null, 2)}</pre>
+        </section>
+      </div>
+      <section class="ad-panel ad-panel-wide">
+        <h2>{o.history}</h2>
+        {d.events.length === 0 ? <p class="ad-dim">{o.noHistory}</p> : (
+          <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>{o.when}</th><th>{o.action}</th><th>{t.actor}</th><th>{t.reason}</th><th>{t.evidence}</th></tr></thead>
+            <tbody>{(d.events as Row[]).map((e) => <tr><td class="ad-nowrap ad-num">{formatDate(lang, e.at)}</td><td>{e.action}</td><td>{e.actor ?? '—'}</td><td>{e.reasonCode ?? '—'}</td><td class="ad-dim">{e.evidence ?? '—'}</td></tr>)}</tbody>
+          </table></div>
+        )}
+      </section>
+    </>
+  )}
+</AdminLayout>

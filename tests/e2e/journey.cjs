@@ -27,6 +27,14 @@ async function api(method,url,{cookie,body,headers={},origin=true}={}){
   return {status:r.status,data,headers:r.headers};
 }
 let keyN=0;const idem=()=>({'Idempotency-Key':`e2e_idempotency_key_${String(++keyN).padStart(5,'0')}`});
+/** ADMIN-OPS: irreversible actions need a re-authentication of the session through a link sent to the administrator's own mailbox. */
+async function reauthenticate(cookie,email){
+  const n=up.state.emails.length;
+  const r=await api('POST','/api/v1/admin/reauth/request',{cookie,body:{locale:'en'}});assert.equal(r.status,200,JSON.stringify(r.data));
+  const mail=up.state.emails.slice(n).find(m=>m.to[0]===email);assert.ok(mail,'re-authentication link sent to '+email);
+  const token=mail.text.match(/token=([a-f0-9]{64})/)[1];
+  assert.equal((await api('POST','/api/v1/admin/reauth/confirm',{cookie,body:{token}})).status,200);
+}
 async function login(email,locale='en'){
   const n=up.state.emails.length;
   const r=await api('POST','/api/v1/auth/request-link',{body:{email,locale}});assert.equal(r.status,202);
@@ -192,6 +200,9 @@ async function buy(owner,companyId){
   assert.equal((await api('GET',`/api/v1/me/company?companyId=${fReg.data.id}`,{cookie:fOwner.cookie})).data.founderInvitation.status,'accepted');
   assert.equal((await api('POST','/api/v1/admin/founder-award',{cookie:fOwner.cookie,body:{invitationId:invite.data.invitationId,reasonCode:'selected',evidenceReference:'x'}})).status,403);
   assert.equal((await api('GET','/api/v1/admin/founder-award',{cookie:adminUser.cookie})).data.invitations.length,1);
+  const early=await api('POST','/api/v1/admin/founder-award',{cookie:adminUser.cookie,body:{invitationId:invite.data.invitationId,reasonCode:'selected',evidenceReference:'selection-case-1'}});
+  assert.equal(early.status,403);assert.equal(early.data.error.code,'REAUTH_REQUIRED','an award needs a fresh identity check');
+  await reauthenticate(adminUser.cookie,'root@the1500.example');
   const awd=await api('POST','/api/v1/admin/founder-award',{cookie:adminUser.cookie,body:{invitationId:invite.data.invitationId,reasonCode:'selected',evidenceReference:'selection-case-1'}});
   assert.equal(awd.data.slotNumber,1);
   step('Founder path: invited, accepted with terms, then awarded by an admin in 1-100',`position=${awd.data.slotNumber}`);

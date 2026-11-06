@@ -1,0 +1,69 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import Pager from './Pager.astro';
+import { copy, formatDate, formatNumber, formatPosition, formatUsd, stateLabel, type AdminLang } from './copy';
+import { opsCopy } from './ops-copy';
+import { ACTIONABLE_PAYMENTS, PAYMENT_STATES, listPaymentsPage } from '../../core/admin-ops';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const t = copy(lang);
+const o = opsCopy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const p = Astro.url.searchParams;
+const status = (PAYMENT_STATES as readonly string[]).includes(p.get('status') ?? '') ? p.get('status')! : undefined;
+const provider = ['stripe', 'bank', 'manual'].includes(p.get('provider') ?? '') ? p.get('provider')! : undefined;
+const LIMIT = 50;
+const rawOffset = Number(p.get('offset') ?? 0);
+const offset = Number.isSafeInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+let list: Awaited<ReturnType<typeof listPaymentsPage>> | null = null;
+try { list = await listPaymentsPage(env.DB, { status, provider, limit: LIMIT, offset }); } catch (e) { console.error('admin_payments_unavailable', e instanceof Error ? e.message : String(e)); }
+type Row = Record<string, any>;
+---
+<AdminLayout lang={lang} title={o.payments} active="payments">
+  <header class="ad-head">
+    <h1>{o.payments}</h1>
+    <p class="ad-sub">{o.paymentsIntro}</p>
+  </header>
+  {!list ? <p class="ad-empty">{t.noData}</p> : (
+    <>
+      <section class="ad-panel ad-panel-wide">
+        <h2>{o.attention}</h2>
+        <ul class="ad-queue ad-ops-queues">
+          {ACTIONABLE_PAYMENTS.map((st) => { const n = (list!.counts as Record<string, number>)[st] ?? 0; return <li class={n ? 'has-items' : ''}><a href={`${base}/pagos?status=${st}`}>{stateLabel(lang, st)}</a><strong>{formatNumber(lang, n)}</strong></li>; })}
+        </ul>
+      </section>
+      <form class="ad-filters" method="get">
+        <label>{o.status}<select name="status"><option value="">{o.any}</option>{PAYMENT_STATES.map((v) => <option value={v} selected={status === v}>{stateLabel(lang, v)}</option>)}</select></label>
+        <label>{o.provider}<select name="provider"><option value="">{o.any}</option>{['stripe', 'bank', 'manual'].map((v) => <option value={v} selected={provider === v}>{v}</option>)}</select></label>
+        <div class="ad-filter-actions"><button class="ad-btn ad-btn-primary" type="submit">{o.apply}</button><a class="ad-btn" href={`${base}/pagos`}>{o.clear}</a></div>
+      </form>
+      {list.rows.length === 0 ? <p class="ad-empty">{o.noPayments}</p> : (
+        <div class="ad-table-wrap">
+          <table class="ad-table">
+            <thead><tr><th>{o.created}</th><th>{o.company}</th><th>{o.provider}</th><th>{o.amount}</th><th>{o.currency}</th><th>{o.status}</th><th>{o.position}</th><th>{o.paidAt}</th><th>{o.refund}</th><th>{o.openIncidents}</th></tr></thead>
+            <tbody>
+              {(list.rows as Row[]).map((a) => (
+                <tr>
+                  <td class="ad-nowrap"><a href={`${base}/pagos/${encodeURIComponent(a.id)}`}>{formatDate(lang, a.createdAt)}</a></td>
+                  <td><a href={`${base}/empresas/${encodeURIComponent(a.companyId)}`}>{a.companyName}</a></td>
+                  <td class="ad-dim">{a.provider}</td>
+                  <td class="ad-num">{formatUsd(lang, a.amountUsdCents)}</td>
+                  <td class="ad-dim">{String(a.currency ?? '').toUpperCase()}</td>
+                  <td><State lang={lang} value={a.status} /></td>
+                  <td class="ad-num">{a.position ? <a href={`${base}/inventario/${a.position}`}>{formatPosition(a.position)}</a> : '—'}</td>
+                  <td class="ad-dim ad-nowrap">{formatDate(lang, a.paidAt)}</td>
+                  <td class="ad-dim ad-nowrap">{a.refundConfirmedAt ? formatDate(lang, a.refundConfirmedAt) : a.refundRequestedAt ? `${stateLabel(lang, 'requested')} ${formatDate(lang, a.refundRequestedAt)}` : '—'}</td>
+                  <td class="ad-num">{a.openIncidents || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Pager lang={lang} total={null} hasMore={list.hasMore} count={list.rows.length} limit={LIMIT} offset={offset} />
+    </>
+  )}
+</AdminLayout>

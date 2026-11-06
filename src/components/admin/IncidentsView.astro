@@ -1,0 +1,66 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import Pager from './Pager.astro';
+import { copy, formatDate, formatNumber, stateLabel, type AdminLang } from './copy';
+import { opsCopy } from './ops-copy';
+import { INCIDENT_SEVERITIES, listIncidentsPage } from '../../core/admin-ops';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const t = copy(lang);
+const o = opsCopy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const p = Astro.url.searchParams;
+const status = p.get('status') === 'resolved' ? 'resolved' : 'open';
+const severity = (INCIDENT_SEVERITIES as readonly string[]).includes(p.get('severity') ?? '') ? p.get('severity')! : undefined;
+const LIMIT = 50;
+const rawOffset = Number(p.get('offset') ?? 0);
+const offset = Number.isSafeInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+let list: Awaited<ReturnType<typeof listIncidentsPage>> | null = null;
+try { list = await listIncidentsPage(env.DB, { status, severity, limit: LIMIT, offset }); } catch (e) { console.error('admin_incidents_unavailable', e instanceof Error ? e.message : String(e)); }
+type Row = Record<string, any>;
+---
+<AdminLayout lang={lang} title={o.incidents} active="incidents">
+  <header class="ad-head">
+    <h1>{o.incidents}</h1>
+    <p class="ad-sub">{o.incidentsIntro}</p>
+  </header>
+  {!list ? <p class="ad-empty">{t.noData}</p> : (
+    <>
+      <section class="ad-panel ad-panel-wide">
+        <h2>{o.openOnly}</h2>
+        <ul class="ad-queue ad-ops-queues">
+          {['critical', 'warning', 'info'].map((sv) => { const n = (list!.openBySeverity as Record<string, number>)[sv] ?? 0; return <li class={n ? 'has-items' : ''}><a href={`${base}/incidencias?severity=${sv}`}>{stateLabel(lang, sv)}</a><strong>{formatNumber(lang, n)}</strong></li>; })}
+        </ul>
+      </section>
+      <form class="ad-filters" method="get">
+        <label>{o.status}<select name="status"><option value="open" selected={status === 'open'}>{o.openOnly}</option><option value="resolved" selected={status === 'resolved'}>{o.resolvedOnly}</option></select></label>
+        <label>{o.severity}<select name="severity"><option value="">{o.any}</option>{INCIDENT_SEVERITIES.map((v) => <option value={v} selected={severity === v}>{stateLabel(lang, v)}</option>)}</select></label>
+        <div class="ad-filter-actions"><button class="ad-btn ad-btn-primary" type="submit">{o.apply}</button><a class="ad-btn" href={`${base}/incidencias`}>{o.clear}</a></div>
+      </form>
+      {list.rows.length === 0 ? <p class="ad-empty">{o.noIncidents}</p> : (
+        <div class="ad-table-wrap">
+          <table class="ad-table">
+            <thead><tr><th>{o.opened}</th><th>{o.severity}</th><th>{o.kindLabel}</th><th>{o.company}</th><th>{o.status}</th><th>{o.resolvedBy}</th><th>{o.resolution}</th></tr></thead>
+            <tbody>
+              {(list.rows as Row[]).map((i) => (
+                <tr>
+                  <td class="ad-nowrap"><a href={`${base}/incidencias/${encodeURIComponent(i.id)}`}>{formatDate(lang, i.createdAt)}</a></td>
+                  <td><State lang={lang} value={i.severity === 'critical' ? 'critical' : i.severity === 'warning' ? 'warning' : 'plain'} label={stateLabel(lang, i.severity)} /></td>
+                  <td><code>{i.kind}</code></td>
+                  <td>{i.companyId ? <a href={`${base}/empresas/${encodeURIComponent(i.companyId)}`}>{i.companyName ?? i.companyId}</a> : '—'}</td>
+                  <td><State lang={lang} value={i.status} /></td>
+                  <td class="ad-dim">{i.resolvedBy ?? '—'}</td>
+                  <td class="ad-dim">{i.resolutionCode ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Pager lang={lang} total={null} hasMore={list.hasMore} count={list.rows.length} limit={LIMIT} offset={offset} />
+    </>
+  )}
+</AdminLayout>

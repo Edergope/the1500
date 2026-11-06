@@ -123,6 +123,9 @@ export const ERROR_MESSAGES:Record<string,{en:string;es:string}>={
   MASTER_KEY_INVALID:{en:'The master key is not valid: it must be 32 bytes in base64.',es:'La clave maestra no es válida: deben ser 32 bytes en base64.'},
   MASTER_KEY_VERSION_MISMATCH:{en:'This credential was sealed with another master key version.',es:'Esta credencial se cifró con otra versión de la clave maestra.'},
   CREDENTIAL_UNREADABLE:{en:'A stored credential could not be opened. Register it again.',es:'No se pudo abrir una credencial guardada. Regístrala de nuevo.'},
+  RESEND_TEST_RECIPIENT_ONLY:{en:'Without its own domain, the test sender only delivers to the owner of the Resend account.',es:'Sin dominio propio, el remitente de pruebas solo entrega al dueño de la cuenta de Resend.'},
+  POSITION_NOT_FOUND:{en:'That position does not exist.',es:'Esa posición no existe.'},
+  INCIDENT_NOT_FOUND:{en:'Incident not found.',es:'Incidencia no encontrada.'},
 };
 export function negotiateLocale(request:Request):Locale {
   const explicit=new URL(request.url).searchParams.get('lang')||request.headers.get('X-Locale');

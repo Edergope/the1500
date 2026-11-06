@@ -47,6 +47,11 @@ function resendProvider(env:MailEnv):MailProvider {
         const data=await response.json().catch(()=>null) as {id?:string}|null;
         return {accepted:true,provider:name,messageId:data?.id??null};
       }
+      // Resend's test sender (onboarding@resend.dev) only delivers to the account owner's own address. That refuses this
+      // recipient, not the provider: every other message, the owner's included, still goes through.
+      const error=await response.json().catch(()=>null) as {name?:string;message?:string}|null;
+      if (response.status===403&&error?.name==='validation_error'&&/only send testing emails/i.test(error.message??''))
+        return {accepted:false,provider:name,failure:'rejected',code:'RESEND_TEST_RECIPIENT_ONLY'};
       const failure:MailFailure=[401,403,429].includes(response.status)?'blocked':response.status>=400&&response.status<500?'rejected':'transient';
       return {accepted:false,provider:name,failure,code:`HTTP_${response.status}`};
     } catch {return {accepted:false,provider:name,failure:'transient',code:NETWORK_FAILURE};}

@@ -41,8 +41,8 @@ const dictionary={
     actions:{integration_credential_saved:'Credential registered',integration_credential_disabled:'Credential disabled',integration_enabled:'Switched on',integration_disabled:'Switched off',
       integration_settings_saved:'Settings saved',integration_ai_function_saved:'AI model changed',integration_mail_selected:'Email provider chosen',integration_checked:'Connection checked',
       integration_mail_tested:'Test message sent',admin_reauthenticated:'Identity confirmed'} as Record<string,string>,
-    reauthTitle:'Confirm it is you',reauthText:'This link confirms your identity in this browser for 15 minutes, so you can change integrations.',reauthConfirm:'Confirm',reauthMissing:'The link is incomplete. Request a new one from Integrations.',
-    back:'Back to integrations',
+    reauthTitle:'Confirm it is you',reauthText:'This link confirms your identity in this browser for 15 minutes, for irreversible actions and integration changes.',reauthConfirm:'Confirm',reauthMissing:'The link is incomplete. Request a new one with “Confirm identity” in the side bar.',
+    back:'Back to integrations',backPanel:'Back to the control center',
   },
   es:{
     title:'Integraciones',intro:'Proveedores externos que usa THE1500. Los valores que registres se cifran en el servidor y no se vuelven a mostrar.',
@@ -85,8 +85,8 @@ const dictionary={
     actions:{integration_credential_saved:'Credencial registrada',integration_credential_disabled:'Credencial desactivada',integration_enabled:'Activado',integration_disabled:'Desactivado',
       integration_settings_saved:'Configuración guardada',integration_ai_function_saved:'Modelo de IA cambiado',integration_mail_selected:'Proveedor de correo elegido',integration_checked:'Conexión verificada',
       integration_mail_tested:'Mensaje de prueba enviado',admin_reauthenticated:'Identidad confirmada'} as Record<string,string>,
-    reauthTitle:'Confirma que eres tú',reauthText:'Este enlace confirma tu identidad en este navegador durante 15 minutos, para que puedas cambiar las integraciones.',reauthConfirm:'Confirmar',reauthMissing:'El enlace está incompleto. Pide uno nuevo desde Integraciones.',
-    back:'Volver a integraciones',
+    reauthTitle:'Confirma que eres tú',reauthText:'Este enlace confirma tu identidad en este navegador durante 15 minutos, para acciones irreversibles y cambios de integraciones.',reauthConfirm:'Confirmar',reauthMissing:'El enlace está incompleto. Pide uno nuevo con «Confirmar identidad» en la barra lateral.',
+    back:'Volver a integraciones',backPanel:'Volver al centro de control',
   },
 };
 export const integrationsCopy=(lang:AdminLang)=>dictionary[lang];

@@ -7,7 +7,7 @@
   "triggers": {"crons": ["*/5 * * * *"]},
   "workers_dev": true,
   "send_email": [{"name": "EMAIL"}],
-  "vars": {"MAIL_PROVIDER": "cloudflare", "PAYMENTS_ENABLED": "false", "AI_PROVIDER": "anthropic", "PUBLIC_BASE_URL": "https://the1500-staging.admonpalmerafood.workers.dev"},
+  "vars": {"MAIL_PROVIDER": "resend", "MAIL_FROM": "THE1500 <onboarding@resend.dev>", "PAYMENTS_ENABLED": "false", "AI_PROVIDER": "anthropic", "PUBLIC_BASE_URL": "https://the1500-staging.admonpalmerafood.workers.dev"},
   "r2_buckets": [{"binding": "SNAPSHOTS", "bucket_name": "the1500-staging-snapshots"}],
   "d1_databases": [{
     "binding": "DB",

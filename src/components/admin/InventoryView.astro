@@ -1,0 +1,103 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import Pager from './Pager.astro';
+import { copy, formatDate, formatNumber, formatPosition, formatUsd, stateLabel, type AdminLang } from './copy';
+import { opsCopy } from './ops-copy';
+import { ASSIGNMENT_KINDS, POSITION_STATES, getInventoryBoard } from '../../core/admin-ops';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const t = copy(lang);
+const o = opsCopy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const p = Astro.url.searchParams;
+const num = (name: string, max: number) => { const n = Number(p.get(name)); return Number.isSafeInteger(n) && n >= 1 && n <= max ? n : undefined; };
+const pick = <T extends string>(name: string, allowed: readonly T[]) => { const v = p.get(name) ?? ''; return (allowed as readonly string[]).includes(v) ? (v as T) : undefined; };
+const LIMIT = 100;
+const rawOffset = Number(p.get('offset') ?? 0);
+const filters = {
+  state: pick('state', POSITION_STATES), kind: pick('kind', ASSIGNMENT_KINDS), phase: num('phase', 4), from: num('from', 1500), to: num('to', 1500),
+  company: p.get('company')?.trim().slice(0, 100) || undefined, limit: LIMIT, offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0,
+};
+let board: Awaited<ReturnType<typeof getInventoryBoard>> | null = null;
+try { board = await getInventoryBoard(env.DB, filters); } catch (e) { console.error('admin_inventory_unavailable', e instanceof Error ? e.message : String(e)); }
+const s = board?.summary;
+const tone: Record<string, string> = { a: 'open', h: 'held', o: 'assigned', p: 'published', x: 'retired' };
+const label: Record<string, string> = { a: o.legendOpen, h: o.legendHeld, o: o.legendAssigned, p: o.legendPublished, x: o.legendRetired };
+const stateNames: Record<string, string> = { available: o.available, held: o.held, assigned: o.assigned, published: o.published, retired: o.retired };
+---
+<AdminLayout lang={lang} title={o.inventory} active="inventory">
+  <header class="ad-head">
+    <h1>{o.inventory}</h1>
+    <p class="ad-sub">{o.inventoryIntro}</p>
+  </header>
+  {!board || !s ? <p class="ad-empty">{t.noData}</p> : (
+    <>
+      <section class="ad-band" aria-label={o.board}>
+        <div class="ad-band-title">
+          <h2>{o.board}</h2>
+          <p class="ad-big"><em>{formatNumber(lang, s.capacity - s.available - s.held)}</em> {t.capacity}</p>
+        </div>
+        <dl class="ad-figures">
+          <div><dt>{o.available}</dt><dd>{formatNumber(lang, s.available)}</dd></div>
+          <div><dt>{o.held}</dt><dd>{formatNumber(lang, s.held)}</dd></div>
+          <div><dt>{o.assigned}</dt><dd>{formatNumber(lang, s.assigned)}</dd></div>
+          <div><dt>{o.published}</dt><dd>{formatNumber(lang, s.published)}</dd></div>
+          <div><dt>{o.retired}</dt><dd>{formatNumber(lang, s.retired)}</dd></div>
+          <div><dt>{o.currentPhase}</dt><dd class="ad-dd-text">{s.currentPhase ?? '—'} · {formatUsd(lang, s.currentPriceUsdCents)}</dd></div>
+          <div><dt>{o.salesMode}</dt><dd class="ad-dd-text"><State lang={lang} value={s.salesMode} /></dd></div>
+        </dl>
+      </section>
+
+      <section class="ad-panel ad-panel-wide">
+        <h2>{o.board}</h2>
+        <ul class="ad-legend">{Object.entries(label).map(([k, v]) => <li><span class={`ad-cell is-${tone[k]}`}></span>{v}</li>)}</ul>
+        <div class="ad-board" role="list" aria-label={o.board}>
+          {board.map.split('').map((c, i) => <a role="listitem" class={`ad-cell is-${tone[c] ?? 'open'}`} href={`${base}/inventario/${i + 1}`} title={`${formatPosition(i + 1)} · ${label[c] ?? ''}`} aria-label={`${formatPosition(i + 1)} ${label[c] ?? ''}`}></a>)}
+        </div>
+      </section>
+
+      <section class="ad-panel ad-panel-wide">
+        <h2>{o.activeHolds}</h2>
+        {board.holds.length === 0 ? <p class="ad-dim">{o.noHolds}</p> : (
+          <ul class="ad-queue">{board.holds.map((h) => <li class="has-items"><span><a href={`${base}/inventario/${h.position}`}>{formatPosition(h.position)}</a> · <a href={`${base}/empresas/${encodeURIComponent(h.companyId)}`}>{h.companyName}</a></span><strong>{o.expires} {formatDate(lang, h.expiresAt)}</strong></li>)}</ul>
+        )}
+      </section>
+
+      <form class="ad-filters" method="get">
+        <label>{o.state}<select name="state"><option value="">{o.any}</option>{POSITION_STATES.map((v) => <option value={v} selected={filters.state === v}>{stateNames[v]}</option>)}</select></label>
+        <label>{o.kind}<select name="kind"><option value="">{o.any}</option>{ASSIGNMENT_KINDS.map((v) => <option value={v} selected={filters.kind === v}>{stateLabel(lang, v)}</option>)}</select></label>
+        <label class="is-short">{o.phase}<select name="phase"><option value="">{o.any}</option>{[1, 2, 3, 4].map((v) => <option value={v} selected={filters.phase === v}>{v}</option>)}</select></label>
+        <label class="is-short">{o.from}<input name="from" type="number" min="1" max="1500" value={filters.from ?? ''} /></label>
+        <label class="is-short">{o.to}<input name="to" type="number" min="1" max="1500" value={filters.to ?? ''} /></label>
+        <label>{o.company}<input name="company" value={filters.company ?? ''} maxlength="100" /></label>
+        <div class="ad-filter-actions"><button class="ad-btn ad-btn-primary" type="submit">{o.apply}</button><a class="ad-btn" href={`${base}/inventario`}>{o.clear}</a></div>
+      </form>
+      {board.positions.rows.length === 0 ? <p class="ad-empty">{o.noPositions}</p> : (
+        <div class="ad-table-wrap">
+          <table class="ad-table">
+            <thead><tr><th>{o.position}</th><th>{o.state}</th><th>{o.company}</th><th>{o.kind}</th><th>{o.phase}</th><th>{o.price}</th><th>{o.assignedAt}</th><th>{o.firstPublished}</th></tr></thead>
+            <tbody>
+              {board.positions.rows.map((r) => (
+                <tr>
+                  <td class="ad-num"><a href={`${base}/inventario/${r.position}`}>{formatPosition(r.position)}</a></td>
+                  <td><State lang={lang} value={r.state === 'published' ? 'published' : r.status} label={stateNames[r.state === 'published' ? 'published' : r.status === 'available' ? 'available' : r.status]} /></td>
+                  <td>{r.companyId ? <a href={`${base}/empresas/${encodeURIComponent(r.companyId)}`}>{r.companyName}</a> : <span class="ad-dim">—</span>}</td>
+                  <td class="ad-dim">{r.assignmentKind ? stateLabel(lang, r.assignmentKind) : '—'}</td>
+                  <td class="ad-num">{r.phase}</td>
+                  <td class="ad-num">{formatUsd(lang, r.priceUsdCents)}</td>
+                  <td class="ad-dim ad-nowrap">{formatDate(lang, r.assignedAt)}</td>
+                  <td class="ad-dim ad-nowrap">{formatDate(lang, r.firstPublishedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Pager lang={lang} total={null} hasMore={board.positions.hasMore} count={board.positions.rows.length} limit={LIMIT} offset={filters.offset} />
+      <p class="ad-note">{t.positionNote}</p>
+    </>
+  )}
+</AdminLayout>

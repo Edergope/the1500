@@ -1,0 +1,73 @@
+---
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import { copy, formatDate, formatPosition, formatUsd, stateLabel, type AdminLang } from './copy';
+import { opsCopy } from './ops-copy';
+import type { getPositionDossier } from '../../core/admin-ops';
+
+interface Props { lang: AdminLang; dossier: Awaited<ReturnType<typeof getPositionDossier>> | null; missing: boolean; }
+const { lang, dossier: d, missing } = Astro.props;
+const t = copy(lang);
+const o = opsCopy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const s = d?.position as Record<string, any> | undefined;
+---
+<AdminLayout lang={lang} title={s ? formatPosition(s.position) : o.inventory} active="inventory">
+  <a class="ad-back" href={`${base}/inventario`}>{o.backInventory}</a>
+  {!d || !s ? <p class="ad-empty">{missing ? o.noPositions : t.noData}</p> : (
+    <>
+      <header class="ad-head ad-head-record">
+        <div>
+          <h1>{formatPosition(s.position)} <span class="ad-h1-num">{o.phase} {s.phase} · {formatUsd(lang, s.priceUsdCents)}</span></h1>
+          <p class="ad-sub"><State lang={lang} value={s.status} />{s.assignmentKind && <span>{stateLabel(lang, s.assignmentKind)}</span>}
+            {s.companyId ? <a href={`${base}/empresas/${encodeURIComponent(s.companyId)}`}>{s.companyName}</a> : <span class="ad-dim">{o.noCompany}</span>}</p>
+        </div>
+      </header>
+      {s.locked && <p class="ad-note ad-ops-lock">{o.locked}</p>}
+      <div class="ad-columns">
+        <section class="ad-panel">
+          <h2>{o.position}</h2>
+          <dl class="ad-rows ad-rows-text">
+            <div><dt>{o.state}</dt><dd><State lang={lang} value={s.status} /></dd></div>
+            <div><dt>{o.kind}</dt><dd>{s.assignmentKind ? stateLabel(lang, s.assignmentKind) : '—'}</dd></div>
+            <div><dt>{o.assignedAt}</dt><dd>{formatDate(lang, s.assignedAt)}</dd></div>
+            <div><dt>{o.firstPublished}</dt><dd>{formatDate(lang, s.firstPublishedAt)}</dd></div>
+            {s.heldUntil && <div><dt>{o.heldUntil}</dt><dd>{formatDate(lang, s.heldUntil)}</dd></div>}
+            {s.companyId && <div><dt>{t.publication}</dt><dd><State lang={lang} value={s.publicationStatus} /></dd></div>}
+          </dl>
+          <p class="ad-note">{t.positionNote}</p>
+        </section>
+        <section class="ad-panel">
+          <h2>{o.awardsHistory}</h2>
+          {d.founderAwards.length === 0 ? <p class="ad-dim">{o.noEvents}</p> : (
+            <ul class="ad-people">{(d.founderAwards as Record<string, any>[]).map((a) => <li><span>{a.companyName}</span><State lang={lang} value={a.status} /><small>{formatDate(lang, a.awardedAt)}</small></li>)}</ul>
+          )}
+          <h2 class="ad-h2-next">{o.attempts}</h2>
+          {d.attempts.length === 0 ? <p class="ad-dim">{o.noEvents}</p> : (
+            <ul class="ad-people">{(d.attempts as Record<string, any>[]).map((a) => <li><a href={`${base}/pagos/${encodeURIComponent(a.id)}`}>{formatDate(lang, a.createdAt)}</a><State lang={lang} value={a.status} /><small>{formatUsd(lang, a.amountUsdCents)}</small></li>)}</ul>
+          )}
+        </section>
+      </div>
+      <section class="ad-panel ad-panel-wide">
+        <h2>{o.history}</h2>
+        {d.history.length === 0 ? <p class="ad-dim">{o.noHistory}</p> : (
+          <div class="ad-table-wrap">
+            <table class="ad-table">
+              <thead><tr><th>{o.when}</th><th>{o.action}</th><th>{o.company}</th><th>{o.reference}</th></tr></thead>
+              <tbody>
+                {(d.history as Record<string, any>[]).map((h) => (
+                  <tr>
+                    <td class="ad-nowrap ad-num">{formatDate(lang, h.at)}</td>
+                    <td>{o.audit[h.action] ?? h.action}</td>
+                    <td>{h.companyId ? <a href={`${base}/empresas/${encodeURIComponent(h.companyId)}`}>{h.companyName ?? h.companyId}</a> : '—'}</td>
+                    <td class="ad-dim"><code>{h.reference ?? '—'}</code></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  )}
+</AdminLayout>

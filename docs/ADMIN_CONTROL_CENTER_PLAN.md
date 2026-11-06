@@ -154,7 +154,7 @@ Migración 0011 (solo índices del panel)
         │
 ADMIN-002 (secretos, IA, correo)  ── migración 0012
         │
-PAY-002 (contrato, Mercado Pago en pruebas)  ── migración 0013
+PAY-002 (contrato, Mercado Pago en pruebas)  ── migración 0014
         │
 ADMIN-003 (QA integral)
 ```
@@ -168,9 +168,10 @@ PAY-002 necesita los secretos de ADMIN-002 para registrar credenciales de prueba
 | Ninguna | ADMIN-001 | El esquema actual basta |
 | `0011` | ADMIN-001 (rendimiento) | Cinco índices: `companies(created_at)`, `memberships(company_id)`, perfiles por fecha, `admin_events` por fecha y por acción. Preparada en `db/pending/`; se aplica después de 0010 |
 | `0012` | ADMIN-002 | `provider_credentials`, `provider_settings`, `ai_function_config`, `integration_choices`, `reauth_challenges` y `sessions.reauthenticated_at`. Preparada en `db/pending/` y probada en local; detalle en `docs/ADMIN002_INTEGRATIONS.md` |
-| `0013` | PAY-002 | Ampliar `purchase_attempts.provider` (hoy admite `stripe`, `bank`, `manual`), moneda local, tasa, vigencia y mercado |
+| `0013` | ADMIN-OPS | Solo índices de las pantallas de operaciones (`db/migrations/0013_admin_ops_indexes.sql`) |
+| `0014` | PAY-002 | Ampliar `purchase_attempts.provider` (hoy admite `stripe`, `bank`, `manual`), moneda local, tasa, vigencia y mercado |
 
-La migración 0013 reconstruye una tabla con `CHECK`, así que se prueba primero sobre una copia. No se elimina ningún dato.
+La migración 0014 reconstruye una tabla con `CHECK`, así que se prueba primero sobre una copia. No se elimina ningún dato.
 
 ## 10. Riesgos y pruebas de seguridad
 

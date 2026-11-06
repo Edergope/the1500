@@ -1,7 +1,7 @@
 export type AdminLang='en'|'es';
 const dictionary={
   en:{
-    control:'Control center',overview:'Overview',integrationsNav:'Integrations',companies:'Companies',profiles:'Profiles & JSON',audit:'Audit',account:'My account',publicSite:'Public site',language:'Español',
+    control:'Control center',overview:'Overview',identityConfirmed:'Identity confirmed until',confirmIdentity:'Confirm identity',confirmIdentityText:'Irreversible actions need a link sent to your inbox. Open it in this browser; it lasts 15 minutes.',confirmIdentitySent:'Link sent. Open it from your inbox in this browser.',integrationsNav:'Integrations',companies:'Companies',profiles:'Profiles & JSON',audit:'Audit',account:'My account',publicSite:'Public site',language:'Español',
     environment:'Environment',local:'Local',staging:'Staging',noCharges:'No real charges',signedInAs:'Signed in as',
     business:'The register',positions:'Positions',assigned:'Assigned',held:'Reserved',available:'Open',retired:'Retired',capacity:'of 1,500',
     salesState:'Sales state',phase:'Tier',price:'Current price',checkout:'Checkout',open:'Open',closed:'Closed',none:'None',
@@ -30,7 +30,7 @@ const dictionary={
     checks:{canonical_structure:'Canonical JSON has the expected structure',jsonld_en_structure:'English JSON-LD has the expected structure',jsonld_es_structure:'Spanish JSON-LD has the expected structure',approval_matches_content:'Content is what the owner approved',published_after_approval:'Published after owner approval',snapshot_matches_jsonld:'Public JSON-LD matches the publication record'} as Record<string,string>,
   },
   es:{
-    control:'Centro de control',overview:'Resumen',integrationsNav:'Integraciones',companies:'Empresas',profiles:'Perfiles y JSON',audit:'Auditoría',account:'Mi cuenta',publicSite:'Sitio público',language:'English',
+    control:'Centro de control',overview:'Resumen',identityConfirmed:'Identidad confirmada hasta',confirmIdentity:'Confirmar identidad',confirmIdentityText:'Las acciones irreversibles necesitan un enlace enviado a tu correo. Ábrelo en este navegador; dura 15 minutos.',confirmIdentitySent:'Enlace enviado. Ábrelo desde tu correo en este navegador.',integrationsNav:'Integraciones',companies:'Empresas',profiles:'Perfiles y JSON',audit:'Auditoría',account:'Mi cuenta',publicSite:'Sitio público',language:'English',
     environment:'Entorno',local:'Local',staging:'Staging',noCharges:'Sin cobros reales',signedInAs:'Sesión de',
     business:'El registro',positions:'Posiciones',assigned:'Asignadas',held:'Reservadas',available:'Abiertas',retired:'Retiradas',capacity:'de 1.500',
     salesState:'Estado de venta',phase:'Tramo',price:'Precio vigente',checkout:'Compra',open:'Abierta',closed:'Cerrada',none:'Ninguno',

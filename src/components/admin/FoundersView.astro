@@ -1,0 +1,106 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import Pager from './Pager.astro';
+import ActionButton from './ActionButton.astro';
+import { copy, formatDate, formatNumber, formatPosition, type AdminLang } from './copy';
+import { opsCopy } from './ops-copy';
+import { INVITATION_STATES, getFounderBoard } from '../../core/admin-ops';
+
+interface Props { lang: AdminLang; }
+const { lang } = Astro.props;
+const t = copy(lang);
+const o = opsCopy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const p = Astro.url.searchParams;
+const status = (INVITATION_STATES as readonly string[]).includes(p.get('status') ?? '') ? p.get('status')! : undefined;
+const LIMIT = 50;
+const rawOffset = Number(p.get('offset') ?? 0);
+const offset = Number.isSafeInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+let board: Awaited<ReturnType<typeof getFounderBoard>> | null = null;
+try { board = await getFounderBoard(env.DB, { status, limit: LIMIT, offset }); } catch (e) { console.error('admin_founders_unavailable', e instanceof Error ? e.message : String(e)); }
+const pos = board?.positions as Record<string, number> | undefined;
+const taken = pos ? (pos.assigned ?? 0) + (pos.retired ?? 0) : 0;
+---
+<AdminLayout lang={lang} title={o.founders} active="founders">
+  <header class="ad-head">
+    <h1>{o.founders}</h1>
+    <p class="ad-sub">{o.foundersIntro}</p>
+  </header>
+  {!board || !pos ? <p class="ad-empty">{t.noData}</p> : (
+    <>
+      <section class="ad-band">
+        <div class="ad-band-title"><h2>{o.foundersPositions}</h2><p class="ad-big"><em>{formatNumber(lang, taken)}</em> / 100</p></div>
+        <div class="ad-bar" aria-hidden="true"><i class="is-assigned" style={`width:${taken}%`}></i></div>
+        <dl class="ad-figures">
+          <div><dt>{o.awarded}</dt><dd>{formatNumber(lang, taken)}</dd></div>
+          <div><dt>{o.free}</dt><dd>{formatNumber(lang, pos.available ?? 0)}</dd></div>
+          {INVITATION_STATES.map((st) => <div><dt>{o.invitations} · {o.inviteStates[st]}</dt><dd>{formatNumber(lang, (board!.invitationCounts as Record<string, number>)[st] ?? 0)}</dd></div>)}
+        </dl>
+      </section>
+
+      <section class="ad-panel ad-panel-wide">
+        <h2>{o.invite}</h2>
+        <form class="ad-int-form" id="f-founder-invite" data-admin-form method="post" action="#">
+          <label>{o.companyId}<input name="companyId" required maxlength="80" pattern="[A-Za-z0-9_-]{1,80}" autocomplete="off" spellcheck="false" /><small>{o.inviteHint}</small></label>
+          <span class="ad-actions"><ActionButton lang={lang} plain form="f-founder-invite" label={o.sendInvite} endpoint="/api/v1/admin/founder-invite" payload={{}} summary={o.invite} /></span>
+        </form>
+      </section>
+
+      <section class="ad-panel ad-panel-wide">
+        <h2>{o.invitations}</h2>
+        <form class="ad-filters" method="get">
+          <label>{o.status}<select name="status"><option value="">{o.any}</option>{INVITATION_STATES.map((v) => <option value={v} selected={status === v}>{o.inviteStates[v]}</option>)}</select></label>
+          <div class="ad-filter-actions"><button class="ad-btn ad-btn-primary" type="submit">{o.apply}</button><a class="ad-btn" href={`${base}/fundadores`}>{o.clear}</a></div>
+        </form>
+        {board.invitations.rows.length === 0 ? <p class="ad-dim">{o.noInvitations}</p> : (
+          <div class="ad-table-wrap">
+            <table class="ad-table">
+              <thead><tr><th>{o.company}</th><th>{o.status}</th><th>{o.created}</th><th>{o.expiresAt}</th><th>{o.acceptedAt}</th><th>{o.invitedBy}</th><th>{o.awardedPosition}</th><th><span class="ad-sr">{t.actions}</span></th></tr></thead>
+              <tbody>
+                {(board.invitations.rows as Record<string, any>[]).map((i) => (
+                  <tr>
+                    <td><a href={`${base}/empresas/${encodeURIComponent(i.companyId)}`}>{i.companyName}</a></td>
+                    <td><State lang={lang} value={i.status === 'accepted' ? (i.awardedPosition ? 'completed' : 'pending') : i.status} label={i.status === 'accepted' && !i.awardedPosition ? o.acceptedNotAwarded : o.inviteStates[i.status]} /></td>
+                    <td class="ad-dim ad-nowrap">{formatDate(lang, i.createdAt)}</td>
+                    <td class="ad-dim ad-nowrap">{formatDate(lang, i.expiresAt)}</td>
+                    <td class="ad-dim ad-nowrap">{formatDate(lang, i.acceptedAt)}</td>
+                    <td class="ad-dim">{i.invitedBy ?? '—'}</td>
+                    <td class="ad-num">{i.awardedPosition ? <a href={`${base}/inventario/${i.awardedPosition}`}>{formatPosition(i.awardedPosition)}</a> : '—'}</td>
+                    <td>{i.status === 'accepted' && !i.awardedPosition && <ActionButton lang={lang} primary label={o.award} endpoint="/api/v1/admin/founder-award" payload={{ invitationId: i.id }} summary={`${o.award}: ${i.companyName}`} />}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <Pager lang={lang} total={null} hasMore={board.invitations.hasMore} count={board.invitations.rows.length} limit={LIMIT} offset={offset} />
+      </section>
+
+      <section class="ad-panel ad-panel-wide">
+        <h2>{o.awards}</h2>
+        {board.awards.length === 0 ? <p class="ad-dim">{o.noAwards}</p> : (
+          <div class="ad-table-wrap">
+            <table class="ad-table">
+              <thead><tr><th>{o.position}</th><th>{o.company}</th><th>{o.status}</th><th>{o.assignedAt}</th><th>{o.approvedBy}</th><th>{o.revokedAt}</th><th><span class="ad-sr">{t.actions}</span></th></tr></thead>
+              <tbody>
+                {(board.awards as Record<string, any>[]).map((a) => (
+                  <tr>
+                    <td class="ad-num"><a href={`${base}/inventario/${a.position}`}>{formatPosition(a.position)}</a></td>
+                    <td><a href={`${base}/empresas/${encodeURIComponent(a.companyId)}`}>{a.companyName}</a></td>
+                    <td><State lang={lang} value={a.status} /></td>
+                    <td class="ad-dim ad-nowrap">{formatDate(lang, a.awardedAt)}</td>
+                    <td class="ad-dim">{a.approvedBy ?? '—'}</td>
+                    <td class="ad-dim ad-nowrap">{formatDate(lang, a.revokedAt)}</td>
+                    <td>{a.status === 'active' && <ActionButton lang={lang} danger label={o.revoke} endpoint="/api/v1/admin/founder-revoke" payload={{ companyId: a.companyId }} summary={`${o.revoke}: ${a.companyName} (${formatPosition(a.position)})`} />}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  )}
+</AdminLayout>

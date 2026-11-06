@@ -34,11 +34,19 @@ describe('authorization in the core',()=>{
     const c=await adminUser(h);await h.db.prepare(`UPDATE users SET status='blocked' WHERE id=?`).bind(c.userId).run();
     await assert.rejects(adm.requirePlatformAdmin(h.db,c.userId),e=>e.code==='ADMIN_ONLY');
   });
-  test('the panel offers nothing that assigns or moves a position',()=>{
+  // ADMIN-OPS (owner mandate, 2026-11-06) put founder awards, Premium and payment decisions in the panel. What stays true:
+  // no screen moves a position by itself, and every action that can assign, release or refund needs a re-authenticated session.
+  test('the panel offers no arbitrary position change; what can assign or release one needs re-authentication',()=>{
     const fs=require('node:fs');const dir=path.join(ROOT,'src/components/admin');
-    const all=fs.readdirSync(dir).map(f=>fs.readFileSync(path.join(dir,f),'utf8')).join('\n');
-    for(const route of ['premium/assign','founder-award','payments/resolve-late'])assert.equal(all.includes(route),false,route);
-    assert.deepEqual([...new Set(all.match(/\/api\/v1\/admin\/[a-z/-]+/g))].sort(),['/api/v1/admin/company-action','/api/v1/admin/integrations/','/api/v1/admin/profiles/detail','/api/v1/admin/profiles/review','/api/v1/admin/reauth/confirm','/api/v1/admin/reauth/request','/api/v1/admin/review-company']);
+    const all=fs.readdirSync(dir).filter(f=>f.endsWith('.astro')||f.endsWith('.tsx')).map(f=>fs.readFileSync(path.join(dir,f),'utf8')).join('\n');
+    const routes=[...new Set(all.match(/\/api\/v1\/admin\/[a-z/-]+/g))];
+    for (const r of routes) {
+      const file=path.join(ROOT,'src/pages',r.replace(/\/$/,'')+'.ts'),dirIndex=path.join(ROOT,'src/pages',r);
+      assert.ok(fs.existsSync(file)||fs.existsSync(dirIndex),`the panel calls an existing route: ${r}`);
+    }
+    for (const r of ['founder-award','founder-revoke','premium/assign','withdrawals/execute','onboarding/resolve','payments/resolve-late','payments/refund','payments/refund-alternative','payments/chargeback-resolve'])
+      assert.match(fs.readFileSync(path.join(ROOT,`src/pages/api/v1/admin/${r}.ts`),'utf8'),/criticalAdminPost\(/,r);
+    assert.equal(/UPDATE slots|INSERT INTO slots/.test(fs.readFileSync(path.join(ROOT,'src/core/admin-ops.ts'),'utf8')),false,'the operations reads never write positions');
   });
 });
 describe('the superadministrator procedure',()=>{

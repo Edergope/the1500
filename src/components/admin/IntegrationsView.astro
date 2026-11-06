@@ -3,7 +3,6 @@ import { env } from 'cloudflare:workers';
 import AdminLayout from './AdminLayout.astro';
 import State from './State.astro';
 import ActionButton from './ActionButton.astro';
-import ActionDialog from './ActionDialog.astro';
 import { copy, formatDate, type AdminLang } from './copy';
 import { integrationsCopy } from './integrations-copy';
 import { getIntegrationsView } from '../../core/integrations';
@@ -217,7 +216,6 @@ const groups = [
           </div>
         )}
       </section>
-      <ActionDialog lang={lang} />
     </>
   )}
 </AdminLayout>

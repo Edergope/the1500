@@ -2,7 +2,6 @@
 import AdminLayout from './AdminLayout.astro';
 import State from './State.astro';
 import ActionButton from './ActionButton.astro';
-import ActionDialog from './ActionDialog.astro';
 import JsonWorkbench from './JsonWorkbench';
 import { copy, formatDate, formatPosition, stateLabel, type AdminLang } from './copy';
 import type { getProfileDossier } from '../../core/admin-console';
@@ -84,7 +83,6 @@ const summary = d ? `${d.company.displayName}, v${version}` : '';
           declaration: d.documents.declaration, companyData: { displayName: d.company.displayName, slug: d.company.slug, country: d.company.country, industry: d.company.industry, website: d.company.website },
           canonical: d.documents.canonical, jsonldEn: d.documents.jsonld, jsonldEs: d.documents.jsonldEs, generator: d.generator,
         }} stage={d.stage} />
-      <ActionDialog lang={lang} />
     </>
   )}
 </AdminLayout>

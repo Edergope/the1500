@@ -179,8 +179,8 @@ export async function requestReauth(env:IntegrationsEnv,user:Principal,locale:'e
   const url=new URL(`${locale==='es'?'/es':''}/admin/reautenticar`,new URL(env.PUBLIC_BASE_URL).origin);url.searchParams.set('token',raw);
   const subject=locale==='es'?'THE1500: confirma que eres tú':'THE1500: confirm it is you';
   const text=locale==='es'
-    ?`Alguien con tu sesión pidió hacer cambios críticos en las integraciones de THE1500.\n\nSi fuiste tú, abre este enlace en el mismo navegador antes de 15 minutos:\n${url}\n\nSi no fuiste tú, no lo abras y cierra tus sesiones desde Mi cuenta.`
-    :`Someone using your session asked to make critical changes to THE1500 integrations.\n\nIf it was you, open this link in the same browser within 15 minutes:\n${url}\n\nIf it was not you, do not open it and sign out of your sessions from My account.`;
+    ?`Alguien con tu sesión pidió confirmar tu identidad para hacer cambios críticos en THE1500.\n\nSi fuiste tú, abre este enlace en el mismo navegador antes de 15 minutos:\n${url}\n\nSi no fuiste tú, no lo abras y cierra tus sesiones desde Mi cuenta.`
+    :`Someone using your session asked to confirm your identity for critical changes in THE1500.\n\nIf it was you, open this link in the same browser within 15 minutes:\n${url}\n\nIf it was not you, do not open it and sign out of your sessions from My account.`;
   const sent=await sendMail(env,{to:user.email,subject,text});
   if (!sent.accepted) {
     await db.prepare(`DELETE FROM reauth_challenges WHERE id=? AND consumed_at IS NULL`).bind(id).run();

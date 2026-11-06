@@ -1,0 +1,9 @@
+---
+import { env } from 'cloudflare:workers';
+import IncidentView from '../../../../components/admin/IncidentView.astro';
+import { readRecord } from '../../../../core/admin-console';
+import { getIncidentDossier } from '../../../../core/admin-ops';
+const { record, missing } = await readRecord(() => getIncidentDossier(env.DB, Astro.params.id ?? ''));
+if (missing) Astro.response.status = 404;
+---
+<IncidentView lang="es" dossier={record} missing={missing} />

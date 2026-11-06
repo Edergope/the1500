@@ -1,0 +1,117 @@
+---
+import AdminLayout from './AdminLayout.astro';
+import State from './State.astro';
+import ActionButton from './ActionButton.astro';
+import { copy, formatDate, formatPosition, formatUsd, stateLabel, type AdminLang } from './copy';
+import { opsCopy } from './ops-copy';
+import type { getPaymentDossier } from '../../core/admin-ops';
+
+interface Props { lang: AdminLang; dossier: Awaited<ReturnType<typeof getPaymentDossier>> | null; missing: boolean; gateOpen: boolean; }
+const { lang, dossier: d, missing, gateOpen } = Astro.props;
+const t = copy(lang);
+const o = opsCopy(lang);
+const base = lang === 'es' ? '/es/admin' : '/admin';
+const a = d?.attempt as Record<string, any> | undefined;
+const name = a ? `${a.companyName} · ${formatDate(lang, a.createdAt)}` : '';
+type Row = Record<string, any>;
+// Only what the backend supports in this state. Anything that calls Stripe needs the test-mode gate open.
+const can = a ? {
+  reconcile: gateOpen && ['creating', 'pending', 'expired', 'failed'].includes(a.status) && !!a.providerSessionId,
+  late: a.status === 'late_review',
+  refund: gateOpen && ['paid', 'late_review', 'amount_review'].includes(a.status),
+  alternative: a.status === 'refund_pending',
+  payer: a.payerReview === 'required',
+  chargeback: a.status === 'chargeback_lost' && !a.chargebackResolution,
+} : null;
+const stripeBound = a && (a.status === 'pending' || a.status === 'paid' || a.status === 'late_review' || a.status === 'amount_review');
+---
+<AdminLayout lang={lang} title={o.payment} active="payments">
+  <a class="ad-back" href={`${base}/pagos`}>{o.backPayments}</a>
+  {!d || !a || !can ? <p class="ad-empty">{missing ? o.noPayments : t.noData}</p> : (
+    <>
+      <header class="ad-head ad-head-record">
+        <div>
+          <h1>{o.payment} <span class="ad-h1-num">{formatUsd(lang, a.amountUsdCents)}</span></h1>
+          <p class="ad-sub"><State lang={lang} value={a.status} /><a href={`${base}/empresas/${encodeURIComponent(a.companyId)}`}>{a.companyName}</a><span>{a.provider}</span>{a.position && <a href={`${base}/inventario/${a.position}`}>{formatPosition(a.position)}</a>}</p>
+        </div>
+      </header>
+      {!gateOpen && stripeBound && <p class="ad-note">{o.gateClosed}</p>}
+      <div class="ad-columns">
+        <section class="ad-panel">
+          <h2>{o.payment}</h2>
+          <dl class="ad-rows ad-rows-text">
+            <div><dt>{o.buyer}</dt><dd>{a.buyerEmail ?? '—'}</dd></div>
+            <div><dt>{o.payer}</dt><dd>{a.payerEmail ?? '—'}</dd></div>
+            {a.payerReview && <div><dt>{o.payerReview}</dt><dd><State lang={lang} value={a.payerReview === 'required' ? 'pending' : 'approved'} label={a.payerReview} /></dd></div>}
+            <div><dt>{o.amount}</dt><dd>{formatUsd(lang, a.amountUsdCents)} · {String(a.currency ?? '').toUpperCase()} {a.totalMinor}</dd></div>
+            <div><dt>{o.phase}</dt><dd>{a.phase}</dd></div>
+            <div><dt>{o.position}</dt><dd>{a.position ? formatPosition(a.position) : a.heldPosition ? `${formatPosition(a.heldPosition)} (${stateLabel(lang, 'held')})` : '—'}</dd></div>
+            <div><dt>{o.holdExpires}</dt><dd>{formatDate(lang, a.holdExpiresAt)}</dd></div>
+            <div><dt>{o.checkoutExpires}</dt><dd>{formatDate(lang, a.checkoutExpiresAt)}</dd></div>
+            <div><dt>{o.paidAt}</dt><dd>{formatDate(lang, a.paidAt)}{a.paidAtSource && ` (${a.paidAtSource})`}</dd></div>
+            <div><dt>{o.session}</dt><dd><code>{a.providerSessionId ?? '—'}</code></dd></div>
+            <div><dt>{o.intent}</dt><dd><code>{a.providerPaymentIntent ?? '—'}</code></dd></div>
+            <div><dt>{o.refund}</dt><dd>{a.refundConfirmedAt ? `${stateLabel(lang, 'refunded')} ${formatDate(lang, a.refundConfirmedAt)}` : a.refundRequestedAt ? `${stateLabel(lang, 'requested')} ${formatDate(lang, a.refundRequestedAt)}` : '—'}{a.refundReason && <small class="ad-int-detail">{a.refundReason}</small>}</dd></div>
+          </dl>
+        </section>
+        <section class="ad-panel">
+          <h2>{o.incidents}</h2>
+          {d.incidents.length === 0 ? <p class="ad-dim">{o.noEvents}</p> : (
+            <ul class="ad-people">{(d.incidents as Row[]).map((i) => <li><a href={`${base}/incidencias/${encodeURIComponent(i.id)}`}>{i.kind}</a><State lang={lang} value={i.status} /><small>{formatDate(lang, i.createdAt)}</small></li>)}</ul>
+          )}
+          <h2 class="ad-h2-next">{o.providerEvents}</h2>
+          {d.webhooks.length === 0 ? <p class="ad-dim">{o.noEvents}</p> : (
+            <ul class="ad-people">{(d.webhooks as Row[]).map((w) => <li><code>{w.type}</code><span>{w.outcome ?? '—'}</span><small>{formatDate(lang, w.receivedAt)}</small></li>)}</ul>
+          )}
+          {d.late && (
+            <>
+              <h2 class="ad-h2-next">{o.lateFacts}</h2>
+              <pre class="ad-ops-json">{JSON.stringify(d.late, null, 2)}</pre>
+            </>
+          )}
+        </section>
+      </div>
+      {(can.reconcile || can.late || can.refund || can.alternative || can.payer || can.chargeback) && (
+        <section class="ad-panel ad-panel-wide">
+          <h2>{t.actions}</h2>
+          <div class="ad-int-forms">
+            {can.reconcile && <span class="ad-actions"><ActionButton lang={lang} plain label={o.reconcile} endpoint="/api/v1/admin/payments/reconcile" payload={{ attemptId: a.id }} summary={`${o.reconcile}: ${name}`} /></span>}
+            {can.late && <span class="ad-actions">
+              <ActionButton lang={lang} primary label={o.assignLate} endpoint="/api/v1/admin/payments/resolve-late" payload={{ attemptId: a.id, decision: 'assign' }} summary={`${o.assignLate}: ${name}`} />
+              <ActionButton lang={lang} danger label={o.refundLate} endpoint="/api/v1/admin/payments/resolve-late" payload={{ attemptId: a.id, decision: 'refund' }} summary={`${o.refundLate}: ${name}`} />
+            </span>}
+            {can.refund && !can.late && (
+              <form class="ad-int-form" id="f-refund" data-admin-form method="post" action="#">
+                <label>{o.refundReason}<input name="reason" required minlength="3" maxlength="500" /></label>
+                <span class="ad-actions"><ActionButton lang={lang} danger form="f-refund" label={o.requestRefund} endpoint="/api/v1/admin/payments/refund" payload={{ attemptId: a.id }} summary={`${o.requestRefund}: ${name}`} /></span>
+              </form>
+            )}
+            {can.alternative && (
+              <form class="ad-int-form" id="f-alt-refund" data-admin-form method="post" action="#">
+                <label>{o.impossibility}<input name="impossibility" required maxlength="400" /></label>
+                <label>{o.authorizationRef}<input name="authorizationRef" required maxlength="400" /></label>
+                <label>{o.beneficiaryRef}<input name="beneficiaryValidationRef" required maxlength="400" /></label>
+                <label>{o.operationRef}<input name="operationRef" required maxlength="400" /></label>
+                <span class="ad-actions"><ActionButton lang={lang} form="f-alt-refund" label={o.alternativeRefund} endpoint="/api/v1/admin/payments/refund-alternative" payload={{ attemptId: a.id }} summary={`${o.alternativeRefund}: ${name}`} /></span>
+              </form>
+            )}
+            {can.payer && <span class="ad-actions"><ActionButton lang={lang} label={o.authorizePayer} endpoint="/api/v1/admin/payments/payer-authorization" payload={{ attemptId: a.id }} summary={`${o.authorizePayer}: ${name}`} /></span>}
+            {can.chargeback && <span class="ad-actions">
+              <ActionButton lang={lang} label={o.keepChargeback} endpoint="/api/v1/admin/payments/chargeback-resolve" payload={{ attemptId: a.id, decision: 'kept' }} summary={`${o.keepChargeback}: ${name}`} />
+              <ActionButton lang={lang} label={o.regularized} endpoint="/api/v1/admin/payments/chargeback-resolve" payload={{ attemptId: a.id, decision: 'regularized' }} summary={`${o.regularized}: ${name}`} />
+            </span>}
+          </div>
+        </section>
+      )}
+      <section class="ad-panel ad-panel-wide">
+        <h2>{o.decisions}</h2>
+        {d.events.length === 0 ? <p class="ad-dim">{o.noEvents}</p> : (
+          <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>{o.when}</th><th>{o.action}</th><th>{t.actor}</th><th>{t.reason}</th><th>{t.evidence}</th></tr></thead>
+            <tbody>{(d.events as Row[]).map((e) => <tr><td class="ad-nowrap ad-num">{formatDate(lang, e.at)}</td><td>{e.action}</td><td>{e.actor ?? '—'}</td><td>{e.reasonCode ?? '—'}</td><td class="ad-dim">{e.evidence ?? '—'}</td></tr>)}</tbody>
+          </table></div>
+        )}
+      </section>
+    </>
+  )}
+</AdminLayout>

@@ -1,0 +1,12 @@
+---
+import { env } from 'cloudflare:workers';
+import PaymentView from '../../../../components/admin/PaymentView.astro';
+import { readRecord } from '../../../../core/admin-console';
+import { getPaymentDossier } from '../../../../core/admin-ops';
+import { runtimeEnv } from '../../../../core/integrations';
+import { paymentsGate } from '../../../../core/stripe';
+const { record, missing } = await readRecord(() => getPaymentDossier(env.DB, Astro.params.id ?? ''));
+if (missing) Astro.response.status = 404;
+const gateOpen = paymentsGate(await runtimeEnv(env, { stripe: true })).ok;
+---
+<PaymentView lang="es" dossier={record} missing={missing} gateOpen={gateOpen} />

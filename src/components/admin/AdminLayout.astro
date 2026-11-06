@@ -4,25 +4,39 @@ import '@fontsource/instrument-serif/400.css';
 import '../../styles/admin.css';
 import { env } from 'cloudflare:workers';
 import { copy, otherLanguagePath, type AdminLang } from './copy';
+import { opsCopy } from './ops-copy';
+import ActionButton from './ActionButton.astro';
+import ActionDialog from './ActionDialog.astro';
+import { reauthFresh, REAUTH_MS, sessionFacts } from '../../core/integrations';
 
 interface Props {
   lang: AdminLang;
   title: string;
-  active: 'overview' | 'companies' | 'profiles' | 'audit' | 'integrations';
+  active: 'overview' | 'companies' | 'inventory' | 'founders' | 'profiles' | 'requests' | 'payments' | 'incidents' | 'integrations' | 'audit';
 }
 const { lang, title, active } = Astro.props;
 const t = copy(lang);
+const o = opsCopy(lang);
 const base = lang === 'es' ? '/es/admin' : '/admin';
 const nav = [
   { id: 'overview', label: t.overview, href: base },
   { id: 'companies', label: t.companies, href: `${base}/empresas` },
+  { id: 'inventory', label: o.inventory, href: `${base}/inventario` },
+  { id: 'founders', label: o.founders, href: `${base}/fundadores` },
   { id: 'profiles', label: t.profiles, href: `${base}/perfiles` },
-  { id: 'audit', label: t.audit, href: `${base}/auditoria` },
+  { id: 'requests', label: o.requests, href: `${base}/solicitudes` },
+  { id: 'payments', label: o.payments, href: `${base}/pagos` },
+  { id: 'incidents', label: o.incidents, href: `${base}/incidencias` },
   { id: 'integrations', label: t.integrationsNav, href: `${base}/integraciones` },
+  { id: 'audit', label: t.audit, href: `${base}/auditoria` },
 ];
 // The address of this deployment decides the label, so the panel cannot claim to be somewhere else.
 const host = (() => { try { return new URL(env.PUBLIC_BASE_URL ?? Astro.url.href).hostname; } catch { return ''; } })();
 const environment = host === 'localhost' || host === '127.0.0.1' ? t.local : t.staging;
+// Critical actions need this session confirmed through the administrator's mailbox in the last 15 minutes.
+// One indexed read of this session's row; before migration 0012 there is nothing to show.
+let reauthUntil: string | null = null; let reauthAvailable = true;
+try { const s = await sessionFacts(env.DB, Astro.request); reauthUntil = reauthFresh(s.reauthenticatedAt) ? new Date(Date.parse(s.reauthenticatedAt!) + REAUTH_MS).toISOString().slice(11, 16) : null; } catch { reauthAvailable = false; }
 ---
 <!doctype html>
 <html lang={lang}>
@@ -42,6 +56,13 @@ const environment = host === 'localhost' || host === '127.0.0.1' ? t.local : t.s
       <div class="ad-side-foot">
         <p class="ad-env"><span class="ad-mark ad-tone-wait"></span>{environment}<br /><small>{t.noCharges}</small></p>
         <p class="ad-who"><small>{t.signedInAs}</small><br /><span title={Astro.locals.admin?.email}>{Astro.locals.admin?.email}</span></p>
+        {reauthAvailable && (
+          <div class="ad-reauth">
+            {reauthUntil
+              ? <p><span class="ad-mark ad-tone-good"></span>{t.identityConfirmed} {reauthUntil} UTC</p>
+              : <ActionButton lang={lang} plain label={t.confirmIdentity} endpoint="/api/v1/admin/reauth/request" payload={{ locale: lang }} summary={t.confirmIdentityText} success={t.confirmIdentitySent} />}
+          </div>
+        )}
         <div class="ad-links">
           <a href={otherLanguagePath(lang, Astro.url.pathname, Astro.url.search)} lang={lang === 'es' ? 'en' : 'es'}>{t.language}</a>
           <a href={lang === 'es' ? '/es/mi-cuenta' : '/mi-cuenta'}>{t.account}</a>
@@ -52,5 +73,6 @@ const environment = host === 'localhost' || host === '127.0.0.1' ? t.local : t.s
     <main class="ad-main" id="ad-main">
       <slot />
     </main>
+    <ActionDialog lang={lang} />
   </body>
 </html>
