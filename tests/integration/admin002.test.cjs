@@ -1,4 +1,4 @@
-// ADMIN-002: provider credentials sealed in D1, the panel's controls and their limits. Local D1 with migration 0012 from db/pending.
+// ADMIN-002: provider credentials sealed in D1, the panel's controls and their limits. Local D1 with migration 0012.
 const {test,describe,before,after}=require('node:test');const assert=require('node:assert/strict');
 const fs=require('node:fs');const path=require('node:path');const http=require('node:http');const crypto=require('node:crypto');
 const {freshDb,seedCompany,ROOT}=require('../support/d1.cjs');
@@ -7,11 +7,19 @@ const sec=core('secrets'),int=core('integrations'),llm=core('llm'),stripe=core('
 const NOW=new Date('2026-11-06T10:00:00.000Z');
 const later=ms=>new Date(NOW.getTime()+ms);
 const MASTER=crypto.randomBytes(32).toString('base64');
-const PENDING=fs.readFileSync(path.join(ROOT,'db/pending/0012_admin002_integrations.sql'),'utf8').replace(/--.*$/gm,'');
+// 0012 waited in db/pending until its own deploy (DEPLOY-002, phase C); the tests work with it in either place.
+const MIGRATED=fs.existsSync(path.join(ROOT,'db/migrations/0012_admin002_integrations.sql'));
+const PENDING=fs.readFileSync(path.join(ROOT,MIGRATED?'db/migrations':'db/pending','0012_admin002_integrations.sql'),'utf8').replace(/--.*$/gm,'');
 // Fictitious values in each provider's format. None of them works anywhere.
 const KEYS={anthropic:'sk-ant-test0000fictitious0000value9f3a',stripe:'sk_test_fictitious0000value0000b7c2',whsec:'whsec_fictitious0000value0000d41e',
   mp:'TEST-0000000000000000-110600-fictitious00000000000000000000-111111111',mpPublic:'TEST-fictitious-0000-0000-public',resend:'re_fictitious0000value_e5f1'};
-const apply0012=db=>db.batch(PENDING.split(';').map(s=>s.trim()).filter(Boolean).map(s=>db.prepare(s)));
+const apply0012=async db=>{
+  if (await db.prepare(`SELECT 1 FROM sqlite_master WHERE name='provider_settings'`).first()) return;
+  await db.batch(PENDING.split(';').map(s=>s.trim()).filter(Boolean).map(s=>db.prepare(s)));
+};
+/** A database as it was before 0012, to check that the Worker configuration stays in charge there. */
+const without0012=db=>db.batch(['DROP TABLE IF EXISTS integration_choices','DROP TABLE IF EXISTS ai_function_config','DROP TABLE IF EXISTS provider_settings',
+  'DROP TABLE IF EXISTS provider_credentials','DROP TABLE IF EXISTS reauth_challenges'].map(s=>db.prepare(s)));
 const sha=v=>crypto.createHash('sha256').update(v).digest('hex');
 
 /** A signed-in administrator with a session cookie, as the browser would send it. */
@@ -67,7 +75,7 @@ describe('envelope encryption',()=>{
 });
 
 describe('before migration 0012',()=>{
-  let h;before(async()=>{h=await freshDb();int.forgetIntegrationsCache();});after(()=>h.dispose());
+  let h;before(async()=>{h=await freshDb();await without0012(h.db);int.forgetIntegrationsCache();});after(()=>h.dispose());
   test('the Worker configuration stays in charge and the panel says the migration is pending',async()=>{
     const env={DB:h.db,AI_PROVIDER:'anthropic',AI_API_KEY:'worker-key',AI_MODEL:'claude-opus-5-5',SECRETS_MASTER_KEY:MASTER};
     assert.deepEqual(await int.runtimeEnv(env,{ai:'profile_generation',mail:true,stripe:true}),env);
@@ -76,8 +84,8 @@ describe('before migration 0012',()=>{
     const a=await admin(h.db);
     await assert.rejects(int.saveCredential(env,a.id,{provider:'anthropic',name:'api_key',value:KEYS.anthropic,...reasons},NOW),e=>e.code==='INTEGRATIONS_NOT_MIGRATED');
   });
-  test('0012 waits in db/pending, like 0011',()=>{
-    assert.equal(fs.existsSync(path.join(ROOT,'db/migrations/0012_admin002_integrations.sql')),false);
+  test('0012 lives in exactly one place, so it is applied once',()=>{
+    assert.notEqual(fs.existsSync(path.join(ROOT,'db/migrations/0012_admin002_integrations.sql')),fs.existsSync(path.join(ROOT,'db/pending/0012_admin002_integrations.sql')));
   });
 });
 

@@ -1,4 +1,4 @@
-THE1500 CORE-005 acceptance journey. 2026-11-05T23:49:57.949Z
+THE1500 CORE-005 acceptance journey. 2026-11-06T16:36:14.532Z
 Worker: built output on workerd via wrangler dev; D1/R2: local persisted.
 Email, LLM, Stripe: local stand-ins (tests/support/upstreams.cjs). NOT real providers, NOT remote Cloudflare.
 
@@ -9,15 +9,15 @@ PASS  Public pages respond in EN and ES
 PASS  Home is the wall of 1,500; only the open phase and its price are public; no technical jargon
 PASS  Magic link works once; raw token not reusable
 PASS  Spanish sign-in stays in Spanish; stale link returns to sign-in; signed-in visitor skips the form
-PASS  1. Company registered by verified corporate email  →  ocean-line-llc-18e2a794
+PASS  1. Company registered by verified corporate email  →  ocean-line-llc-bd733525
 PASS  T07 another user cannot touch a company; no session 401; foreign origin 403; non-admin 403
 PASS  T13 API errors localized  →  en: Please sign in. / es: Inicia sesión.
 PASS  T06 forged webhook rejected over HTTP; nothing assigned
-PASS  2. Paid via signed webhook, duplicate ignored, position assigned  →  position=101, form due 2026-11-20
+PASS  2. Paid via signed webhook, duplicate ignored, position assigned  →  position=101, form due 2026-11-21
 PASS  3-4. Form submitted with consent; profile structured through the LLM adapter  →  provider=anthropic, model=claude-opus-5-5 [stand-in upstream]
 PASS  T08 unapproved profile cannot be published; draft invisible to public and search
 PASS  5. Representative approved the exact content digest
-PASS  6. Published  →  correction until 2026-11-20, guaranteed until 2027-11-05
+PASS  6. Published  →  correction until 2026-11-21, guaranteed until 2027-11-06
 PASS  HTML and JSON-LD served publicly in EN and ES; no private data in the document
 PASS  Directory and search summaries follow the visitor language
 PASS  Exportable semantic profile available to the owner

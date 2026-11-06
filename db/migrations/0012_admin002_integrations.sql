@@ -1,5 +1,5 @@
 -- ADMIN-002: external providers managed from the panel, with their credentials encrypted.
--- Kept in db/pending: `wrangler d1 migrations apply --remote` would otherwise ship it with 0010.
+-- It waited in db/pending until ADMIN-002 had its own deploy (DEPLOY-002, phase C, 2026-11-06).
 -- No row here is required. Without them the Worker keeps reading its own configuration, as before.
 
 -- Critical integration changes need a sign-in link opened in the last 15 minutes.
