@@ -1,6 +1,6 @@
 # THE1500: despliegue escalonado de PERF-001 y ADMIN-001
 
-Nada de este documento se ha ejecutado en remoto. Staging sigue en la versión `97707a44`, commit `5dd7122`. La lista de tareas remotas pendientes está en la sección 0. Cada paso remoto necesita tu autorización expresa, y entre un paso y el siguiente me detengo a informar.
+**Actualización del 6 de noviembre de 2026 (DEPLOY-002):** los pasos 1 a 5 de la sección 0, más 0012 y ADMIN-002, están desplegados en staging. El resultado y la reversión vigente están en `docs/DEPLOY002_REPORT.md`. Quedan el correo real, la activación del superadministrador y la revocación del demo, cada uno con tu autorización. Cada paso remoto necesita tu autorización expresa, y entre un paso y el siguiente me detengo a informar.
 
 Todo ocurre en la cuenta Cloudflare actual (`25765199…`), sobre el Worker `the1500-staging`, la base D1 `the1500-staging` (`05012b7a-…`) y el bucket R2 `the1500-staging-snapshots`. Ningún paso toca recursos de Palmera ni de otros proyectos.
 
