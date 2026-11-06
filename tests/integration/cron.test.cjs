@@ -4,7 +4,7 @@ const fs=require('node:fs');const path=require('node:path');
 const {freshDb,seedCompany,ROOT}=require('../support/d1.cjs');
 const ops=require('../../.core-js-tests/core/ops.js');
 const NOW=new Date('2026-11-06T12:00:00.000Z');const iso=d=>new Date(NOW.getTime()+d*864e5).toISOString();
-const INDEXES=fs.readFileSync(path.join(ROOT,'db/pending/0011_admin_indexes.sql'),'utf8').replace(/--.*$/gm,'');
+const INDEXES=fs.readFileSync(path.join(ROOT,'db/migrations/0011_admin_indexes.sql'),'utf8').replace(/--.*$/gm,'');
 
 describe('the cron with migration 0011',()=>{
   let h;const ids={};

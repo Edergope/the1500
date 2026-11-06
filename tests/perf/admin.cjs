@@ -1,5 +1,5 @@
 // ADMIN-001: rows read by each page of the control center, on a scenario. Local only.
-//   node tests/perf/admin.cjs --scenario demo|full [--with db/pending/0011_admin_indexes.sql]
+//   node tests/perf/admin.cjs --scenario demo|full [--with db/migrations/0011_admin_indexes.sql]
 // --with applies a migration that is not yet in db/migrations, so its effect is measured before it ships.
 const path=require('node:path'),fs=require('node:fs');
 const arg=k=>{const i=process.argv.indexOf(`--${k}`);return i>0?process.argv[i+1]:undefined;};

@@ -27,7 +27,7 @@ ADMIN-002 y su migración `0012` tienen un despliegue propio, después de estos 
 | 2 | Verificación funcional y de consumo de D1 | — | Ninguno | ≤ 10, según la sección 10 de `PERF001_D1_OPTIMIZATION.md` |
 | 3 | ADMIN-001: interfaz y API administrativas | Commit de esta entrega | Solo despliegue, sin migración | 0 |
 | 4 | Control de acceso sin administradores reales | — | Ninguno | ≤ 8 |
-| 5 | Migración `0011` (índices), si se mantiene la justificación de la sección 3 | Mover `db/pending/0011_admin_indexes.sql` a `db/migrations/` | Migración | ≤ 2 |
+| 5 | Migración `0011` (índices), si se mantiene la justificación de la sección 3 | Mover `db/migrations/0011_admin_indexes.sql` a `db/migrations/` | Migración | ≤ 2 |
 | 6 | Alta autorizada del propietario | `scripts/superadmin.cjs` | 2 filas | 1 (el propietario abre el panel) |
 | 7 | Revocación verificada del administrador de demostración | `scripts/superadmin.cjs` | 2 filas | 1 |
 
@@ -84,7 +84,7 @@ En el paso 4, con un máximo de 8 solicitudes, se comprueba:
 
 ## 3. Migración 0011 y medición local
 
-**Contenido:** `db/pending/0011_admin_indexes.sql`, con diez `CREATE INDEX IF NOT EXISTS`: cinco del panel y cinco del cron (DEPLOY-002). Con 1.500 empresas, un ciclo del cron en reposo pasa de 2.125 filas a 15 (`node tests/perf/cron.cjs --with db/pending/0011_admin_indexes.sql`). No añade tablas ni triggers y no cambia datos. Una prueba lo comprueba y verifica con `EXPLAIN QUERY PLAN` que cada listado usa su índice.
+**Contenido:** `db/migrations/0011_admin_indexes.sql`, con diez `CREATE INDEX IF NOT EXISTS`: cinco del panel y cinco del cron (DEPLOY-002). Con 1.500 empresas, un ciclo del cron en reposo pasa de 2.125 filas a 15 (`node tests/perf/cron.cjs --with db/migrations/0011_admin_indexes.sql`). No añade tablas ni triggers y no cambia datos. Una prueba lo comprueba y verifica con `EXPLAIN QUERY PLAN` que cada listado usa su índice.
 
 | Índice | Para qué |
 |---|---|
@@ -100,7 +100,7 @@ node tests/perf/admin.cjs --scenario full
 ```
 
 ```bash
-node tests/perf/admin.cjs --scenario full --with db/pending/0011_admin_indexes.sql
+node tests/perf/admin.cjs --scenario full --with db/migrations/0011_admin_indexes.sql
 ```
 
 La tabla compara tres estados:

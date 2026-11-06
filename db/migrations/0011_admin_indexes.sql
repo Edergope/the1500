@@ -1,6 +1,5 @@
 -- ADMIN-001 follow-up: indexes for the control center lists. Indexes only: no table, no trigger, no data change.
--- Kept outside db/migrations on purpose: `wrangler d1 migrations apply` would otherwise ship it with 0010.
--- Move it to db/migrations/0011_admin_indexes.sql only at step 5 of docs/ADMIN_STAGED_DEPLOY.md.
+-- It waited in db/pending until PERF-001 (0010) was deployed and verified in staging (DEPLOY-002, 2026-11-06).
 
 -- Companies list, newest first: walks the index and stops at the page instead of sorting every company.
 CREATE INDEX IF NOT EXISTS idx_companies_created ON companies(created_at DESC, id);

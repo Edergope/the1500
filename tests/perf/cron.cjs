@@ -1,5 +1,5 @@
 // DEPLOY-002: rows read by one run of the five-minute cron, at 1,500 companies with an onboarding case each. Local only.
-//   node tests/perf/cron.cjs [--with db/pending/0011_admin_indexes.sql]
+//   node tests/perf/cron.cjs [--with db/migrations/0011_admin_indexes.sql]
 // Most cases sit in a waiting state (extended, suspended, completed); a few are due. A second run measures an idle register:
 // what the cron costs every five minutes when nothing has changed.
 const path=require('node:path'),fs=require('node:fs');

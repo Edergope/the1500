@@ -275,12 +275,12 @@ describe('the audit trail and the overview',()=>{
   });
 });
 
-describe('migration 0011 (pending)',()=>{
+describe('migration 0011',()=>{
   test('it holds indexes only, and the lists use them',async()=>{
-    const fs=require('node:fs');const file=fs.readFileSync(path.join(ROOT,'db/pending/0011_admin_indexes.sql'),'utf8').replace(/--.*$/gm,'');
+    const fs=require('node:fs');const file=fs.readFileSync(path.join(ROOT,'db/migrations/0011_admin_indexes.sql'),'utf8').replace(/--.*$/gm,'');
     const statements=file.split(';').map(x=>x.trim()).filter(Boolean);
     for(const x of statements)assert.match(x,/^CREATE INDEX IF NOT EXISTS /,x);
-    assert.equal(fs.existsSync(path.join(ROOT,'db/migrations/0011_admin_indexes.sql')),false,'0011 waits for PERF-001 in staging');
+    // Applied in staging on 2026-11-06, after PERF-001 was verified there (DEPLOY-002).
     const h=await freshDb();try{
       await h.db.batch(statements.map(x=>h.db.prepare(x)));await h.db.batch(statements.map(x=>h.db.prepare(x)));
       const plan=async sql=>(await h.db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all()).results.map(r=>r.detail).join(' | ');
