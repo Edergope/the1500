@@ -67,8 +67,12 @@ export async function notifyOwners(db:D1Database,companyId:string,kind:string,bu
 export async function sweepOnboarding(db:D1Database,baseUrl:string,now=new Date()) {
   const at=now.toISOString();
   const moved={extended:0,suspended:0,adminReview:0,reactivationLapsed:0};
-  const due=await db.prepare(`SELECT company_id,status,form_due_at,extension_due_at,reactivation_due_at FROM onboarding_cases
-    WHERE status IN('active','extended','suspended') AND form_due_at<=?`).bind(at)
+  // Only cases with something to do now. A case waiting out its extension or its suspension is not read again every
+  // five minutes; each branch below needs exactly one of these three, and each one seeks its own index (0011).
+  const cols=`company_id,status,form_due_at,extension_due_at,reactivation_due_at`;
+  const due=await db.prepare(`SELECT ${cols} FROM onboarding_cases WHERE status='active' AND form_due_at<=?
+    UNION ALL SELECT ${cols} FROM onboarding_cases WHERE status='extended' AND extension_due_at<=? AND form_due_at<=?
+    UNION ALL SELECT ${cols} FROM onboarding_cases WHERE status='suspended' AND reactivation_due_at<=? AND form_due_at<=?`).bind(at,at,at,at,at)
     .all<{company_id:string;status:string;form_due_at:string;extension_due_at:string;reactivation_due_at:string}>();
   for (const c of due.results) {
     if (c.status==='active'&&c.extension_due_at>at) {

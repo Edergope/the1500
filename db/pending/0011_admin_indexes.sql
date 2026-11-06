@@ -11,3 +11,11 @@ CREATE INDEX IF NOT EXISTS idx_profile_versions_recent ON profile_versions(COALE
 -- Audit log, newest first, and its action filter.
 CREATE INDEX IF NOT EXISTS idx_admin_events_recent ON admin_events(occurred_at DESC, id);
 CREATE INDEX IF NOT EXISTS idx_admin_events_action ON admin_events(action, occurred_at DESC);
+
+-- DEPLOY-002: the five-minute cron. Each deadline query seeks the cases that are due instead of reading every case,
+-- so an idle register costs the same few rows whatever its size.
+CREATE INDEX IF NOT EXISTS idx_onboarding_extension_due ON onboarding_cases(status, extension_due_at);
+CREATE INDEX IF NOT EXISTS idx_onboarding_reactivation_due ON onboarding_cases(status, reactivation_due_at);
+CREATE INDEX IF NOT EXISTS idx_onboarding_reactivation_form_due ON onboarding_cases(status, reactivation_form_due_at);
+CREATE INDEX IF NOT EXISTS idx_onboarding_final_notice_due ON onboarding_cases(status, final_notice_due_at);
+CREATE INDEX IF NOT EXISTS idx_onboarding_resolution_open ON onboarding_cases(resolution_due_at) WHERE resolved_at IS NULL;

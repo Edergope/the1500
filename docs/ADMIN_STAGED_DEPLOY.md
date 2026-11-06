@@ -84,7 +84,7 @@ En el paso 4, con un máximo de 8 solicitudes, se comprueba:
 
 ## 3. Migración 0011 y medición local
 
-**Contenido:** `db/pending/0011_admin_indexes.sql`, con cinco `CREATE INDEX IF NOT EXISTS`. No añade tablas ni triggers y no cambia datos. Una prueba lo comprueba y verifica con `EXPLAIN QUERY PLAN` que cada listado usa su índice.
+**Contenido:** `db/pending/0011_admin_indexes.sql`, con diez `CREATE INDEX IF NOT EXISTS`: cinco del panel y cinco del cron (DEPLOY-002). Con 1.500 empresas, un ciclo del cron en reposo pasa de 2.125 filas a 15 (`node tests/perf/cron.cjs --with db/pending/0011_admin_indexes.sql`). No añade tablas ni triggers y no cambia datos. Una prueba lo comprueba y verifica con `EXPLAIN QUERY PLAN` que cada listado usa su índice.
 
 | Índice | Para qué |
 |---|---|
